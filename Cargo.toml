@@ -1,0 +1,14 @@
+[package]
+name = "gpgme"
+description = "GPGme bindings for Rust"
+version = "0.1.0"
+authors = ["John Schug <john.ips.schug@gmail.com>"]
+license = "LGPL-2.1"
+keywords = ["gpg", "gpgme", "cryptography"]
+
+[dependencies]
+libc = "0.1"
+bitflags = "0.1"
+getopts = "0.2"
+enum_primitive = "*"
+gpgme-sys = { path = "gpgme-sys" }

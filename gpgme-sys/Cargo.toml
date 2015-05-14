@@ -1,0 +1,15 @@
+[package]
+name = "gpgme-sys"
+description = "Raw bindings for gpgme"
+version = "0.1.0"
+authors = ["John Schug <john.ips.schug@gmail.com>"]
+license = "LGPL-2.1"
+
+[lib]
+name = "gpgme_sys"
+path = "lib.rs"
+
+[dependencies]
+libc = "0.1"
+enum_primitive = "*"
+libgpg-error-sys = { path = "../libgpg-error-sys" }

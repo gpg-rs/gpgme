@@ -1,0 +1,14 @@
+[package]
+name = "libgpg-error-sys"
+description = "Raw bindings for libgpg-error"
+version = "0.1.0"
+authors = ["John Schug <john.ips.schug@gmail.com>"]
+license = "LGPL-2.1"
+
+[lib]
+name = "libgpg_error_sys"
+path = "lib.rs"
+
+[dependencies]
+libc = "0.1"
+enum_primitive = "*"
