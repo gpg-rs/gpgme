@@ -11,4 +11,3 @@ path = "lib.rs"
 
 [dependencies]
 libc = "0.1"
-enum_primitive = "*"

@@ -6,8 +6,7 @@ use libc::{c_int, c_char, c_uint, size_t, c_uchar, c_void, c_ushort, c_long, c_u
 pub use libgpg_error_sys::gpg_err_source_t as gpgme_err_source_t;
 pub use libgpg_error_sys::gpg_err_code_t as gpgme_err_code_t;
 
-pub use libgpg_error_sys::gpg_err_source_t::*;
-pub use libgpg_error_sys::gpg_err_code_t::*;
+pub use libgpg_error_sys::consts::*;
 
 enum_from_primitive! {
     #[repr(C)]

@@ -9,6 +9,8 @@ keywords = ["gpg", "gpgme", "cryptography"]
 [dependencies]
 libc = "0.1"
 bitflags = "0.1"
-getopts = "0.2"
 enum_primitive = "*"
 gpgme-sys = { path = "gpgme-sys" }
+
+[dev-dependencies]
+getopts = "0.2"

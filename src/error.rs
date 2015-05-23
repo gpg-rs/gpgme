@@ -1,4 +1,4 @@
-use std::convert::From;
+use std::error::Error as StdError;
 use std::ffi::{CStr, NulError};
 use std::fmt;
 use std::str;
@@ -7,11 +7,13 @@ use libc;
 
 use gpgme_sys as sys;
 
-const TMPBUF_SZ: usize = 128;
+const TMPBUF_SZ: usize = 0x0400;
 
-#[derive(Debug, Clone, Copy)]
+pub type ErrorCode = sys::gpgme_err_code_t;
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Error {
-    err: sys::gpgme_error_t,
+    err: sys::gpgme_err_code_t,
 }
 
 impl Error {
@@ -35,6 +37,10 @@ impl Error {
         }
     }
 
+    pub fn code(&self) -> ErrorCode {
+        sys::gpgme_err_code(self.err)
+    }
+
     pub fn source(&self) -> &'static str {
         unsafe {
             let src = CStr::from_ptr(sys::gpgme_strsource(self.err) as *const _);
@@ -54,16 +60,22 @@ impl Error {
     }
 }
 
-impl From<NulError> for Error {
-    fn from(_: NulError) -> Error {
-        Error::from_source(sys::GPG_ERR_SOURCE_USER_1,
-                           sys::GPG_ERR_INV_VALUE)
+impl StdError for Error {
+    fn description(&self) -> &str {
+        "gpgme error"
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{} (gpgme error)", self.description())
+        write!(fmt, "{} (gpgme error {})", self.description(), self.code())
+    }
+}
+
+impl From<NulError> for Error {
+    fn from(_: NulError) -> Error {
+        Error::from_source(sys::GPG_ERR_SOURCE_USER_1,
+                           sys::GPG_ERR_INV_VALUE)
     }
 }
 

@@ -13,7 +13,7 @@ use gpgme::{Context, Protocol};
 use gpgme::ops;
 
 fn print_usage(program: &str, opts: &Options) {
-    let brief = format!("Usage: {} [options] [USERID]", program);
+    let brief = format!("Usage: {} [options] [USERID]+", program);
     write!(io::stderr(), "{}", opts.usage(&brief));
 }
 
@@ -72,13 +72,12 @@ fn main() {
         mode.insert(ops::KEY_LIST_MODE_VALIDATE);
     }
 
-    gpgme::init(None).unwrap();
-
-    let mut ctx = Context::new().unwrap();
+    let gpgme = gpgme::init().unwrap();
+    let mut ctx = Context::new(gpgme).unwrap();
     ctx.set_protocol(proto).unwrap();
     ctx.set_key_list_mode(mode).unwrap();
 
-    for res in ctx.find_keys((&matches.free[..]).first().map(|s| &*s as &str)).unwrap() {
+    for res in ctx.find_keys(matches.free.iter()).unwrap() {
         let key = res.unwrap();
 
         println!("keyid   : {}", key.id().unwrap_or("?"));

@@ -23,7 +23,7 @@ macro_rules! impl_result {
                 $Name { raw: raw }
             }
 
-            pub unsafe fn raw(&self) -> $T {
+            pub fn as_raw(&self) -> $T {
                 self.raw
             }
         }
@@ -60,7 +60,7 @@ macro_rules! impl_subresult {
                 $Name { raw: raw, phantom: PhantomData }
             }
 
-            pub unsafe fn raw(&self) -> $T {
+            pub fn as_raw(&self) -> $T {
                 self.raw
             }
         }
@@ -110,9 +110,14 @@ impl<'a, T> InvalidKey<'a, T> {
         self.raw
     }
 
-    pub fn fingerprint(&self) -> &'a str {
+    pub fn fingerprint(&self) -> Option<&'a str> {
         unsafe {
-            str::from_utf8(CStr::from_ptr((*self.raw).fpr).to_bytes()).unwrap()
+            let fpr = (*self.raw).fpr;
+            if !fpr.is_null() {
+                str::from_utf8(CStr::from_ptr(fpr).to_bytes()).ok()
+            } else {
+                None
+            }
         }
     }
 
@@ -262,9 +267,14 @@ bitflags! {
 
 impl_subresult!(ImportStatus: sys::gpgme_import_status_t, ImportStatusIter, ImportResult);
 impl<'a> ImportStatus<'a> {
-    pub fn fingerprint(&self) -> &'a str {
+    pub fn fingerprint(&self) -> Option<&'a str> {
         unsafe {
-            str::from_utf8(CStr::from_ptr((*self.raw).fpr).to_bytes()).unwrap()
+            let fpr = (*self.raw).fpr;
+            if !fpr.is_null() {
+                str::from_utf8(CStr::from_ptr(fpr).to_bytes()).ok()
+            } else {
+                None
+            }
         }
     }
 
@@ -320,10 +330,11 @@ impl DecryptResult {
     pub fn unsupported_algorithm(&self) -> Option<&str> {
         unsafe {
             let desc = (*self.raw).unsupported_algorithm;
-            if desc.is_null() {
-                return None;
+            if !desc.is_null() {
+                str::from_utf8(CStr::from_ptr(desc).to_bytes()).ok()
+            } else {
+                None
             }
-            str::from_utf8(CStr::from_ptr(desc).to_bytes()).ok()
         }
     }
 
@@ -340,9 +351,14 @@ impl DecryptResult {
 
 impl_subresult!(Recipient: sys::gpgme_recipient_t, RecipientIter, DecryptResult);
 impl<'a> Recipient<'a> {
-    pub fn key_id(&self) -> &str {
+    pub fn key_id(&self) -> Option<&'a str> {
         unsafe {
-            str::from_utf8(CStr::from_ptr((*self.raw).keyid).to_bytes()).unwrap()
+            let keyid = (*self.raw).keyid;
+            if !keyid.is_null() {
+                str::from_utf8(CStr::from_ptr(keyid).to_bytes()).ok()
+            } else {
+                None
+            }
         }
     }
 

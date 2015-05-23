@@ -1,4 +1,3 @@
-use std::convert::AsRef;
 use std::ffi::{CStr, CString};
 use std::io;
 use std::io::prelude::*;
@@ -10,7 +9,7 @@ use std::ptr;
 use std::result::Result as StdResult;
 use std::slice;
 use std::str;
-use std::string;
+use std::string::FromUtf8Error;
 
 use libc;
 
@@ -21,7 +20,7 @@ use gpgme_sys as sys;
 use error::{Error, Result};
 
 enum_from_primitive! {
-    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     pub enum DataEncoding {
         None,
         Binary,
@@ -34,7 +33,7 @@ enum_from_primitive! {
 }
 
 enum_from_primitive! {
-    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     pub enum DataType {
         Invalid = 0,
         Unknown = 1,
@@ -141,6 +140,14 @@ pub struct Data<'a> {
 }
 
 impl<'a> Data<'a> {
+    pub unsafe fn from_raw(data: sys::gpgme_data_t) -> Data<'static> {
+        Data { raw: data, phantom: PhantomData }
+    }
+
+    pub fn as_raw(&self) -> sys::gpgme_data_t {
+        self.raw
+    }
+
     pub fn new() -> Result<Data<'static>> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
         let result = unsafe {
@@ -153,15 +160,7 @@ impl<'a> Data<'a> {
         }
     }
 
-    pub unsafe fn from_raw(data: sys::gpgme_data_t) -> Data<'static> {
-        Data { raw: data, phantom: PhantomData }
-    }
-
-    pub unsafe fn raw(&self) -> sys::gpgme_data_t {
-        self.raw
-    }
-
-    pub fn load<P: AsRef<Path>>(path: &P) -> Result<Data<'static>> {
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Data<'static>> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
         let filename = path.as_ref().to_str().and_then(|s| CString::new(s.as_bytes()).ok());
         if filename.is_none() {
@@ -203,7 +202,7 @@ impl<'a> Data<'a> {
         }
     }
 
-    pub unsafe fn from_file(file: *mut libc::FILE) -> Result<Data<'static>> {
+    pub unsafe fn from_raw_file<'b>(file: *mut libc::FILE) -> Result<Data<'b>> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
         let result = sys::gpgme_data_new_from_stream(&mut data, file);
         if result == 0 {
@@ -301,13 +300,21 @@ impl<'a> Data<'a> {
         }
     }
 
-    pub fn set_file_name(&mut self, name: Option<&str>) -> Result<()> {
-        let name = name.map(CString::new);
-        if name.is_some() && name.as_ref().unwrap().is_err() {
-            return Err(Error::from_source(sys::GPG_ERR_SOURCE_USER_1, sys::GPG_ERR_INV_VALUE));
-        }
+    pub fn clear_file_name(&mut self) -> Result<()> {
         let result = unsafe {
-            sys::gpgme_data_set_file_name(self.raw, name.map_or(ptr::null(), |s| s.unwrap().as_ptr()))
+            sys::gpgme_data_set_file_name(self.raw, ptr::null())
+        };
+        if result == 0 {
+            Ok(())
+        } else {
+            Err(Error::new(result))
+        }
+    }
+
+    pub fn set_file_name(&mut self, name: &str) -> Result<()> {
+        let name = try!(CString::new(name));
+        let result = unsafe {
+            sys::gpgme_data_set_file_name(self.raw, name.as_ptr())
         };
         if result == 0 {
             Ok(())
@@ -358,7 +365,7 @@ impl<'a> Data<'a> {
         }
     }
 
-    pub fn into_string(self) -> Option<StdResult<String, string::FromUtf8Error>> {
+    pub fn into_string(self) -> Option<StdResult<String, FromUtf8Error>> {
         self.into_bytes().map(String::from_utf8)
     }
 }

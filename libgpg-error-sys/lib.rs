@@ -1,523 +1,522 @@
 #![allow(non_camel_case_types)]
-#![allow(unused_imports)]
 
-extern crate libc;
-#[macro_use]
-extern crate enum_primitive;
+pub use self::types::*;
+pub use self::consts::*;
+pub use self::funcs::*;
 
-use libc::{c_int, c_char, c_uint, size_t, c_uchar, c_void, c_ushort};
+pub mod types {
+    extern crate libc;
 
-use enum_primitive::FromPrimitive;
+    pub type gpg_error_t = libc::c_uint;
+    pub type gpg_err_source_t = libc::c_uint;
+    pub type gpg_err_code_t = libc::c_uint;
+}
 
-pub type gpg_error_t = c_uint;
+pub mod consts {
+    use types::gpg_error_t;
+    use types::gpg_err_source_t;
+    use types::gpg_err_code_t;
 
-enum_from_primitive! {
-    #[repr(C)]
-    #[derive(Copy, Clone)]
-    pub enum gpg_err_source_t {
-        GPG_ERR_SOURCE_UNKNOWN = 0,
-        GPG_ERR_SOURCE_GCRYPT = 1,
-        GPG_ERR_SOURCE_GPG = 2,
-        GPG_ERR_SOURCE_GPGSM = 3,
-        GPG_ERR_SOURCE_GPGAGENT = 4,
-        GPG_ERR_SOURCE_PINENTRY = 5,
-        GPG_ERR_SOURCE_SCD = 6,
-        GPG_ERR_SOURCE_GPGME = 7,
-        GPG_ERR_SOURCE_KEYBOX = 8,
-        GPG_ERR_SOURCE_KSBA = 9,
-        GPG_ERR_SOURCE_DIRMNGR = 10,
-        GPG_ERR_SOURCE_GSTI = 11,
-        GPG_ERR_SOURCE_GPA = 12,
-        GPG_ERR_SOURCE_KLEO = 13,
-        GPG_ERR_SOURCE_G13 = 14,
-        GPG_ERR_SOURCE_ASSUAN = 15,
-        GPG_ERR_SOURCE_TLS = 17,
-        GPG_ERR_SOURCE_ANY = 31,
-        GPG_ERR_SOURCE_USER_1 = 32,
-        GPG_ERR_SOURCE_USER_2 = 33,
-        GPG_ERR_SOURCE_USER_3 = 34,
-        GPG_ERR_SOURCE_USER_4 = 35,
+    pub const GPG_ERR_SOURCE_UNKNOWN: gpg_err_source_t = 0;
+    pub const GPG_ERR_SOURCE_GCRYPT: gpg_err_source_t = 1;
+    pub const GPG_ERR_SOURCE_GPG: gpg_err_source_t = 2;
+    pub const GPG_ERR_SOURCE_GPGSM: gpg_err_source_t = 3;
+    pub const GPG_ERR_SOURCE_GPGAGENT: gpg_err_source_t = 4;
+    pub const GPG_ERR_SOURCE_PINENTRY: gpg_err_source_t = 5;
+    pub const GPG_ERR_SOURCE_SCD: gpg_err_source_t = 6;
+    pub const GPG_ERR_SOURCE_GPGME: gpg_err_source_t = 7;
+    pub const GPG_ERR_SOURCE_KEYBOX: gpg_err_source_t = 8;
+    pub const GPG_ERR_SOURCE_KSBA: gpg_err_source_t = 9;
+    pub const GPG_ERR_SOURCE_DIRMNGR: gpg_err_source_t = 10;
+    pub const GPG_ERR_SOURCE_GSTI: gpg_err_source_t = 11;
+    pub const GPG_ERR_SOURCE_GPA: gpg_err_source_t = 12;
+    pub const GPG_ERR_SOURCE_KLEO: gpg_err_source_t = 13;
+    pub const GPG_ERR_SOURCE_G13: gpg_err_source_t = 14;
+    pub const GPG_ERR_SOURCE_ASSUAN: gpg_err_source_t = 15;
+    pub const GPG_ERR_SOURCE_TLS: gpg_err_source_t = 17;
+    pub const GPG_ERR_SOURCE_ANY: gpg_err_source_t = 31;
+    pub const GPG_ERR_SOURCE_USER_1: gpg_err_source_t = 32;
+    pub const GPG_ERR_SOURCE_USER_2: gpg_err_source_t = 33;
+    pub const GPG_ERR_SOURCE_USER_3: gpg_err_source_t = 34;
+    pub const GPG_ERR_SOURCE_USER_4: gpg_err_source_t = 35;
+    pub const GPG_ERR_SOURCE_DIM: gpg_err_source_t = 128;
 
-        GPG_ERR_SOURCE_DIM = 128
+    pub const GPG_ERR_SYSTEM_ERROR: gpg_err_code_t = 1 << 15;
+    pub const GPG_ERR_NO_ERROR: gpg_err_code_t = 0;
+    pub const GPG_ERR_GENERAL: gpg_err_code_t = 1;
+    pub const GPG_ERR_UNKNOWN_PACKET: gpg_err_code_t = 2;
+    pub const GPG_ERR_UNKNOWN_VERSION: gpg_err_code_t = 3;
+    pub const GPG_ERR_PUBKEY_ALGO: gpg_err_code_t = 4;
+    pub const GPG_ERR_DIGEST_ALGO: gpg_err_code_t = 5;
+    pub const GPG_ERR_BAD_PUBKEY: gpg_err_code_t = 6;
+    pub const GPG_ERR_BAD_SECKEY: gpg_err_code_t = 7;
+    pub const GPG_ERR_BAD_SIGNATURE: gpg_err_code_t = 8;
+    pub const GPG_ERR_NO_PUBKEY: gpg_err_code_t = 9;
+    pub const GPG_ERR_CHECKSUM: gpg_err_code_t = 10;
+    pub const GPG_ERR_BAD_PASSPHRASE: gpg_err_code_t = 11;
+    pub const GPG_ERR_CIPHER_ALGO: gpg_err_code_t = 12;
+    pub const GPG_ERR_KEYRING_OPEN: gpg_err_code_t = 13;
+    pub const GPG_ERR_INV_PACKET: gpg_err_code_t = 14;
+    pub const GPG_ERR_INV_ARMOR: gpg_err_code_t = 15;
+    pub const GPG_ERR_NO_USER_ID: gpg_err_code_t = 16;
+    pub const GPG_ERR_NO_SECKEY: gpg_err_code_t = 17;
+    pub const GPG_ERR_WRONG_SECKEY: gpg_err_code_t = 18;
+    pub const GPG_ERR_BAD_KEY: gpg_err_code_t = 19;
+    pub const GPG_ERR_COMPR_ALGO: gpg_err_code_t = 20;
+    pub const GPG_ERR_NO_PRIME: gpg_err_code_t = 21;
+    pub const GPG_ERR_NO_ENCODING_METHOD: gpg_err_code_t = 22;
+    pub const GPG_ERR_NO_ENCRYPTION_SCHEME: gpg_err_code_t = 23;
+    pub const GPG_ERR_NO_SIGNATURE_SCHEME: gpg_err_code_t = 24;
+    pub const GPG_ERR_INV_ATTR: gpg_err_code_t = 25;
+    pub const GPG_ERR_NO_VALUE: gpg_err_code_t = 26;
+    pub const GPG_ERR_NOT_FOUND: gpg_err_code_t = 27;
+    pub const GPG_ERR_VALUE_NOT_FOUND: gpg_err_code_t = 28;
+    pub const GPG_ERR_SYNTAX: gpg_err_code_t = 29;
+    pub const GPG_ERR_BAD_MPI: gpg_err_code_t = 30;
+    pub const GPG_ERR_INV_PASSPHRASE: gpg_err_code_t = 31;
+    pub const GPG_ERR_SIG_CLASS: gpg_err_code_t = 32;
+    pub const GPG_ERR_RESOURCE_LIMIT: gpg_err_code_t = 33;
+    pub const GPG_ERR_INV_KEYRING: gpg_err_code_t = 34;
+    pub const GPG_ERR_TRUSTDB: gpg_err_code_t = 35;
+    pub const GPG_ERR_BAD_CERT: gpg_err_code_t = 36;
+    pub const GPG_ERR_INV_USER_ID: gpg_err_code_t = 37;
+    pub const GPG_ERR_UNEXPECTED: gpg_err_code_t = 38;
+    pub const GPG_ERR_TIME_CONFLICT: gpg_err_code_t = 39;
+    pub const GPG_ERR_KEYSERVER: gpg_err_code_t = 40;
+    pub const GPG_ERR_WRONG_PUBKEY_ALGO: gpg_err_code_t = 41;
+    pub const GPG_ERR_TRIBUTE_TO_D_A: gpg_err_code_t = 42;
+    pub const GPG_ERR_WEAK_KEY: gpg_err_code_t = 43;
+    pub const GPG_ERR_INV_KEYLEN: gpg_err_code_t = 44;
+    pub const GPG_ERR_INV_ARG: gpg_err_code_t = 45;
+    pub const GPG_ERR_BAD_URI: gpg_err_code_t = 46;
+    pub const GPG_ERR_INV_URI: gpg_err_code_t = 47;
+    pub const GPG_ERR_NETWORK: gpg_err_code_t = 48;
+    pub const GPG_ERR_UNKNOWN_HOST: gpg_err_code_t = 49;
+    pub const GPG_ERR_SELFTEST_FAILED: gpg_err_code_t = 50;
+    pub const GPG_ERR_NOT_ENCRYPTED: gpg_err_code_t = 51;
+    pub const GPG_ERR_NOT_PROCESSED: gpg_err_code_t = 52;
+    pub const GPG_ERR_UNUSABLE_PUBKEY: gpg_err_code_t = 53;
+    pub const GPG_ERR_UNUSABLE_SECKEY: gpg_err_code_t = 54;
+    pub const GPG_ERR_INV_VALUE: gpg_err_code_t = 55;
+    pub const GPG_ERR_BAD_CERT_CHAIN: gpg_err_code_t = 56;
+    pub const GPG_ERR_MISSING_CERT: gpg_err_code_t = 57;
+    pub const GPG_ERR_NO_DATA: gpg_err_code_t = 58;
+    pub const GPG_ERR_BUG: gpg_err_code_t = 59;
+    pub const GPG_ERR_NOT_SUPPORTED: gpg_err_code_t = 60;
+    pub const GPG_ERR_INV_OP: gpg_err_code_t = 61;
+    pub const GPG_ERR_TIMEOUT: gpg_err_code_t = 62;
+    pub const GPG_ERR_INTERNAL: gpg_err_code_t = 63;
+    pub const GPG_ERR_EOF_GCRYPT: gpg_err_code_t = 64;
+    pub const GPG_ERR_INV_OBJ: gpg_err_code_t = 65;
+    pub const GPG_ERR_TOO_SHORT: gpg_err_code_t = 66;
+    pub const GPG_ERR_TOO_LARGE: gpg_err_code_t = 67;
+    pub const GPG_ERR_NO_OBJ: gpg_err_code_t = 68;
+    pub const GPG_ERR_NOT_IMPLEMENTED: gpg_err_code_t = 69;
+    pub const GPG_ERR_CONFLICT: gpg_err_code_t = 70;
+    pub const GPG_ERR_INV_CIPHER_MODE: gpg_err_code_t = 71;
+    pub const GPG_ERR_INV_FLAG: gpg_err_code_t = 72;
+    pub const GPG_ERR_INV_HANDLE: gpg_err_code_t = 73;
+    pub const GPG_ERR_TRUNCATED: gpg_err_code_t = 74;
+    pub const GPG_ERR_INCOMPLETE_LINE: gpg_err_code_t = 75;
+    pub const GPG_ERR_INV_RESPONSE: gpg_err_code_t = 76;
+    pub const GPG_ERR_NO_AGENT: gpg_err_code_t = 77;
+    pub const GPG_ERR_AGENT: gpg_err_code_t = 78;
+    pub const GPG_ERR_INV_DATA: gpg_err_code_t = 79;
+    pub const GPG_ERR_ASSUAN_SERVER_FAULT: gpg_err_code_t = 80;
+    pub const GPG_ERR_ASSUAN: gpg_err_code_t = 81;
+    pub const GPG_ERR_INV_SESSION_KEY: gpg_err_code_t = 82;
+    pub const GPG_ERR_INV_SEXP: gpg_err_code_t = 83;
+    pub const GPG_ERR_UNSUPPORTED_ALGORITHM: gpg_err_code_t = 84;
+    pub const GPG_ERR_NO_PIN_ENTRY: gpg_err_code_t = 85;
+    pub const GPG_ERR_PIN_ENTRY: gpg_err_code_t = 86;
+    pub const GPG_ERR_BAD_PIN: gpg_err_code_t = 87;
+    pub const GPG_ERR_INV_NAME: gpg_err_code_t = 88;
+    pub const GPG_ERR_BAD_DATA: gpg_err_code_t = 89;
+    pub const GPG_ERR_INV_PARAMETER: gpg_err_code_t = 90;
+    pub const GPG_ERR_WRONG_CARD: gpg_err_code_t = 91;
+    pub const GPG_ERR_NO_DIRMNGR: gpg_err_code_t = 92;
+    pub const GPG_ERR_DIRMNGR: gpg_err_code_t = 93;
+    pub const GPG_ERR_CERT_REVOKED: gpg_err_code_t = 94;
+    pub const GPG_ERR_NO_CRL_KNOWN: gpg_err_code_t = 95;
+    pub const GPG_ERR_CRL_TOO_OLD: gpg_err_code_t = 96;
+    pub const GPG_ERR_LINE_TOO_LONG: gpg_err_code_t = 97;
+    pub const GPG_ERR_NOT_TRUSTED: gpg_err_code_t = 98;
+    pub const GPG_ERR_CANCELED: gpg_err_code_t = 99;
+    pub const GPG_ERR_BAD_CA_CERT: gpg_err_code_t = 100;
+    pub const GPG_ERR_CERT_EXPIRED: gpg_err_code_t = 101;
+    pub const GPG_ERR_CERT_TOO_YOUNG: gpg_err_code_t = 102;
+    pub const GPG_ERR_UNSUPPORTED_CERT: gpg_err_code_t = 103;
+    pub const GPG_ERR_UNKNOWN_SEXP: gpg_err_code_t = 104;
+    pub const GPG_ERR_UNSUPPORTED_PROTECTION: gpg_err_code_t = 105;
+    pub const GPG_ERR_CORRUPTED_PROTECTION: gpg_err_code_t = 106;
+    pub const GPG_ERR_AMBIGUOUS_NAME: gpg_err_code_t = 107;
+    pub const GPG_ERR_CARD: gpg_err_code_t = 108;
+    pub const GPG_ERR_CARD_RESET: gpg_err_code_t = 109;
+    pub const GPG_ERR_CARD_REMOVED: gpg_err_code_t = 110;
+    pub const GPG_ERR_INV_CARD: gpg_err_code_t = 111;
+    pub const GPG_ERR_CARD_NOT_PRESENT: gpg_err_code_t = 112;
+    pub const GPG_ERR_NO_PKCS15_APP: gpg_err_code_t = 113;
+    pub const GPG_ERR_NOT_CONFIRMED: gpg_err_code_t = 114;
+    pub const GPG_ERR_CONFIGURATION: gpg_err_code_t = 115;
+    pub const GPG_ERR_NO_POLICY_MATCH: gpg_err_code_t = 116;
+    pub const GPG_ERR_INV_INDEX: gpg_err_code_t = 117;
+    pub const GPG_ERR_INV_ID: gpg_err_code_t = 118;
+    pub const GPG_ERR_NO_SCDAEMON: gpg_err_code_t = 119;
+    pub const GPG_ERR_SCDAEMON: gpg_err_code_t = 120;
+    pub const GPG_ERR_UNSUPPORTED_PROTOCOL: gpg_err_code_t = 121;
+    pub const GPG_ERR_BAD_PIN_METHOD: gpg_err_code_t = 122;
+    pub const GPG_ERR_CARD_NOT_INITIALIZED: gpg_err_code_t = 123;
+    pub const GPG_ERR_UNSUPPORTED_OPERATION: gpg_err_code_t = 124;
+    pub const GPG_ERR_WRONG_KEY_USAGE: gpg_err_code_t = 125;
+    pub const GPG_ERR_NOTHING_FOUND: gpg_err_code_t = 126;
+    pub const GPG_ERR_WRONG_BLOB_TYPE: gpg_err_code_t = 127;
+    pub const GPG_ERR_MISSING_VALUE: gpg_err_code_t = 128;
+    pub const GPG_ERR_HARDWARE: gpg_err_code_t = 129;
+    pub const GPG_ERR_PIN_BLOCKED: gpg_err_code_t = 130;
+    pub const GPG_ERR_USE_CONDITIONS: gpg_err_code_t = 131;
+    pub const GPG_ERR_PIN_NOT_SYNCED: gpg_err_code_t = 132;
+    pub const GPG_ERR_INV_CRL: gpg_err_code_t = 133;
+    pub const GPG_ERR_BAD_BER: gpg_err_code_t = 134;
+    pub const GPG_ERR_INV_BER: gpg_err_code_t = 135;
+    pub const GPG_ERR_ELEMENT_NOT_FOUND: gpg_err_code_t = 136;
+    pub const GPG_ERR_IDENTIFIER_NOT_FOUND: gpg_err_code_t = 137;
+    pub const GPG_ERR_INV_TAG: gpg_err_code_t = 138;
+    pub const GPG_ERR_INV_LENGTH: gpg_err_code_t = 139;
+    pub const GPG_ERR_INV_KEYINFO: gpg_err_code_t = 140;
+    pub const GPG_ERR_UNEXPECTED_TAG: gpg_err_code_t = 141;
+    pub const GPG_ERR_NOT_DER_ENCODED: gpg_err_code_t = 142;
+    pub const GPG_ERR_NO_CMS_OBJ: gpg_err_code_t = 143;
+    pub const GPG_ERR_INV_CMS_OBJ: gpg_err_code_t = 144;
+    pub const GPG_ERR_UNKNOWN_CMS_OBJ: gpg_err_code_t = 145;
+    pub const GPG_ERR_UNSUPPORTED_CMS_OBJ: gpg_err_code_t = 146;
+    pub const GPG_ERR_UNSUPPORTED_ENCODING: gpg_err_code_t = 147;
+    pub const GPG_ERR_UNSUPPORTED_CMS_VERSION: gpg_err_code_t = 148;
+    pub const GPG_ERR_UNKNOWN_ALGORITHM: gpg_err_code_t = 149;
+    pub const GPG_ERR_INV_ENGINE: gpg_err_code_t = 150;
+    pub const GPG_ERR_PUBKEY_NOT_TRUSTED: gpg_err_code_t = 151;
+    pub const GPG_ERR_DECRYPT_FAILED: gpg_err_code_t = 152;
+    pub const GPG_ERR_KEY_EXPIRED: gpg_err_code_t = 153;
+    pub const GPG_ERR_SIG_EXPIRED: gpg_err_code_t = 154;
+    pub const GPG_ERR_ENCODING_PROBLEM: gpg_err_code_t = 155;
+    pub const GPG_ERR_INV_STATE: gpg_err_code_t = 156;
+    pub const GPG_ERR_DUP_VALUE: gpg_err_code_t = 157;
+    pub const GPG_ERR_MISSING_ACTION: gpg_err_code_t = 158;
+    pub const GPG_ERR_MODULE_NOT_FOUND: gpg_err_code_t = 159;
+    pub const GPG_ERR_INV_OID_STRING: gpg_err_code_t = 160;
+    pub const GPG_ERR_INV_TIME: gpg_err_code_t = 161;
+    pub const GPG_ERR_INV_CRL_OBJ: gpg_err_code_t = 162;
+    pub const GPG_ERR_UNSUPPORTED_CRL_VERSION: gpg_err_code_t = 163;
+    pub const GPG_ERR_INV_CERT_OBJ: gpg_err_code_t = 164;
+    pub const GPG_ERR_UNKNOWN_NAME: gpg_err_code_t = 165;
+    pub const GPG_ERR_LOCALE_PROBLEM: gpg_err_code_t = 166;
+    pub const GPG_ERR_NOT_LOCKED: gpg_err_code_t = 167;
+    pub const GPG_ERR_PROTOCOL_VIOLATION: gpg_err_code_t = 168;
+    pub const GPG_ERR_INV_MAC: gpg_err_code_t = 169;
+    pub const GPG_ERR_INV_REQUEST: gpg_err_code_t = 170;
+    pub const GPG_ERR_UNKNOWN_EXTN: gpg_err_code_t = 171;
+    pub const GPG_ERR_UNKNOWN_CRIT_EXTN: gpg_err_code_t = 172;
+    pub const GPG_ERR_LOCKED: gpg_err_code_t = 173;
+    pub const GPG_ERR_UNKNOWN_OPTION: gpg_err_code_t = 174;
+    pub const GPG_ERR_UNKNOWN_COMMAND: gpg_err_code_t = 175;
+    pub const GPG_ERR_NOT_OPERATIONAL: gpg_err_code_t = 176;
+    pub const GPG_ERR_NO_PASSPHRASE: gpg_err_code_t = 177;
+    pub const GPG_ERR_NO_PIN: gpg_err_code_t = 178;
+    pub const GPG_ERR_NOT_ENABLED: gpg_err_code_t = 179;
+    pub const GPG_ERR_NO_ENGINE: gpg_err_code_t = 180;
+    pub const GPG_ERR_MISSING_KEY: gpg_err_code_t = 181;
+    pub const GPG_ERR_TOO_MANY: gpg_err_code_t = 182;
+    pub const GPG_ERR_LIMIT_REACHED: gpg_err_code_t = 183;
+    pub const GPG_ERR_NOT_INITIALIZED: gpg_err_code_t = 184;
+    pub const GPG_ERR_MISSING_ISSUER_CERT: gpg_err_code_t = 185;
+    pub const GPG_ERR_NO_KEYSERVER: gpg_err_code_t = 186;
+    pub const GPG_ERR_INV_CURVE: gpg_err_code_t = 187;
+    pub const GPG_ERR_UNKNOWN_CURVE: gpg_err_code_t = 188;
+    pub const GPG_ERR_DUP_KEY: gpg_err_code_t = 189;
+    pub const GPG_ERR_AMBIGUOUS: gpg_err_code_t = 190;
+    pub const GPG_ERR_NO_CRYPT_CTX: gpg_err_code_t = 191;
+    pub const GPG_ERR_WRONG_CRYPT_CTX: gpg_err_code_t = 192;
+    pub const GPG_ERR_BAD_CRYPT_CTX: gpg_err_code_t = 193;
+    pub const GPG_ERR_CRYPT_CTX_CONFLICT: gpg_err_code_t = 194;
+    pub const GPG_ERR_BROKEN_PUBKEY: gpg_err_code_t = 195;
+    pub const GPG_ERR_BROKEN_SECKEY: gpg_err_code_t = 196;
+    pub const GPG_ERR_MAC_ALGO: gpg_err_code_t = 197;
+    pub const GPG_ERR_FULLY_CANCELED: gpg_err_code_t = 198;
+    pub const GPG_ERR_UNFINISHED: gpg_err_code_t = 199;
+    pub const GPG_ERR_BUFFER_TOO_SHORT: gpg_err_code_t = 200;
+    pub const GPG_ERR_SEXP_INV_LEN_SPEC: gpg_err_code_t = 201;
+    pub const GPG_ERR_SEXP_STRING_TOO_LONG: gpg_err_code_t = 202;
+    pub const GPG_ERR_SEXP_UNMATCHED_PAREN: gpg_err_code_t = 203;
+    pub const GPG_ERR_SEXP_NOT_CANONICAL: gpg_err_code_t = 204;
+    pub const GPG_ERR_SEXP_BAD_CHARACTER: gpg_err_code_t = 205;
+    pub const GPG_ERR_SEXP_BAD_QUOTATION: gpg_err_code_t = 206;
+    pub const GPG_ERR_SEXP_ZERO_PREFIX: gpg_err_code_t = 207;
+    pub const GPG_ERR_SEXP_NESTED_DH: gpg_err_code_t = 208;
+    pub const GPG_ERR_SEXP_UNMATCHED_DH: gpg_err_code_t = 209;
+    pub const GPG_ERR_SEXP_UNEXPECTED_PUNC: gpg_err_code_t = 210;
+    pub const GPG_ERR_SEXP_BAD_HEX_CHAR: gpg_err_code_t = 211;
+    pub const GPG_ERR_SEXP_ODD_HEX_NUMBERS: gpg_err_code_t = 212;
+    pub const GPG_ERR_SEXP_BAD_OCT_CHAR: gpg_err_code_t = 213;
+    pub const GPG_ERR_NO_CERT_CHAIN: gpg_err_code_t = 226;
+    pub const GPG_ERR_CERT_TOO_LARGE: gpg_err_code_t = 227;
+    pub const GPG_ERR_INV_RECORD: gpg_err_code_t = 228;
+    pub const GPG_ERR_BAD_MAC: gpg_err_code_t = 229;
+    pub const GPG_ERR_UNEXPECTED_MSG: gpg_err_code_t = 230;
+    pub const GPG_ERR_COMPR_FAILED: gpg_err_code_t = 231;
+    pub const GPG_ERR_WOULD_WRAP: gpg_err_code_t = 232;
+    pub const GPG_ERR_FATAL_ALERT: gpg_err_code_t = 233;
+    pub const GPG_ERR_NO_CIPHER: gpg_err_code_t = 234;
+    pub const GPG_ERR_MISSING_CLIENT_CERT: gpg_err_code_t = 235;
+    pub const GPG_ERR_CLOSE_NOTIFY: gpg_err_code_t = 236;
+    pub const GPG_ERR_TICKET_EXPIRED: gpg_err_code_t = 237;
+    pub const GPG_ERR_BAD_TICKET: gpg_err_code_t = 238;
+    pub const GPG_ERR_UNKNOWN_IDENTITY: gpg_err_code_t = 239;
+    pub const GPG_ERR_BAD_HS_CERT: gpg_err_code_t = 240;
+    pub const GPG_ERR_BAD_HS_CERT_REQ: gpg_err_code_t = 241;
+    pub const GPG_ERR_BAD_HS_CERT_VER: gpg_err_code_t = 242;
+    pub const GPG_ERR_BAD_HS_CHANGE_CIPHER: gpg_err_code_t = 243;
+    pub const GPG_ERR_BAD_HS_CLIENT_HELLO: gpg_err_code_t = 244;
+    pub const GPG_ERR_BAD_HS_SERVER_HELLO: gpg_err_code_t = 245;
+    pub const GPG_ERR_BAD_HS_SERVER_HELLO_DONE: gpg_err_code_t = 246;
+    pub const GPG_ERR_BAD_HS_FINISHED: gpg_err_code_t = 247;
+    pub const GPG_ERR_BAD_HS_SERVER_KEX: gpg_err_code_t = 248;
+    pub const GPG_ERR_BAD_HS_CLIENT_KEX: gpg_err_code_t = 249;
+    pub const GPG_ERR_BOGUS_STRING: gpg_err_code_t = 250;
+    pub const GPG_ERR_KEY_DISABLED: gpg_err_code_t = 252;
+    pub const GPG_ERR_KEY_ON_CARD: gpg_err_code_t = 253;
+    pub const GPG_ERR_INV_LOCK_OBJ: gpg_err_code_t = 254;
+    pub const GPG_ERR_ASS_GENERAL: gpg_err_code_t = 257;
+    pub const GPG_ERR_ASS_ACCEPT_FAILED: gpg_err_code_t = 258;
+    pub const GPG_ERR_ASS_CONNECT_FAILED: gpg_err_code_t = 259;
+    pub const GPG_ERR_ASS_INV_RESPONSE: gpg_err_code_t = 260;
+    pub const GPG_ERR_ASS_INV_VALUE: gpg_err_code_t = 261;
+    pub const GPG_ERR_ASS_INCOMPLETE_LINE: gpg_err_code_t = 262;
+    pub const GPG_ERR_ASS_LINE_TOO_LONG: gpg_err_code_t = 263;
+    pub const GPG_ERR_ASS_NESTED_COMMANDS: gpg_err_code_t = 264;
+    pub const GPG_ERR_ASS_NO_DATA_CB: gpg_err_code_t = 265;
+    pub const GPG_ERR_ASS_NO_INQUIRE_CB: gpg_err_code_t = 266;
+    pub const GPG_ERR_ASS_NOT_A_SERVER: gpg_err_code_t = 267;
+    pub const GPG_ERR_ASS_NOT_A_CLIENT: gpg_err_code_t = 268;
+    pub const GPG_ERR_ASS_SERVER_START: gpg_err_code_t = 269;
+    pub const GPG_ERR_ASS_READ_ERROR: gpg_err_code_t = 270;
+    pub const GPG_ERR_ASS_WRITE_ERROR: gpg_err_code_t = 271;
+    pub const GPG_ERR_ASS_TOO_MUCH_DATA: gpg_err_code_t = 273;
+    pub const GPG_ERR_ASS_UNEXPECTED_CMD: gpg_err_code_t = 274;
+    pub const GPG_ERR_ASS_UNKNOWN_CMD: gpg_err_code_t = 275;
+    pub const GPG_ERR_ASS_SYNTAX: gpg_err_code_t = 276;
+    pub const GPG_ERR_ASS_CANCELED: gpg_err_code_t = 277;
+    pub const GPG_ERR_ASS_NO_INPUT: gpg_err_code_t = 278;
+    pub const GPG_ERR_ASS_NO_OUTPUT: gpg_err_code_t = 279;
+    pub const GPG_ERR_ASS_PARAMETER: gpg_err_code_t = 280;
+    pub const GPG_ERR_ASS_UNKNOWN_INQUIRE: gpg_err_code_t = 281;
+    pub const GPG_ERR_USER_1: gpg_err_code_t = 1024;
+    pub const GPG_ERR_USER_2: gpg_err_code_t = 1025;
+    pub const GPG_ERR_USER_3: gpg_err_code_t = 1026;
+    pub const GPG_ERR_USER_4: gpg_err_code_t = 1027;
+    pub const GPG_ERR_USER_5: gpg_err_code_t = 1028;
+    pub const GPG_ERR_USER_6: gpg_err_code_t = 1029;
+    pub const GPG_ERR_USER_7: gpg_err_code_t = 1030;
+    pub const GPG_ERR_USER_8: gpg_err_code_t = 1031;
+    pub const GPG_ERR_USER_9: gpg_err_code_t = 1032;
+    pub const GPG_ERR_USER_10: gpg_err_code_t = 1033;
+    pub const GPG_ERR_USER_11: gpg_err_code_t = 1034;
+    pub const GPG_ERR_USER_12: gpg_err_code_t = 1035;
+    pub const GPG_ERR_USER_13: gpg_err_code_t = 1036;
+    pub const GPG_ERR_USER_14: gpg_err_code_t = 1037;
+    pub const GPG_ERR_USER_15: gpg_err_code_t = 1038;
+    pub const GPG_ERR_USER_16: gpg_err_code_t = 1039;
+    pub const GPG_ERR_MISSING_ERRNO: gpg_err_code_t = 16381;
+    pub const GPG_ERR_UNKNOWN_ERRNO: gpg_err_code_t = 16382;
+    pub const GPG_ERR_EOF: gpg_err_code_t = 16383;
+    pub const GPG_ERR_E2BIG: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 0;
+    pub const GPG_ERR_EACCES: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 1;
+    pub const GPG_ERR_EADDRINUSE: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 2;
+    pub const GPG_ERR_EADDRNOTAVAIL: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 3;
+    pub const GPG_ERR_EADV: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 4;
+    pub const GPG_ERR_EAFNOSUPPORT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 5;
+    pub const GPG_ERR_EAGAIN: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 6;
+    pub const GPG_ERR_EALREADY: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 7;
+    pub const GPG_ERR_EAUTH: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 8;
+    pub const GPG_ERR_EBACKGROUND: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 9;
+    pub const GPG_ERR_EBADE: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 10;
+    pub const GPG_ERR_EBADF: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 11;
+    pub const GPG_ERR_EBADFD: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 12;
+    pub const GPG_ERR_EBADMSG: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 13;
+    pub const GPG_ERR_EBADR: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 14;
+    pub const GPG_ERR_EBADRPC: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 15;
+    pub const GPG_ERR_EBADRQC: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 16;
+    pub const GPG_ERR_EBADSLT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 17;
+    pub const GPG_ERR_EBFONT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 18;
+    pub const GPG_ERR_EBUSY: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 19;
+    pub const GPG_ERR_ECANCELED: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 20;
+    pub const GPG_ERR_ECHILD: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 21;
+    pub const GPG_ERR_ECHRNG: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 22;
+    pub const GPG_ERR_ECOMM: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 23;
+    pub const GPG_ERR_ECONNABORTED: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 24;
+    pub const GPG_ERR_ECONNREFUSED: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 25;
+    pub const GPG_ERR_ECONNRESET: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 26;
+    pub const GPG_ERR_ED: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 27;
+    pub const GPG_ERR_EDEADLK: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 28;
+    pub const GPG_ERR_EDEADLOCK: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 29;
+    pub const GPG_ERR_EDESTADDRREQ: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 30;
+    pub const GPG_ERR_EDIED: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 31;
+    pub const GPG_ERR_EDOM: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 32;
+    pub const GPG_ERR_EDOTDOT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 33;
+    pub const GPG_ERR_EDQUOT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 34;
+    pub const GPG_ERR_EEXIST: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 35;
+    pub const GPG_ERR_EFAULT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 36;
+    pub const GPG_ERR_EFBIG: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 37;
+    pub const GPG_ERR_EFTYPE: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 38;
+    pub const GPG_ERR_EGRATUITOUS: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 39;
+    pub const GPG_ERR_EGREGIOUS: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 40;
+    pub const GPG_ERR_EHOSTDOWN: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 41;
+    pub const GPG_ERR_EHOSTUNREACH: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 42;
+    pub const GPG_ERR_EIDRM: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 43;
+    pub const GPG_ERR_EIEIO: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 44;
+    pub const GPG_ERR_EILSEQ: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 45;
+    pub const GPG_ERR_EINPROGRESS: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 46;
+    pub const GPG_ERR_EINTR: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 47;
+    pub const GPG_ERR_EINVAL: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 48;
+    pub const GPG_ERR_EIO: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 49;
+    pub const GPG_ERR_EISCONN: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 50;
+    pub const GPG_ERR_EISDIR: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 51;
+    pub const GPG_ERR_EISNAM: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 52;
+    pub const GPG_ERR_EL2HLT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 53;
+    pub const GPG_ERR_EL2NSYNC: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 54;
+    pub const GPG_ERR_EL3HLT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 55;
+    pub const GPG_ERR_EL3RST: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 56;
+    pub const GPG_ERR_ELIBACC: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 57;
+    pub const GPG_ERR_ELIBBAD: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 58;
+    pub const GPG_ERR_ELIBEXEC: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 59;
+    pub const GPG_ERR_ELIBMAX: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 60;
+    pub const GPG_ERR_ELIBSCN: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 61;
+    pub const GPG_ERR_ELNRNG: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 62;
+    pub const GPG_ERR_ELOOP: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 63;
+    pub const GPG_ERR_EMEDIUMTYPE: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 64;
+    pub const GPG_ERR_EMFILE: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 65;
+    pub const GPG_ERR_EMLINK: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 66;
+    pub const GPG_ERR_EMSGSIZE: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 67;
+    pub const GPG_ERR_EMULTIHOP: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 68;
+    pub const GPG_ERR_ENAMETOOLONG: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 69;
+    pub const GPG_ERR_ENAVAIL: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 70;
+    pub const GPG_ERR_ENEEDAUTH: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 71;
+    pub const GPG_ERR_ENETDOWN: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 72;
+    pub const GPG_ERR_ENETRESET: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 73;
+    pub const GPG_ERR_ENETUNREACH: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 74;
+    pub const GPG_ERR_ENFILE: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 75;
+    pub const GPG_ERR_ENOANO: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 76;
+    pub const GPG_ERR_ENOBUFS: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 77;
+    pub const GPG_ERR_ENOCSI: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 78;
+    pub const GPG_ERR_ENODATA: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 79;
+    pub const GPG_ERR_ENODEV: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 80;
+    pub const GPG_ERR_ENOENT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 81;
+    pub const GPG_ERR_ENOEXEC: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 82;
+    pub const GPG_ERR_ENOLCK: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 83;
+    pub const GPG_ERR_ENOLINK: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 84;
+    pub const GPG_ERR_ENOMEDIUM: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 85;
+    pub const GPG_ERR_ENOMEM: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 86;
+    pub const GPG_ERR_ENOMSG: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 87;
+    pub const GPG_ERR_ENONET: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 88;
+    pub const GPG_ERR_ENOPKG: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 89;
+    pub const GPG_ERR_ENOPROTOOPT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 90;
+    pub const GPG_ERR_ENOSPC: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 91;
+    pub const GPG_ERR_ENOSR: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 92;
+    pub const GPG_ERR_ENOSTR: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 93;
+    pub const GPG_ERR_ENOSYS: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 94;
+    pub const GPG_ERR_ENOTBLK: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 95;
+    pub const GPG_ERR_ENOTCONN: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 96;
+    pub const GPG_ERR_ENOTDIR: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 97;
+    pub const GPG_ERR_ENOTEMPTY: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 98;
+    pub const GPG_ERR_ENOTNAM: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 99;
+    pub const GPG_ERR_ENOTSOCK: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 100;
+    pub const GPG_ERR_ENOTSUP: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 101;
+    pub const GPG_ERR_ENOTTY: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 102;
+    pub const GPG_ERR_ENOTUNIQ: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 103;
+    pub const GPG_ERR_ENXIO: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 104;
+    pub const GPG_ERR_EOPNOTSUPP: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 105;
+    pub const GPG_ERR_EOVERFLOW: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 106;
+    pub const GPG_ERR_EPERM: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 107;
+    pub const GPG_ERR_EPFNOSUPPORT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 108;
+    pub const GPG_ERR_EPIPE: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 109;
+    pub const GPG_ERR_EPROCLIM: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 110;
+    pub const GPG_ERR_EPROCUNAVAIL: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 111;
+    pub const GPG_ERR_EPROGMISMATCH: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 112;
+    pub const GPG_ERR_EPROGUNAVAIL: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 113;
+    pub const GPG_ERR_EPROTO: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 114;
+    pub const GPG_ERR_EPROTONOSUPPORT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 115;
+    pub const GPG_ERR_EPROTOTYPE: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 116;
+    pub const GPG_ERR_ERANGE: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 117;
+    pub const GPG_ERR_EREMCHG: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 118;
+    pub const GPG_ERR_EREMOTE: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 119;
+    pub const GPG_ERR_EREMOTEIO: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 120;
+    pub const GPG_ERR_ERESTART: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 121;
+    pub const GPG_ERR_EROFS: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 122;
+    pub const GPG_ERR_ERPCMISMATCH: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 123;
+    pub const GPG_ERR_ESHUTDOWN: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 124;
+    pub const GPG_ERR_ESOCKTNOSUPPORT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 125;
+    pub const GPG_ERR_ESPIPE: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 126;
+    pub const GPG_ERR_ESRCH: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 127;
+    pub const GPG_ERR_ESRMNT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 128;
+    pub const GPG_ERR_ESTALE: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 129;
+    pub const GPG_ERR_ESTRPIPE: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 130;
+    pub const GPG_ERR_ETIME: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 131;
+    pub const GPG_ERR_ETIMEDOUT: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 132;
+    pub const GPG_ERR_ETOOMANYREFS: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 133;
+    pub const GPG_ERR_ETXTBSY: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 134;
+    pub const GPG_ERR_EUCLEAN: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 135;
+    pub const GPG_ERR_EUNATCH: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 136;
+    pub const GPG_ERR_EUSERS: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 137;
+    pub const GPG_ERR_EWOULDBLOCK: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 138;
+    pub const GPG_ERR_EXDEV: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 139;
+    pub const GPG_ERR_EXFULL: gpg_err_code_t = GPG_ERR_SYSTEM_ERROR | 140;
+    pub const GPG_ERR_CODE_DIM: gpg_err_code_t = 65536;
+
+    pub const GPG_ERR_CODE_MASK: gpg_error_t = (GPG_ERR_CODE_DIM as gpg_error_t) - 1;
+
+    pub const GPG_ERR_SOURCE_MASK: gpg_error_t = (GPG_ERR_SOURCE_DIM as gpg_error_t) - 1;
+    pub const GPG_ERR_SOURCE_SHIFT: gpg_error_t = 24;
+}
+
+pub mod funcs {
+    extern crate libc;
+
+    use types::gpg_error_t;
+    use types::gpg_err_source_t;
+    use types::gpg_err_code_t;
+
+    use consts::*;
+
+    pub fn gpg_err_make(source: gpg_err_source_t, code: gpg_err_code_t) -> gpg_error_t {
+        if code == GPG_ERR_NO_ERROR {
+            GPG_ERR_NO_ERROR
+        } else {
+            ((source & GPG_ERR_SOURCE_MASK) << GPG_ERR_SOURCE_SHIFT) |
+                (code & GPG_ERR_CODE_MASK)
+        }
     }
-}
-pub use gpg_err_source_t::*;
 
-pub const GPG_ERR_SYSTEM_ERROR: isize = 1 << 15;
-
-enum_from_primitive! {
-    #[repr(C)]
-    #[derive(PartialEq, Eq, Copy, Clone)]
-    pub enum gpg_err_code_t {
-        GPG_ERR_NO_ERROR = 0,
-        GPG_ERR_GENERAL = 1,
-        GPG_ERR_UNKNOWN_PACKET = 2,
-        GPG_ERR_UNKNOWN_VERSION = 3,
-        GPG_ERR_PUBKEY_ALGO = 4,
-        GPG_ERR_DIGEST_ALGO = 5,
-        GPG_ERR_BAD_PUBKEY = 6,
-        GPG_ERR_BAD_SECKEY = 7,
-        GPG_ERR_BAD_SIGNATURE = 8,
-        GPG_ERR_NO_PUBKEY = 9,
-        GPG_ERR_CHECKSUM = 10,
-        GPG_ERR_BAD_PASSPHRASE = 11,
-        GPG_ERR_CIPHER_ALGO = 12,
-        GPG_ERR_KEYRING_OPEN = 13,
-        GPG_ERR_INV_PACKET = 14,
-        GPG_ERR_INV_ARMOR = 15,
-        GPG_ERR_NO_USER_ID = 16,
-        GPG_ERR_NO_SECKEY = 17,
-        GPG_ERR_WRONG_SECKEY = 18,
-        GPG_ERR_BAD_KEY = 19,
-        GPG_ERR_COMPR_ALGO = 20,
-        GPG_ERR_NO_PRIME = 21,
-        GPG_ERR_NO_ENCODING_METHOD = 22,
-        GPG_ERR_NO_ENCRYPTION_SCHEME = 23,
-        GPG_ERR_NO_SIGNATURE_SCHEME = 24,
-        GPG_ERR_INV_ATTR = 25,
-        GPG_ERR_NO_VALUE = 26,
-        GPG_ERR_NOT_FOUND = 27,
-        GPG_ERR_VALUE_NOT_FOUND = 28,
-        GPG_ERR_SYNTAX = 29,
-        GPG_ERR_BAD_MPI = 30,
-        GPG_ERR_INV_PASSPHRASE = 31,
-        GPG_ERR_SIG_CLASS = 32,
-        GPG_ERR_RESOURCE_LIMIT = 33,
-        GPG_ERR_INV_KEYRING = 34,
-        GPG_ERR_TRUSTDB = 35,
-        GPG_ERR_BAD_CERT = 36,
-        GPG_ERR_INV_USER_ID = 37,
-        GPG_ERR_UNEXPECTED = 38,
-        GPG_ERR_TIME_CONFLICT = 39,
-        GPG_ERR_KEYSERVER = 40,
-        GPG_ERR_WRONG_PUBKEY_ALGO = 41,
-        GPG_ERR_TRIBUTE_TO_D_A = 42,
-        GPG_ERR_WEAK_KEY = 43,
-        GPG_ERR_INV_KEYLEN = 44,
-        GPG_ERR_INV_ARG = 45,
-        GPG_ERR_BAD_URI = 46,
-        GPG_ERR_INV_URI = 47,
-        GPG_ERR_NETWORK = 48,
-        GPG_ERR_UNKNOWN_HOST = 49,
-        GPG_ERR_SELFTEST_FAILED = 50,
-        GPG_ERR_NOT_ENCRYPTED = 51,
-        GPG_ERR_NOT_PROCESSED = 52,
-        GPG_ERR_UNUSABLE_PUBKEY = 53,
-        GPG_ERR_UNUSABLE_SECKEY = 54,
-        GPG_ERR_INV_VALUE = 55,
-        GPG_ERR_BAD_CERT_CHAIN = 56,
-        GPG_ERR_MISSING_CERT = 57,
-        GPG_ERR_NO_DATA = 58,
-        GPG_ERR_BUG = 59,
-        GPG_ERR_NOT_SUPPORTED = 60,
-        GPG_ERR_INV_OP = 61,
-        GPG_ERR_TIMEOUT = 62,
-        GPG_ERR_INTERNAL = 63,
-        GPG_ERR_EOF_GCRYPT = 64,
-        GPG_ERR_INV_OBJ = 65,
-        GPG_ERR_TOO_SHORT = 66,
-        GPG_ERR_TOO_LARGE = 67,
-        GPG_ERR_NO_OBJ = 68,
-        GPG_ERR_NOT_IMPLEMENTED = 69,
-        GPG_ERR_CONFLICT = 70,
-        GPG_ERR_INV_CIPHER_MODE = 71,
-        GPG_ERR_INV_FLAG = 72,
-        GPG_ERR_INV_HANDLE = 73,
-        GPG_ERR_TRUNCATED = 74,
-        GPG_ERR_INCOMPLETE_LINE = 75,
-        GPG_ERR_INV_RESPONSE = 76,
-        GPG_ERR_NO_AGENT = 77,
-        GPG_ERR_AGENT = 78,
-        GPG_ERR_INV_DATA = 79,
-        GPG_ERR_ASSUAN_SERVER_FAULT = 80,
-        GPG_ERR_ASSUAN = 81,
-        GPG_ERR_INV_SESSION_KEY = 82,
-        GPG_ERR_INV_SEXP = 83,
-        GPG_ERR_UNSUPPORTED_ALGORITHM = 84,
-        GPG_ERR_NO_PIN_ENTRY = 85,
-        GPG_ERR_PIN_ENTRY = 86,
-        GPG_ERR_BAD_PIN = 87,
-        GPG_ERR_INV_NAME = 88,
-        GPG_ERR_BAD_DATA = 89,
-        GPG_ERR_INV_PARAMETER = 90,
-        GPG_ERR_WRONG_CARD = 91,
-        GPG_ERR_NO_DIRMNGR = 92,
-        GPG_ERR_DIRMNGR = 93,
-        GPG_ERR_CERT_REVOKED = 94,
-        GPG_ERR_NO_CRL_KNOWN = 95,
-        GPG_ERR_CRL_TOO_OLD = 96,
-        GPG_ERR_LINE_TOO_LONG = 97,
-        GPG_ERR_NOT_TRUSTED = 98,
-        GPG_ERR_CANCELED = 99,
-        GPG_ERR_BAD_CA_CERT = 100,
-        GPG_ERR_CERT_EXPIRED = 101,
-        GPG_ERR_CERT_TOO_YOUNG = 102,
-        GPG_ERR_UNSUPPORTED_CERT = 103,
-        GPG_ERR_UNKNOWN_SEXP = 104,
-        GPG_ERR_UNSUPPORTED_PROTECTION = 105,
-        GPG_ERR_CORRUPTED_PROTECTION = 106,
-        GPG_ERR_AMBIGUOUS_NAME = 107,
-        GPG_ERR_CARD = 108,
-        GPG_ERR_CARD_RESET = 109,
-        GPG_ERR_CARD_REMOVED = 110,
-        GPG_ERR_INV_CARD = 111,
-        GPG_ERR_CARD_NOT_PRESENT = 112,
-        GPG_ERR_NO_PKCS15_APP = 113,
-        GPG_ERR_NOT_CONFIRMED = 114,
-        GPG_ERR_CONFIGURATION = 115,
-        GPG_ERR_NO_POLICY_MATCH = 116,
-        GPG_ERR_INV_INDEX = 117,
-        GPG_ERR_INV_ID = 118,
-        GPG_ERR_NO_SCDAEMON = 119,
-        GPG_ERR_SCDAEMON = 120,
-        GPG_ERR_UNSUPPORTED_PROTOCOL = 121,
-        GPG_ERR_BAD_PIN_METHOD = 122,
-        GPG_ERR_CARD_NOT_INITIALIZED = 123,
-        GPG_ERR_UNSUPPORTED_OPERATION = 124,
-        GPG_ERR_WRONG_KEY_USAGE = 125,
-        GPG_ERR_NOTHING_FOUND = 126,
-        GPG_ERR_WRONG_BLOB_TYPE = 127,
-        GPG_ERR_MISSING_VALUE = 128,
-        GPG_ERR_HARDWARE = 129,
-        GPG_ERR_PIN_BLOCKED = 130,
-        GPG_ERR_USE_CONDITIONS = 131,
-        GPG_ERR_PIN_NOT_SYNCED = 132,
-        GPG_ERR_INV_CRL = 133,
-        GPG_ERR_BAD_BER = 134,
-        GPG_ERR_INV_BER = 135,
-        GPG_ERR_ELEMENT_NOT_FOUND = 136,
-        GPG_ERR_IDENTIFIER_NOT_FOUND = 137,
-        GPG_ERR_INV_TAG = 138,
-        GPG_ERR_INV_LENGTH = 139,
-        GPG_ERR_INV_KEYINFO = 140,
-        GPG_ERR_UNEXPECTED_TAG = 141,
-        GPG_ERR_NOT_DER_ENCODED = 142,
-        GPG_ERR_NO_CMS_OBJ = 143,
-        GPG_ERR_INV_CMS_OBJ = 144,
-        GPG_ERR_UNKNOWN_CMS_OBJ = 145,
-        GPG_ERR_UNSUPPORTED_CMS_OBJ = 146,
-        GPG_ERR_UNSUPPORTED_ENCODING = 147,
-        GPG_ERR_UNSUPPORTED_CMS_VERSION = 148,
-        GPG_ERR_UNKNOWN_ALGORITHM = 149,
-        GPG_ERR_INV_ENGINE = 150,
-        GPG_ERR_PUBKEY_NOT_TRUSTED = 151,
-        GPG_ERR_DECRYPT_FAILED = 152,
-        GPG_ERR_KEY_EXPIRED = 153,
-        GPG_ERR_SIG_EXPIRED = 154,
-        GPG_ERR_ENCODING_PROBLEM = 155,
-        GPG_ERR_INV_STATE = 156,
-        GPG_ERR_DUP_VALUE = 157,
-        GPG_ERR_MISSING_ACTION = 158,
-        GPG_ERR_MODULE_NOT_FOUND = 159,
-        GPG_ERR_INV_OID_STRING = 160,
-        GPG_ERR_INV_TIME = 161,
-        GPG_ERR_INV_CRL_OBJ = 162,
-        GPG_ERR_UNSUPPORTED_CRL_VERSION = 163,
-        GPG_ERR_INV_CERT_OBJ = 164,
-        GPG_ERR_UNKNOWN_NAME = 165,
-        GPG_ERR_LOCALE_PROBLEM = 166,
-        GPG_ERR_NOT_LOCKED = 167,
-        GPG_ERR_PROTOCOL_VIOLATION = 168,
-        GPG_ERR_INV_MAC = 169,
-        GPG_ERR_INV_REQUEST = 170,
-        GPG_ERR_UNKNOWN_EXTN = 171,
-        GPG_ERR_UNKNOWN_CRIT_EXTN = 172,
-        GPG_ERR_LOCKED = 173,
-        GPG_ERR_UNKNOWN_OPTION = 174,
-        GPG_ERR_UNKNOWN_COMMAND = 175,
-        GPG_ERR_NOT_OPERATIONAL = 176,
-        GPG_ERR_NO_PASSPHRASE = 177,
-        GPG_ERR_NO_PIN = 178,
-        GPG_ERR_NOT_ENABLED = 179,
-        GPG_ERR_NO_ENGINE = 180,
-        GPG_ERR_MISSING_KEY = 181,
-        GPG_ERR_TOO_MANY = 182,
-        GPG_ERR_LIMIT_REACHED = 183,
-        GPG_ERR_NOT_INITIALIZED = 184,
-        GPG_ERR_MISSING_ISSUER_CERT = 185,
-        GPG_ERR_NO_KEYSERVER = 186,
-        GPG_ERR_INV_CURVE = 187,
-        GPG_ERR_UNKNOWN_CURVE = 188,
-        GPG_ERR_DUP_KEY = 189,
-        GPG_ERR_AMBIGUOUS = 190,
-        GPG_ERR_NO_CRYPT_CTX = 191,
-        GPG_ERR_WRONG_CRYPT_CTX = 192,
-        GPG_ERR_BAD_CRYPT_CTX = 193,
-        GPG_ERR_CRYPT_CTX_CONFLICT = 194,
-        GPG_ERR_BROKEN_PUBKEY = 195,
-        GPG_ERR_BROKEN_SECKEY = 196,
-        GPG_ERR_MAC_ALGO = 197,
-        GPG_ERR_FULLY_CANCELED = 198,
-        GPG_ERR_UNFINISHED = 199,
-        GPG_ERR_BUFFER_TOO_SHORT = 200,
-        GPG_ERR_SEXP_INV_LEN_SPEC = 201,
-        GPG_ERR_SEXP_STRING_TOO_LONG = 202,
-        GPG_ERR_SEXP_UNMATCHED_PAREN = 203,
-        GPG_ERR_SEXP_NOT_CANONICAL = 204,
-        GPG_ERR_SEXP_BAD_CHARACTER = 205,
-        GPG_ERR_SEXP_BAD_QUOTATION = 206,
-        GPG_ERR_SEXP_ZERO_PREFIX = 207,
-        GPG_ERR_SEXP_NESTED_DH = 208,
-        GPG_ERR_SEXP_UNMATCHED_DH = 209,
-        GPG_ERR_SEXP_UNEXPECTED_PUNC = 210,
-        GPG_ERR_SEXP_BAD_HEX_CHAR = 211,
-        GPG_ERR_SEXP_ODD_HEX_NUMBERS = 212,
-        GPG_ERR_SEXP_BAD_OCT_CHAR = 213,
-        GPG_ERR_NO_CERT_CHAIN = 226,
-        GPG_ERR_CERT_TOO_LARGE = 227,
-        GPG_ERR_INV_RECORD = 228,
-        GPG_ERR_BAD_MAC = 229,
-        GPG_ERR_UNEXPECTED_MSG = 230,
-        GPG_ERR_COMPR_FAILED = 231,
-        GPG_ERR_WOULD_WRAP = 232,
-        GPG_ERR_FATAL_ALERT = 233,
-        GPG_ERR_NO_CIPHER = 234,
-        GPG_ERR_MISSING_CLIENT_CERT = 235,
-        GPG_ERR_CLOSE_NOTIFY = 236,
-        GPG_ERR_TICKET_EXPIRED = 237,
-        GPG_ERR_BAD_TICKET = 238,
-        GPG_ERR_UNKNOWN_IDENTITY = 239,
-        GPG_ERR_BAD_HS_CERT = 240,
-        GPG_ERR_BAD_HS_CERT_REQ = 241,
-        GPG_ERR_BAD_HS_CERT_VER = 242,
-        GPG_ERR_BAD_HS_CHANGE_CIPHER = 243,
-        GPG_ERR_BAD_HS_CLIENT_HELLO = 244,
-        GPG_ERR_BAD_HS_SERVER_HELLO = 245,
-        GPG_ERR_BAD_HS_SERVER_HELLO_DONE = 246,
-        GPG_ERR_BAD_HS_FINISHED = 247,
-        GPG_ERR_BAD_HS_SERVER_KEX = 248,
-        GPG_ERR_BAD_HS_CLIENT_KEX = 249,
-        GPG_ERR_BOGUS_STRING = 250,
-        GPG_ERR_KEY_DISABLED = 252,
-        GPG_ERR_KEY_ON_CARD = 253,
-        GPG_ERR_INV_LOCK_OBJ = 254,
-        GPG_ERR_ASS_GENERAL = 257,
-        GPG_ERR_ASS_ACCEPT_FAILED = 258,
-        GPG_ERR_ASS_CONNECT_FAILED = 259,
-        GPG_ERR_ASS_INV_RESPONSE = 260,
-        GPG_ERR_ASS_INV_VALUE = 261,
-        GPG_ERR_ASS_INCOMPLETE_LINE = 262,
-        GPG_ERR_ASS_LINE_TOO_LONG = 263,
-        GPG_ERR_ASS_NESTED_COMMANDS = 264,
-        GPG_ERR_ASS_NO_DATA_CB = 265,
-        GPG_ERR_ASS_NO_INQUIRE_CB = 266,
-        GPG_ERR_ASS_NOT_A_SERVER = 267,
-        GPG_ERR_ASS_NOT_A_CLIENT = 268,
-        GPG_ERR_ASS_SERVER_START = 269,
-        GPG_ERR_ASS_READ_ERROR = 270,
-        GPG_ERR_ASS_WRITE_ERROR = 271,
-        GPG_ERR_ASS_TOO_MUCH_DATA = 273,
-        GPG_ERR_ASS_UNEXPECTED_CMD = 274,
-        GPG_ERR_ASS_UNKNOWN_CMD = 275,
-        GPG_ERR_ASS_SYNTAX = 276,
-        GPG_ERR_ASS_CANCELED = 277,
-        GPG_ERR_ASS_NO_INPUT = 278,
-        GPG_ERR_ASS_NO_OUTPUT = 279,
-        GPG_ERR_ASS_PARAMETER = 280,
-        GPG_ERR_ASS_UNKNOWN_INQUIRE = 281,
-        GPG_ERR_USER_1 = 1024,
-        GPG_ERR_USER_2 = 1025,
-        GPG_ERR_USER_3 = 1026,
-        GPG_ERR_USER_4 = 1027,
-        GPG_ERR_USER_5 = 1028,
-        GPG_ERR_USER_6 = 1029,
-        GPG_ERR_USER_7 = 1030,
-        GPG_ERR_USER_8 = 1031,
-        GPG_ERR_USER_9 = 1032,
-        GPG_ERR_USER_10 = 1033,
-        GPG_ERR_USER_11 = 1034,
-        GPG_ERR_USER_12 = 1035,
-        GPG_ERR_USER_13 = 1036,
-        GPG_ERR_USER_14 = 1037,
-        GPG_ERR_USER_15 = 1038,
-        GPG_ERR_USER_16 = 1039,
-        GPG_ERR_MISSING_ERRNO = 16381,
-        GPG_ERR_UNKNOWN_ERRNO = 16382,
-        GPG_ERR_EOF = 16383,
-
-        GPG_ERR_E2BIG = GPG_ERR_SYSTEM_ERROR | 0,
-        GPG_ERR_EACCES = GPG_ERR_SYSTEM_ERROR | 1,
-        GPG_ERR_EADDRINUSE = GPG_ERR_SYSTEM_ERROR | 2,
-        GPG_ERR_EADDRNOTAVAIL = GPG_ERR_SYSTEM_ERROR | 3,
-        GPG_ERR_EADV = GPG_ERR_SYSTEM_ERROR | 4,
-        GPG_ERR_EAFNOSUPPORT = GPG_ERR_SYSTEM_ERROR | 5,
-        GPG_ERR_EAGAIN = GPG_ERR_SYSTEM_ERROR | 6,
-        GPG_ERR_EALREADY = GPG_ERR_SYSTEM_ERROR | 7,
-        GPG_ERR_EAUTH = GPG_ERR_SYSTEM_ERROR | 8,
-        GPG_ERR_EBACKGROUND = GPG_ERR_SYSTEM_ERROR | 9,
-        GPG_ERR_EBADE = GPG_ERR_SYSTEM_ERROR | 10,
-        GPG_ERR_EBADF = GPG_ERR_SYSTEM_ERROR | 11,
-        GPG_ERR_EBADFD = GPG_ERR_SYSTEM_ERROR | 12,
-        GPG_ERR_EBADMSG = GPG_ERR_SYSTEM_ERROR | 13,
-        GPG_ERR_EBADR = GPG_ERR_SYSTEM_ERROR | 14,
-        GPG_ERR_EBADRPC = GPG_ERR_SYSTEM_ERROR | 15,
-        GPG_ERR_EBADRQC = GPG_ERR_SYSTEM_ERROR | 16,
-        GPG_ERR_EBADSLT = GPG_ERR_SYSTEM_ERROR | 17,
-        GPG_ERR_EBFONT = GPG_ERR_SYSTEM_ERROR | 18,
-        GPG_ERR_EBUSY = GPG_ERR_SYSTEM_ERROR | 19,
-        GPG_ERR_ECANCELED = GPG_ERR_SYSTEM_ERROR | 20,
-        GPG_ERR_ECHILD = GPG_ERR_SYSTEM_ERROR | 21,
-        GPG_ERR_ECHRNG = GPG_ERR_SYSTEM_ERROR | 22,
-        GPG_ERR_ECOMM = GPG_ERR_SYSTEM_ERROR | 23,
-        GPG_ERR_ECONNABORTED = GPG_ERR_SYSTEM_ERROR | 24,
-        GPG_ERR_ECONNREFUSED = GPG_ERR_SYSTEM_ERROR | 25,
-        GPG_ERR_ECONNRESET = GPG_ERR_SYSTEM_ERROR | 26,
-        GPG_ERR_ED = GPG_ERR_SYSTEM_ERROR | 27,
-        GPG_ERR_EDEADLK = GPG_ERR_SYSTEM_ERROR | 28,
-        GPG_ERR_EDEADLOCK = GPG_ERR_SYSTEM_ERROR | 29,
-        GPG_ERR_EDESTADDRREQ = GPG_ERR_SYSTEM_ERROR | 30,
-        GPG_ERR_EDIED = GPG_ERR_SYSTEM_ERROR | 31,
-        GPG_ERR_EDOM = GPG_ERR_SYSTEM_ERROR | 32,
-        GPG_ERR_EDOTDOT = GPG_ERR_SYSTEM_ERROR | 33,
-        GPG_ERR_EDQUOT = GPG_ERR_SYSTEM_ERROR | 34,
-        GPG_ERR_EEXIST = GPG_ERR_SYSTEM_ERROR | 35,
-        GPG_ERR_EFAULT = GPG_ERR_SYSTEM_ERROR | 36,
-        GPG_ERR_EFBIG = GPG_ERR_SYSTEM_ERROR | 37,
-        GPG_ERR_EFTYPE = GPG_ERR_SYSTEM_ERROR | 38,
-        GPG_ERR_EGRATUITOUS = GPG_ERR_SYSTEM_ERROR | 39,
-        GPG_ERR_EGREGIOUS = GPG_ERR_SYSTEM_ERROR | 40,
-        GPG_ERR_EHOSTDOWN = GPG_ERR_SYSTEM_ERROR | 41,
-        GPG_ERR_EHOSTUNREACH = GPG_ERR_SYSTEM_ERROR | 42,
-        GPG_ERR_EIDRM = GPG_ERR_SYSTEM_ERROR | 43,
-        GPG_ERR_EIEIO = GPG_ERR_SYSTEM_ERROR | 44,
-        GPG_ERR_EILSEQ = GPG_ERR_SYSTEM_ERROR | 45,
-        GPG_ERR_EINPROGRESS = GPG_ERR_SYSTEM_ERROR | 46,
-        GPG_ERR_EINTR = GPG_ERR_SYSTEM_ERROR | 47,
-        GPG_ERR_EINVAL = GPG_ERR_SYSTEM_ERROR | 48,
-        GPG_ERR_EIO = GPG_ERR_SYSTEM_ERROR | 49,
-        GPG_ERR_EISCONN = GPG_ERR_SYSTEM_ERROR | 50,
-        GPG_ERR_EISDIR = GPG_ERR_SYSTEM_ERROR | 51,
-        GPG_ERR_EISNAM = GPG_ERR_SYSTEM_ERROR | 52,
-        GPG_ERR_EL2HLT = GPG_ERR_SYSTEM_ERROR | 53,
-        GPG_ERR_EL2NSYNC = GPG_ERR_SYSTEM_ERROR | 54,
-        GPG_ERR_EL3HLT = GPG_ERR_SYSTEM_ERROR | 55,
-        GPG_ERR_EL3RST = GPG_ERR_SYSTEM_ERROR | 56,
-        GPG_ERR_ELIBACC = GPG_ERR_SYSTEM_ERROR | 57,
-        GPG_ERR_ELIBBAD = GPG_ERR_SYSTEM_ERROR | 58,
-        GPG_ERR_ELIBEXEC = GPG_ERR_SYSTEM_ERROR | 59,
-        GPG_ERR_ELIBMAX = GPG_ERR_SYSTEM_ERROR | 60,
-        GPG_ERR_ELIBSCN = GPG_ERR_SYSTEM_ERROR | 61,
-        GPG_ERR_ELNRNG = GPG_ERR_SYSTEM_ERROR | 62,
-        GPG_ERR_ELOOP = GPG_ERR_SYSTEM_ERROR | 63,
-        GPG_ERR_EMEDIUMTYPE = GPG_ERR_SYSTEM_ERROR | 64,
-        GPG_ERR_EMFILE = GPG_ERR_SYSTEM_ERROR | 65,
-        GPG_ERR_EMLINK = GPG_ERR_SYSTEM_ERROR | 66,
-        GPG_ERR_EMSGSIZE = GPG_ERR_SYSTEM_ERROR | 67,
-        GPG_ERR_EMULTIHOP = GPG_ERR_SYSTEM_ERROR | 68,
-        GPG_ERR_ENAMETOOLONG = GPG_ERR_SYSTEM_ERROR | 69,
-        GPG_ERR_ENAVAIL = GPG_ERR_SYSTEM_ERROR | 70,
-        GPG_ERR_ENEEDAUTH = GPG_ERR_SYSTEM_ERROR | 71,
-        GPG_ERR_ENETDOWN = GPG_ERR_SYSTEM_ERROR | 72,
-        GPG_ERR_ENETRESET = GPG_ERR_SYSTEM_ERROR | 73,
-        GPG_ERR_ENETUNREACH = GPG_ERR_SYSTEM_ERROR | 74,
-        GPG_ERR_ENFILE = GPG_ERR_SYSTEM_ERROR | 75,
-        GPG_ERR_ENOANO = GPG_ERR_SYSTEM_ERROR | 76,
-        GPG_ERR_ENOBUFS = GPG_ERR_SYSTEM_ERROR | 77,
-        GPG_ERR_ENOCSI = GPG_ERR_SYSTEM_ERROR | 78,
-        GPG_ERR_ENODATA = GPG_ERR_SYSTEM_ERROR | 79,
-        GPG_ERR_ENODEV = GPG_ERR_SYSTEM_ERROR | 80,
-        GPG_ERR_ENOENT = GPG_ERR_SYSTEM_ERROR | 81,
-        GPG_ERR_ENOEXEC = GPG_ERR_SYSTEM_ERROR | 82,
-        GPG_ERR_ENOLCK = GPG_ERR_SYSTEM_ERROR | 83,
-        GPG_ERR_ENOLINK = GPG_ERR_SYSTEM_ERROR | 84,
-        GPG_ERR_ENOMEDIUM = GPG_ERR_SYSTEM_ERROR | 85,
-        GPG_ERR_ENOMEM = GPG_ERR_SYSTEM_ERROR | 86,
-        GPG_ERR_ENOMSG = GPG_ERR_SYSTEM_ERROR | 87,
-        GPG_ERR_ENONET = GPG_ERR_SYSTEM_ERROR | 88,
-        GPG_ERR_ENOPKG = GPG_ERR_SYSTEM_ERROR | 89,
-        GPG_ERR_ENOPROTOOPT = GPG_ERR_SYSTEM_ERROR | 90,
-        GPG_ERR_ENOSPC = GPG_ERR_SYSTEM_ERROR | 91,
-        GPG_ERR_ENOSR = GPG_ERR_SYSTEM_ERROR | 92,
-        GPG_ERR_ENOSTR = GPG_ERR_SYSTEM_ERROR | 93,
-        GPG_ERR_ENOSYS = GPG_ERR_SYSTEM_ERROR | 94,
-        GPG_ERR_ENOTBLK = GPG_ERR_SYSTEM_ERROR | 95,
-        GPG_ERR_ENOTCONN = GPG_ERR_SYSTEM_ERROR | 96,
-        GPG_ERR_ENOTDIR = GPG_ERR_SYSTEM_ERROR | 97,
-        GPG_ERR_ENOTEMPTY = GPG_ERR_SYSTEM_ERROR | 98,
-        GPG_ERR_ENOTNAM = GPG_ERR_SYSTEM_ERROR | 99,
-        GPG_ERR_ENOTSOCK = GPG_ERR_SYSTEM_ERROR | 100,
-        GPG_ERR_ENOTSUP = GPG_ERR_SYSTEM_ERROR | 101,
-        GPG_ERR_ENOTTY = GPG_ERR_SYSTEM_ERROR | 102,
-        GPG_ERR_ENOTUNIQ = GPG_ERR_SYSTEM_ERROR | 103,
-        GPG_ERR_ENXIO = GPG_ERR_SYSTEM_ERROR | 104,
-        GPG_ERR_EOPNOTSUPP = GPG_ERR_SYSTEM_ERROR | 105,
-        GPG_ERR_EOVERFLOW = GPG_ERR_SYSTEM_ERROR | 106,
-        GPG_ERR_EPERM = GPG_ERR_SYSTEM_ERROR | 107,
-        GPG_ERR_EPFNOSUPPORT = GPG_ERR_SYSTEM_ERROR | 108,
-        GPG_ERR_EPIPE = GPG_ERR_SYSTEM_ERROR | 109,
-        GPG_ERR_EPROCLIM = GPG_ERR_SYSTEM_ERROR | 110,
-        GPG_ERR_EPROCUNAVAIL = GPG_ERR_SYSTEM_ERROR | 111,
-        GPG_ERR_EPROGMISMATCH = GPG_ERR_SYSTEM_ERROR | 112,
-        GPG_ERR_EPROGUNAVAIL = GPG_ERR_SYSTEM_ERROR | 113,
-        GPG_ERR_EPROTO = GPG_ERR_SYSTEM_ERROR | 114,
-        GPG_ERR_EPROTONOSUPPORT = GPG_ERR_SYSTEM_ERROR | 115,
-        GPG_ERR_EPROTOTYPE = GPG_ERR_SYSTEM_ERROR | 116,
-        GPG_ERR_ERANGE = GPG_ERR_SYSTEM_ERROR | 117,
-        GPG_ERR_EREMCHG = GPG_ERR_SYSTEM_ERROR | 118,
-        GPG_ERR_EREMOTE = GPG_ERR_SYSTEM_ERROR | 119,
-        GPG_ERR_EREMOTEIO = GPG_ERR_SYSTEM_ERROR | 120,
-        GPG_ERR_ERESTART = GPG_ERR_SYSTEM_ERROR | 121,
-        GPG_ERR_EROFS = GPG_ERR_SYSTEM_ERROR | 122,
-        GPG_ERR_ERPCMISMATCH = GPG_ERR_SYSTEM_ERROR | 123,
-        GPG_ERR_ESHUTDOWN = GPG_ERR_SYSTEM_ERROR | 124,
-        GPG_ERR_ESOCKTNOSUPPORT = GPG_ERR_SYSTEM_ERROR | 125,
-        GPG_ERR_ESPIPE = GPG_ERR_SYSTEM_ERROR | 126,
-        GPG_ERR_ESRCH = GPG_ERR_SYSTEM_ERROR | 127,
-        GPG_ERR_ESRMNT = GPG_ERR_SYSTEM_ERROR | 128,
-        GPG_ERR_ESTALE = GPG_ERR_SYSTEM_ERROR | 129,
-        GPG_ERR_ESTRPIPE = GPG_ERR_SYSTEM_ERROR | 130,
-        GPG_ERR_ETIME = GPG_ERR_SYSTEM_ERROR | 131,
-        GPG_ERR_ETIMEDOUT = GPG_ERR_SYSTEM_ERROR | 132,
-        GPG_ERR_ETOOMANYREFS = GPG_ERR_SYSTEM_ERROR | 133,
-        GPG_ERR_ETXTBSY = GPG_ERR_SYSTEM_ERROR | 134,
-        GPG_ERR_EUCLEAN = GPG_ERR_SYSTEM_ERROR | 135,
-        GPG_ERR_EUNATCH = GPG_ERR_SYSTEM_ERROR | 136,
-        GPG_ERR_EUSERS = GPG_ERR_SYSTEM_ERROR | 137,
-        GPG_ERR_EWOULDBLOCK = GPG_ERR_SYSTEM_ERROR | 138,
-        GPG_ERR_EXDEV = GPG_ERR_SYSTEM_ERROR | 139,
-        GPG_ERR_EXFULL = GPG_ERR_SYSTEM_ERROR | 140,
-
-        GPG_ERR_CODE_DIM = 65536
+    pub fn gpg_err_code(err: gpg_error_t) -> gpg_err_code_t {
+        err & GPG_ERR_CODE_MASK
     }
-}
-pub use gpg_err_code_t::*;
 
-pub const GPG_ERR_CODE_MASK: gpg_error_t = (GPG_ERR_CODE_DIM as gpg_error_t) - 1;
-
-pub const GPG_ERR_SOURCE_MASK: gpg_error_t = (GPG_ERR_SOURCE_DIM as gpg_error_t) - 1;
-pub const GPG_ERR_SOURCE_SHIFT: gpg_error_t = 24;
-
-pub fn gpg_err_make(source: gpg_err_source_t, code: gpg_err_code_t) -> gpg_error_t {
-    if code == GPG_ERR_NO_ERROR {
-        GPG_ERR_NO_ERROR as gpg_error_t
-    } else {
-        (((source as gpg_error_t) & GPG_ERR_SOURCE_MASK) << GPG_ERR_SOURCE_SHIFT) |
-            ((code as gpg_error_t) & GPG_ERR_CODE_MASK)
+    pub fn gpg_err_source(err: gpg_error_t) -> gpg_err_source_t {
+        (err >> GPG_ERR_SOURCE_SHIFT) & GPG_ERR_SOURCE_MASK
     }
-}
 
-pub fn gpg_err_code(err: gpg_error_t) -> gpg_err_code_t {
-    gpg_err_code_t::from_u32(err & GPG_ERR_CODE_MASK).unwrap()
-}
+    #[link(name = "gpg-error")]
+    extern {
+        pub fn gpg_err_init() -> gpg_error_t;
+        pub fn gpg_err_deinit(mode: libc::c_int);
 
-pub fn gpg_err_source(err: gpg_error_t) -> gpg_err_source_t {
-    gpg_err_source_t::from_u32((err >> GPG_ERR_SOURCE_SHIFT) & GPG_ERR_SOURCE_MASK).unwrap()
-}
+        pub fn gpg_strerror(err: gpg_error_t) -> *const libc::c_char;
+        pub fn gpg_strerror_r(err: gpg_error_t, buf: *mut libc::c_char, buflen: libc::size_t) -> libc::c_int;
 
-#[link(name = "gpg-error")]
-extern {
-    pub fn gpg_err_init() -> gpg_error_t;
-    pub fn gpg_err_deinit(mode: c_int);
+        pub fn gpg_strsource(err: gpg_error_t) -> *const libc::c_char;
 
-    pub fn gpg_strerror(err: gpg_error_t) -> *const c_char;
-    pub fn gpg_strerror_r(err: gpg_error_t, buf: *mut c_char, buflen: size_t) -> c_int;
+        pub fn gpg_err_code_to_errno(code: gpg_err_code_t) -> libc::c_int;
+        pub fn gpg_err_code_from_syserror() -> gpg_err_code_t;
 
-    pub fn gpg_strsource(err: gpg_error_t) -> *const c_char;
+        pub fn gpg_err_set_errno(err: libc::c_int);
 
-    pub fn gpg_err_code_to_errno(code: gpg_err_code_t) -> c_int;
-    pub fn gpg_err_code_from_syserror() -> gpg_err_code_t;
-
-    pub fn gpg_err_set_errno(err: c_int);
-
-    pub fn gpg_error_check_version(req_version: *const c_char) -> *const c_char;
+        pub fn gpg_error_check_version(req_version: *const libc::c_char) -> *const libc::c_char;
+    }
 }

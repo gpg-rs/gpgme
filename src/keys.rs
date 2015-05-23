@@ -12,7 +12,7 @@ use context::Protocol;
 use ops::KeyListMode;
 
 enum_from_primitive! {
-    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     pub enum Validity {
         Unknown,
         Undefined,
@@ -37,7 +37,7 @@ impl fmt::Display for Validity {
 }
 
 enum_from_primitive! {
-    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     pub enum KeyAlgorithm {
         Unknown         = -1,
         Rsa             = 1,
@@ -62,7 +62,7 @@ impl fmt::Display for KeyAlgorithm {
 }
 
 enum_from_primitive! {
-    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     pub enum HashAlgorithm {
         Unknown       = -1,
         None          = 0,
@@ -102,7 +102,7 @@ impl Key {
         Key { raw: raw }
     }
 
-    pub unsafe fn raw(&self) -> sys::gpgme_key_t {
+    pub fn as_raw(&self) -> sys::gpgme_key_t {
         self.raw
     }
 
@@ -217,7 +217,7 @@ impl<'a> SubKey<'a> {
         SubKey { raw: raw, phantom: PhantomData }
     }
 
-    pub unsafe fn raw(&self) -> sys::gpgme_subkey_t {
+    pub fn as_raw(&self) -> sys::gpgme_subkey_t {
         self.raw
     }
 
@@ -355,7 +355,7 @@ impl<'a> UserId<'a> {
         UserId { raw: raw, phantom: PhantomData }
     }
 
-    pub unsafe fn raw(&self) -> sys::gpgme_user_id_t {
+    pub fn as_raw(&self) -> sys::gpgme_user_id_t {
         self.raw
     }
 
@@ -469,7 +469,7 @@ impl<'a> KeySignature<'a> {
         KeySignature { raw: raw, phantom: PhantomData }
     }
 
-    pub unsafe fn raw(&self) -> sys::gpgme_key_sig_t {
+    pub fn as_raw(&self) -> sys::gpgme_key_sig_t {
         self.raw
     }
 

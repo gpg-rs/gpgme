@@ -111,9 +111,8 @@ fn main() {
         Protocol::OpenPgp
     };
 
-    gpgme::init(None).unwrap();
-
-    let mut ctx = Context::new().unwrap();
+    let gpgme = gpgme::init().unwrap();
+    let mut ctx = Context::new(gpgme).unwrap();
     ctx.set_protocol(proto).unwrap();
 
     let mut signature = {
