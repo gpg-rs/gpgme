@@ -83,7 +83,7 @@ fn main() {
 
     if matches.opt_present("key") {
         if proto != Protocol::UiServer {
-            let key = ctx.find_secret_key(&matches.opt_str("key").unwrap()).unwrap();
+            let key = ctx.find_secret_key(matches.opt_str("key").unwrap()).unwrap();
             ctx.add_signer(&key).unwrap();
         } else {
             writeln!(io::stderr(), "{}: ignoring --key in UI-server mode", &program);

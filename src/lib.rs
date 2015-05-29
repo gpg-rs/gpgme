@@ -34,8 +34,8 @@ struct GpgMeImp {
 pub struct GpgMe(Arc<GpgMeImp>);
 
 impl GpgMe {
-    pub fn check_version(&self, version: &str) -> bool {
-        let version = match CString::new(version) {
+    pub fn check_version<S: Into<String>>(&self, version: S) -> bool {
+        let version = match CString::new(version.into()) {
             Ok(v) => v,
             Err(_) => return false,
         };

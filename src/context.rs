@@ -138,9 +138,9 @@ impl Context {
         KeyIter::new(self, None::<String>, true)
     }
 
-    pub fn find_key(&self, pattern: &str) -> Result<Key> {
+    pub fn find_key<S: Into<String>>(&self, pattern: S) -> Result<Key> {
         let mut key: sys::gpgme_key_t = ptr::null_mut();
-        let pattern = try!(CString::new(pattern));
+        let pattern = try!(CString::new(pattern.into()));
         unsafe {
             let result = sys::gpgme_get_key(self.raw, pattern.as_ptr(),
                                             &mut key, false as libc::c_int);
@@ -152,9 +152,9 @@ impl Context {
         }
     }
 
-    pub fn find_secret_key(&self, pattern: &str) -> Result<Key> {
+    pub fn find_secret_key<S: Into<String>>(&self, pattern: S) -> Result<Key> {
         let mut key: sys::gpgme_key_t = ptr::null_mut();
-        let pattern = try!(CString::new(pattern));
+        let pattern = try!(CString::new(pattern.into()));
         unsafe {
             let result = sys::gpgme_get_key(self.raw, pattern.as_ptr(),
                                             &mut key, true as libc::c_int);
@@ -167,12 +167,12 @@ impl Context {
     }
 
     pub fn find_keys<I>(&mut self, patterns: I) -> Result<KeyIter>
-            where I: IntoIterator, I::Item: AsRef<str> {
+            where I: IntoIterator, I::Item: Into<String> {
         KeyIter::new(self, patterns, false)
     }
 
     pub fn find_secret_keys<I>(&mut self, patterns: I) -> Result<KeyIter>
-            where I: IntoIterator, I::Item: AsRef<str> {
+            where I: IntoIterator, I::Item: Into<String> {
         KeyIter::new(self, patterns, true)
     }
 
@@ -188,9 +188,9 @@ impl Context {
         }
     }
 
-    pub fn generate_key(&mut self, params: &str, public: Option<&mut Data>,
+    pub fn generate_key<S: Into<String>>(&mut self, params: S, public: Option<&mut Data>,
                         secret: Option<&mut Data>) -> Result<ops::KeyGenerateResult> {
-        let params = try!(CString::new(params));
+        let params = try!(CString::new(params.into()));
         let public = public.map(|d| d.as_raw()).unwrap_or(ptr::null_mut());
         let secret = secret.map(|d| d.as_raw()).unwrap_or(ptr::null_mut());
         let result = unsafe {
@@ -263,10 +263,10 @@ impl Context {
 
     pub fn export<I>(&mut self, patterns: I, mode: ops::ExportMode,
                            data: Option<&mut Data>) -> Result<()>
-            where I: IntoIterator, I::Item: AsRef<str> {
+            where I: IntoIterator, I::Item: Into<String> {
         let mut strings = Vec::new();
         for pattern in patterns.into_iter() {
-            strings.push(try!(CString::new(pattern.as_ref())));
+            strings.push(try!(CString::new(pattern.into())));
         }
         let data = data.map_or(ptr::null_mut(), |d| d.as_raw());
         let result = match strings.len() {
@@ -435,7 +435,7 @@ impl Context {
     ///
     /// let gpgme = gpgme::init().unwrap();
     /// let mut ctx = Context::new(gpgme).unwrap();
-    /// let mut cipher = Data::load("some file").unwrap();
+    /// let mut cipher = Data::load(&"some file").unwrap();
     /// let mut plain = Data::new().unwrap();
     /// ctx.decrypt(&mut cipher, &mut plain).unwrap();
     /// ```
@@ -506,7 +506,7 @@ impl Context {
     ///
     /// let gpgme = gpgme::init().unwrap();
     /// let mut ctx = Context::new(gpgme).unwrap();
-    /// let mut cipher = Data::load("some file").unwrap();
+    /// let mut cipher = Data::load(&"some file").unwrap();
     /// let mut plain = Data::new().unwrap();
     /// ctx.decrypt_and_verify(&mut cipher, &mut plain).unwrap();
     /// ```
@@ -538,10 +538,10 @@ pub struct KeyIter<'a> {
 impl<'a> KeyIter<'a> {
     fn new<'b, I>(ctx: &'b mut Context, patterns: I,
                secret_only: bool) -> Result<KeyIter<'b>>
-            where I: IntoIterator, I::Item: AsRef<str> {
+            where I: IntoIterator, I::Item: Into<String> {
         let mut strings = Vec::new();
         for pattern in patterns.into_iter() {
-            strings.push(try!(CString::new(pattern.as_ref())));
+            strings.push(try!(CString::new(pattern.into())));
         }
         let result = match strings.len() {
             0 | 1 => unsafe {

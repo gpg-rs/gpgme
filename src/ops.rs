@@ -307,7 +307,7 @@ bitflags! {
 
 impl_result!(EncryptResult: sys::gpgme_encrypt_result_t);
 impl EncryptResult {
-    pub fn invalid_recipients<'a>(&'a self) -> InvalidKeyIter<'a, EncryptResult> {
+    pub fn invalid_recipients(&self) -> InvalidKeyIter<EncryptResult> {
         unsafe {
             InvalidKeyIter::from_list(self, (*self.raw).invalid_recipients)
         }

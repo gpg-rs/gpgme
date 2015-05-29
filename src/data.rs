@@ -3,6 +3,7 @@ use std::io;
 use std::io::prelude::*;
 use std::marker::PhantomData;
 use std::mem;
+#[cfg(unix)]
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 use std::ptr;
@@ -160,7 +161,7 @@ impl<'a> Data<'a> {
         }
     }
 
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Data<'static>> {
+    pub fn load<P: AsRef<Path>>(path: &P) -> Result<Data<'static>> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
         let filename = path.as_ref().to_str().and_then(|s| CString::new(s.as_bytes()).ok());
         if filename.is_none() {
@@ -190,6 +191,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[cfg(unix)]
     pub fn from_fd<'b, T: AsRawFd>(file: &'b T) -> Result<Data<'b>> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
         let result = unsafe {
@@ -311,8 +313,8 @@ impl<'a> Data<'a> {
         }
     }
 
-    pub fn set_file_name(&mut self, name: &str) -> Result<()> {
-        let name = try!(CString::new(name));
+    pub fn set_file_name<S: Into<String>>(&mut self, name: S) -> Result<()> {
+        let name = try!(CString::new(name.into()));
         let result = unsafe {
             sys::gpgme_data_set_file_name(self.raw, name.as_ptr())
         };

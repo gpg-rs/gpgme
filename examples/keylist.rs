@@ -77,7 +77,7 @@ fn main() {
     ctx.set_protocol(proto).unwrap();
     ctx.set_key_list_mode(mode).unwrap();
 
-    for res in ctx.find_keys(matches.free.iter()).unwrap() {
+    for res in ctx.find_keys(matches.free).unwrap() {
         let key = res.unwrap();
 
         println!("keyid   : {}", key.id().unwrap_or("?"));
