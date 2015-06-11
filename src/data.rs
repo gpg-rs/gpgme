@@ -23,13 +23,14 @@ use error::{Error, Result};
 enum_from_primitive! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     pub enum DataEncoding {
-        None,
-        Binary,
-        Base64,
-        Armor,
-        Url,
-        UrlEsc,
-        Url0,
+        Unknown = -1,
+        None = 0,
+        Binary = 1,
+        Base64 = 2,
+        Armor = 3,
+        Url = 4,
+        UrlEsc = 5,
+        Url0 = 6,
     }
 }
 
@@ -58,20 +59,15 @@ extern fn read_callback<S: Read>(handle: *mut libc::c_void,
                                  buffer: *mut libc::c_void,
                                  size: libc::size_t) -> libc::ssize_t {
     let handle = handle as *mut CallbackWrapper<S>;
-    let result = unsafe {
+    unsafe {
         let slice = slice::from_raw_parts_mut(buffer as *mut u8, size as usize);
-        (*handle).inner.read(slice)
-    };
-    if !result.is_err() {
-        result.unwrap() as libc::ssize_t
-    } else {
-        unsafe {
-            let err = result.err().and_then(|err| err.raw_os_error()).unwrap_or_else(|| {
+        (*handle).inner.read(slice).map(|n| n as libc::ssize_t).unwrap_or_else(|err| {
+            let err = err.raw_os_error().unwrap_or_else(|| {
                 sys::gpgme_err_code_to_errno(sys::GPG_ERR_EIO)
             });
             sys::gpgme_err_set_errno(err);
-            -1 as libc::ssize_t
-        }
+            -1
+        })
     }
 }
 
@@ -79,20 +75,15 @@ extern fn write_callback<S: Write>(handle: *mut libc::c_void,
                                    buffer: *const libc::c_void,
                                    size: libc::size_t) -> libc::ssize_t {
     let handle = handle as *mut CallbackWrapper<S>;
-    let result = unsafe {
+    unsafe {
         let slice = slice::from_raw_parts(buffer as *const u8, size as usize);
-        (*handle).inner.write(slice)
-    };
-    if !result.is_err() {
-        result.unwrap() as libc::ssize_t
-    } else {
-        unsafe {
-            let err = result.err().and_then(|err| err.raw_os_error()).unwrap_or_else(|| {
+        (*handle).inner.write(slice).map(|n| n as libc::ssize_t).unwrap_or_else(|err| {
+            let err = err.raw_os_error().unwrap_or_else(|| {
                 sys::gpgme_err_code_to_errno(sys::GPG_ERR_EIO)
             });
             sys::gpgme_err_set_errno(err);
-            -1 as libc::ssize_t
-        }
+            -1
+        })
     }
 }
 
@@ -108,30 +99,24 @@ extern fn seek_callback<S: Seek>(handle: *mut libc::c_void,
             unsafe {
                 sys::gpgme_err_set_errno(sys::gpgme_err_code_to_errno(sys::GPG_ERR_EINVAL));
             }
-            return -1;
+            return -1 as libc::off_t;
         },
     };
-    let result = unsafe {
-        (*handle).inner.seek(pos)
-    };
-    if !result.is_err() {
-        result.unwrap() as libc::off_t
-    } else {
-        unsafe {
-            let err = result.err().and_then(|err| err.raw_os_error()).unwrap_or_else(|| {
+    unsafe {
+        (*handle).inner.seek(pos).map(|n| n as libc::off_t).unwrap_or_else(|err| {
+            let err = err.raw_os_error().unwrap_or_else(|| {
                 sys::gpgme_err_code_to_errno(sys::GPG_ERR_EIO)
             });
             sys::gpgme_err_set_errno(err);
-            -1 as libc::ssize_t
-        }
+            -1
+        })
     }
 }
 
 extern fn release_callback<S>(handle: *mut libc::c_void) {
-    let handle: Box<CallbackWrapper<S>> = unsafe {
-        mem::transmute(handle)
-    };
-    drop(handle);
+    unsafe {
+        drop(mem::transmute::<_, Box<CallbackWrapper<S>>>(handle));
+    }
 }
 
 #[derive(Debug)]
@@ -216,7 +201,7 @@ impl<'a> Data<'a> {
 
     unsafe fn from_callbacks<S>(cbs: sys::gpgme_data_cbs, src: S) -> StdResult<Data<'static>, S> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
-        let mut src = Box::new(CallbackWrapper::<S> {
+        let mut src = Box::new(CallbackWrapper {
             cbs: cbs,
             inner: src,
         });
@@ -226,8 +211,7 @@ impl<'a> Data<'a> {
         if result == 0 {
             Ok(Data { raw: data, phantom: PhantomData })
         } else {
-            let src: Box<S> = mem::transmute(ptr);
-            Err(*src)
+            Err(mem::transmute::<_, Box<CallbackWrapper<S>>>(ptr).inner)
         }
     }
 
@@ -327,7 +311,8 @@ impl<'a> Data<'a> {
 
     pub fn encoding(&self) -> DataEncoding {
         unsafe {
-            DataEncoding::from_u32(sys::gpgme_data_get_encoding(self.raw) as u32).unwrap()
+            DataEncoding::from_u32(sys::gpgme_data_get_encoding(self.raw) as u32)
+                .unwrap_or(DataEncoding::Unknown)
         }
     }
 
@@ -345,7 +330,8 @@ impl<'a> Data<'a> {
 
     pub fn identify(&mut self) -> DataType {
         unsafe {
-            DataType::from_u32(sys::gpgme_data_identify(self.raw, 0) as u32).unwrap()
+            DataType::from_u32(sys::gpgme_data_identify(self.raw, 0) as u32)
+                .unwrap_or(DataType::Unknown)
         }
     }
 

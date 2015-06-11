@@ -55,7 +55,7 @@ impl Error {
             if sys::gpgme_strerror_r(self.err, p, buf.len() as libc::size_t) < 0 {
                 panic!("gpgme_strerror_r failure")
             }
-            str::from_utf8(CStr::from_ptr(p as *const _).to_bytes()).unwrap().to_string()
+            str::from_utf8(CStr::from_ptr(p as *const _).to_bytes()).unwrap().to_owned()
         }
     }
 }
@@ -74,7 +74,7 @@ impl fmt::Display for Error {
 
 impl From<NulError> for Error {
     fn from(_: NulError) -> Error {
-        Error::from_source(sys::GPG_ERR_SOURCE_USER_1,
+        Error::from_source(sys::GPG_ERR_SOURCE_GPGME,
                            sys::GPG_ERR_INV_VALUE)
     }
 }
