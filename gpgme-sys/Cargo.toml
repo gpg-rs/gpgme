@@ -1,6 +1,7 @@
 [package]
 name = "gpgme-sys"
 description = "Raw bindings for gpgme"
+repository = "https://github.com/johnschug/rust-gpgme"
 version = "0.1.0"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
@@ -12,4 +13,7 @@ path = "lib.rs"
 [dependencies]
 libc = "0.1"
 enum_primitive = "*"
-libgpg-error-sys = { path = "../libgpg-error-sys" }
+
+[dependencies.libgpg-error-sys]
+path = "../libgpg-error-sys"
+version = "0.1.0"
