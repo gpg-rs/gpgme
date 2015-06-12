@@ -24,29 +24,29 @@ enum_from_primitive! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     pub enum DataEncoding {
         Unknown = -1,
-        None = 0,
-        Binary = 1,
-        Base64 = 2,
-        Armor = 3,
-        Url = 4,
-        UrlEsc = 5,
-        Url0 = 6,
+        None = sys::GPGME_DATA_ENCODING_NONE as isize,
+        Binary = sys::GPGME_DATA_ENCODING_BINARY as isize,
+        Base64 = sys::GPGME_DATA_ENCODING_BASE64 as isize,
+        Armor = sys::GPGME_DATA_ENCODING_ARMOR as isize,
+        Url = sys::GPGME_DATA_ENCODING_URL as isize,
+        UrlEsc = sys::GPGME_DATA_ENCODING_URLESC as isize,
+        Url0 = sys::GPGME_DATA_ENCODING_URL0 as isize,
     }
 }
 
 enum_from_primitive! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     pub enum DataType {
-        Invalid = 0,
-        Unknown = 1,
-        PgpSigned = 0x10,
-        PgpOther = 0x12,
-        PgpKey = 0x13,
-        CmsSigned = 0x20,
-        CmsEncrypted = 0x21,
-        CmsOther = 0x22,
-        X509Cert = 0x23,
-        Pkcs12 = 0x24,
+        Unknown = sys::GPGME_DATA_TYPE_UNKNOWN as isize,
+        Invalid = sys::GPGME_DATA_TYPE_INVALID as isize,
+        PgpSigned = sys::GPGME_DATA_TYPE_PGP_SIGNED as isize,
+        PgpOther = sys::GPGME_DATA_TYPE_PGP_OTHER as isize,
+        PgpKey = sys::GPGME_DATA_TYPE_PGP_KEY as isize,
+        CmsSigned = sys::GPGME_DATA_TYPE_CMS_SIGNED as isize,
+        CmsEncrypted = sys::GPGME_DATA_TYPE_CMS_ENCRYPTED as isize,
+        CmsOther = sys::GPGME_DATA_TYPE_CMS_OTHER as isize,
+        X509Cert = sys::GPGME_DATA_TYPE_X509_CERT as isize,
+        Pkcs12 = sys::GPGME_DATA_TYPE_PKCS12 as isize,
     }
 }
 
@@ -318,8 +318,7 @@ impl<'a> Data<'a> {
 
     pub fn set_encoding(&mut self, enc: DataEncoding) -> Result<()> {
         let result = unsafe {
-            sys::gpgme_data_set_encoding(
-                self.raw, sys::gpgme_data_encoding_t::from_u32(enc as u32).unwrap())
+            sys::gpgme_data_set_encoding( self.raw, enc as sys::gpgme_data_encoding_t)
         };
         if result == 0 {
             Ok(())

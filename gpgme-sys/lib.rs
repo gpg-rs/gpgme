@@ -2,8 +2,6 @@
 #![allow(unused_imports)]
 
 extern crate libc;
-#[macro_use]
-extern crate enum_primitive;
 extern crate libgpg_error_sys;
 
 pub use self::consts::*;

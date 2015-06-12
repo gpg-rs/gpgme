@@ -14,12 +14,12 @@ use ops::KeyListMode;
 enum_from_primitive! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     pub enum Validity {
-        Unknown,
-        Undefined,
-        Never,
-        Marginal,
-        Full,
-        Ultimate,
+        Unknown = sys::GPGME_VALIDITY_UNKNOWN as isize,
+        Undefined = sys::GPGME_VALIDITY_UNDEFINED as isize,
+        Never = sys::GPGME_VALIDITY_NEVER as isize,
+        Marginal = sys::GPGME_VALIDITY_MARGINAL as isize,
+        Full = sys::GPGME_VALIDITY_FULL as isize,
+        Ultimate = sys::GPGME_VALIDITY_ULTIMATE as isize,
     }
 }
 
@@ -40,22 +40,26 @@ enum_from_primitive! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     pub enum KeyAlgorithm {
         Unknown         = -1,
-        Rsa             = 1,
-        RsaEncrypt      = 2,
-        RsaSign         = 3,
-        ElGamalEncrypt  = 16,
-        Dsa             = 17,
-        ElGamal         = 20,
-        Ecdsa           = 301,
-        Ecdh            = 302,
+        Rsa             = sys::GPGME_PK_RSA as isize,
+        RsaEncrypt      = sys::GPGME_PK_RSA_E as isize,
+        RsaSign         = sys::GPGME_PK_RSA_S as isize,
+        ElGamalEncrypt  = sys::GPGME_PK_ELG_E as isize,
+        Dsa             = sys::GPGME_PK_DSA as isize,
+        ElGamal         = sys::GPGME_PK_ELG as isize,
+        Ecdsa           = sys::GPGME_PK_ECDSA as isize,
+        Ecdh            = sys::GPGME_PK_ECDH as isize,
     }
 }
 
 impl fmt::Display for KeyAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let name = unsafe {
-            let algo = sys::gpgme_pubkey_algo_t::from_u32(*self as u32);
-            algo.map(|a| CStr::from_ptr(sys::gpgme_pubkey_algo_name(a) as *const _).to_bytes())
+            let result = sys::gpgme_pubkey_algo_name(*self as sys::gpgme_pubkey_algo_t);
+            if !result.is_null() {
+                Some(CStr::from_ptr(result as *const _).to_bytes())
+            } else {
+                None
+            }
         };
         write!(f, "{}", name.and_then(|b| str::from_utf8(b).ok()).unwrap_or("Unknown"))
     }
@@ -65,28 +69,32 @@ enum_from_primitive! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     pub enum HashAlgorithm {
         Unknown       = -1,
-        None          = 0,
-        Md5           = 1,
-        Sha1          = 2,
-        Rmd160        = 3,
-        Md2           = 5,
-        Tiger         = 6,
-        Haval         = 7,
-        Sha256        = 8,
-        Sha384        = 9,
-        Sha512        = 10,
-        Md4           = 301,
-        Crc32         = 302,
-        Crc32Rfc1510  = 303,
-        Crc24Rfc2440  = 304,
+        None          = sys::GPGME_MD_NONE as isize,
+        Md2           = sys::GPGME_MD_MD2 as isize,
+        Md4           = sys::GPGME_MD_MD4 as isize,
+        Md5           = sys::GPGME_MD_MD5 as isize,
+        Sha1          = sys::GPGME_MD_SHA1 as isize,
+        Sha256        = sys::GPGME_MD_SHA256 as isize,
+        Sha384        = sys::GPGME_MD_SHA384 as isize,
+        Sha512        = sys::GPGME_MD_SHA512 as isize,
+        Rmd160        = sys::GPGME_MD_RMD160 as isize,
+        Tiger         = sys::GPGME_MD_TIGER as isize,
+        Haval         = sys::GPGME_MD_HAVAL as isize,
+        Crc32         = sys::GPGME_MD_CRC32 as isize,
+        Crc32Rfc1510  = sys::GPGME_MD_CRC32_RFC1510 as isize,
+        Crc24Rfc2440  = sys::GPGME_MD_CRC24_RFC2440 as isize,
     }
 }
 
 impl fmt::Display for HashAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let name = unsafe {
-            let algo = sys::gpgme_hash_algo_t::from_u32(*self as u32);
-            algo.map(|a| CStr::from_ptr(sys::gpgme_hash_algo_name(a) as *const _).to_bytes())
+            let result = sys::gpgme_hash_algo_name(*self as sys::gpgme_hash_algo_t);
+            if !result.is_null() {
+                Some(CStr::from_ptr(result as *const _).to_bytes())
+            } else {
+                None
+            }
         };
         write!(f, "{}", name.and_then(|b| str::from_utf8(b).ok()).unwrap_or("Unknown"))
     }

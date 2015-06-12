@@ -5,6 +5,7 @@ repository = "https://github.com/johnschug/rust-gpgme"
 version = "0.1.0"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
+keywords = ["gpg"]
 
 [lib]
 name = "libgpg_error_sys"

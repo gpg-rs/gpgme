@@ -18,22 +18,26 @@ use GpgMe;
 enum_from_primitive! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq)]
     pub enum Protocol {
-        OpenPgp = 0,
-        Cms = 1,
-        GpgConf = 2,
-        Assuan = 3,
-        G13 = 4,
-        UiServer = 5,
-        Default  = 254,
-        Unknown = 255,
+        OpenPgp = sys::GPGME_PROTOCOL_OpenPGP as isize,
+        Cms = sys::GPGME_PROTOCOL_CMS as isize,
+        GpgConf = sys::GPGME_PROTOCOL_GPGCONF as isize,
+        Assuan = sys::GPGME_PROTOCOL_ASSUAN as isize,
+        G13 = sys::GPGME_PROTOCOL_G13 as isize,
+        UiServer = sys::GPGME_PROTOCOL_UISERVER as isize,
+        Default  = sys::GPGME_PROTOCOL_DEFAULT as isize,
+        Unknown = sys::GPGME_PROTOCOL_UNKNOWN as isize,
     }
 }
 
 impl fmt::Display for Protocol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let proto = sys::gpgme_protocol_t::from_u32(*self as u32);
         let name = unsafe {
-            proto.map(|p| CStr::from_ptr(sys::gpgme_get_protocol_name(p) as *const _).to_bytes())
+            let result = sys::gpgme_get_protocol_name(*self as sys::gpgme_protocol_t);
+            if !result.is_null() {
+                Some(CStr::from_ptr(result as *const _).to_bytes())
+            } else {
+                None
+            }
         };
         write!(f, "{}", name.and_then(|b| str::from_utf8(b).ok()).unwrap_or("Unknown"))
     }
@@ -103,7 +107,7 @@ impl Context {
 
     pub fn set_protocol(&mut self, proto: Protocol) -> Result<()> {
         let result = unsafe {
-            sys::gpgme_set_protocol(self.raw, sys::gpgme_protocol_t::from_u32(proto as u32).unwrap())
+            sys::gpgme_set_protocol(self.raw, proto as sys::gpgme_protocol_t)
         };
         if result == 0 {
             Ok(())
@@ -331,9 +335,9 @@ impl Context {
 
     pub fn sign(&mut self, mode: ops::SignMode, plain: &mut Data,
                 signature: &mut Data) -> Result<ops::SignResult> {
-        let mode = sys::gpgme_sig_mode_t::from_u32(mode as u32).unwrap();
         let result = unsafe {
-            sys::gpgme_op_sign(self.raw, plain.as_raw(), signature.as_raw(), mode)
+            sys::gpgme_op_sign(self.raw, plain.as_raw(), signature.as_raw(),
+                               mode as sys::gpgme_sig_mode_t)
         };
         if result == 0 {
             Ok(self.sign_result().unwrap())
@@ -610,15 +614,6 @@ impl<'a> SignersIter<'a> {
 impl<'a> Iterator for SignersIter<'a> {
     type Item = Key;
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.count - self.current;
-        (size, Some(size))
-    }
-
-    fn count(self) -> usize {
-        self.size_hint().0
-    }
-
     fn next(&mut self) -> Option<Self::Item> {
         if self.current < self.count {
             unsafe {
@@ -629,6 +624,15 @@ impl<'a> Iterator for SignersIter<'a> {
         } else {
             None
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let size = self.count - self.current;
+        (size, Some(size))
+    }
+
+    fn count(self) -> usize {
+        self.size_hint().0
     }
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {

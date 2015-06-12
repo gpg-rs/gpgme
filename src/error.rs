@@ -1,4 +1,4 @@
-use std::error::Error as StdError;
+use std::error;
 use std::ffi::{CStr, NulError};
 use std::fmt;
 use std::str;
@@ -41,10 +41,14 @@ impl Error {
         sys::gpgme_err_code(self.err)
     }
 
-    pub fn source(&self) -> &'static str {
+    pub fn source(&self) -> Option<&'static str> {
         unsafe {
-            let src = CStr::from_ptr(sys::gpgme_strsource(self.err) as *const _);
-            str::from_utf8(src.to_bytes()).unwrap()
+            let result = sys::gpgme_strsource(self.err);
+            if !result.is_null() {
+                str::from_utf8(CStr::from_ptr(result as *const _).to_bytes()).ok()
+            } else {
+                None
+            }
         }
     }
 
@@ -60,7 +64,7 @@ impl Error {
     }
 }
 
-impl StdError for Error {
+impl error::Error for Error {
     fn description(&self) -> &str {
         "gpgme error"
     }
