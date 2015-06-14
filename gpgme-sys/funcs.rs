@@ -7,8 +7,8 @@ pub use libgpg_error_sys::gpg_err_make as gpgme_err_make;
 pub use libgpg_error_sys::gpg_err_code as gpgme_err_code;
 pub use libgpg_error_sys::gpg_err_source as gpgme_err_source;
 
-use super::consts::*;
-use super::types::*;
+use consts::*;
+use types::*;
 
 #[link(name = "gpgme")]
 extern {
@@ -28,6 +28,8 @@ extern {
 
     pub fn gpgme_check_version(req_version: *const c_char) -> *const c_char;
     pub fn gpgme_check_version_internal(req_version: *const c_char, offset_sig_validity: size_t) -> *const c_char;
+
+    pub fn gpgme_get_dirinfo(what: *const c_char) -> *const c_char;
 
     pub fn gpgme_get_engine_info(engine_info: *mut gpgme_engine_info_t) -> gpgme_error_t;
     pub fn gpgme_set_engine_info(proto: gpgme_protocol_t, file_name: *const c_char, home_dir: *const c_char) -> gpgme_error_t;
@@ -72,7 +74,7 @@ extern {
     pub fn gpgme_set_locale(ctx: gpgme_ctx_t, category: c_int, value: *const c_char) -> gpgme_error_t;
 
     pub fn gpgme_ctx_get_engine_info(ctx: gpgme_ctx_t) -> gpgme_engine_info_t;
-    pub fn gpgme_ctx_set_engine_info(ctx: gpgme_ctx_t, proto: gpgme_protocol_t, file_name: *const char, home_dir: *const char) -> gpgme_error_t;
+    pub fn gpgme_ctx_set_engine_info(ctx: gpgme_ctx_t, proto: gpgme_protocol_t, file_name: *const c_char, home_dir: *const c_char) -> gpgme_error_t;
 
     pub fn gpgme_pubkey_algo_name(algo: gpgme_pubkey_algo_t) -> *const c_char;
     pub fn gpgme_hash_algo_name(algo: gpgme_hash_algo_t) -> *const c_char;

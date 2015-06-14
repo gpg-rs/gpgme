@@ -7,8 +7,8 @@ use enum_primitive::FromPrimitive;
 
 use gpgme_sys as sys;
 
+use Protocol;
 use error::Error;
-use context::Protocol;
 use ops::KeyListMode;
 
 enum_from_primitive! {
@@ -170,13 +170,13 @@ impl Key {
 
     pub fn protocol(&self) -> Protocol {
         unsafe {
-            Protocol::from_u32((*self.raw).protocol as u32).unwrap_or(Protocol::Unknown)
+            Protocol::from_u64((*self.raw).protocol as u64).unwrap_or(Protocol::Unknown)
         }
     }
 
     pub fn owner_trust(&self) -> Validity {
         unsafe {
-            Validity::from_u32((*self.raw).owner_trust as u32).unwrap_or(Validity::Unknown)
+            Validity::from_u64((*self.raw).owner_trust as u64).unwrap_or(Validity::Unknown)
         }
     }
 
@@ -297,7 +297,7 @@ impl<'a> SubKey<'a> {
 
     pub fn algorithm(&self) -> KeyAlgorithm {
         unsafe {
-            KeyAlgorithm::from_u32((*self.raw).pubkey_algo as u32).unwrap_or(KeyAlgorithm::Unknown)
+            KeyAlgorithm::from_u64((*self.raw).pubkey_algo as u64).unwrap_or(KeyAlgorithm::Unknown)
         }
     }
 
@@ -421,7 +421,7 @@ impl<'a> UserId<'a> {
 
     pub fn validity(&self) -> Validity {
         unsafe {
-            Validity::from_u32((*self.raw).validity as u32).unwrap_or(Validity::Unknown)
+            Validity::from_u64((*self.raw).validity as u64).unwrap_or(Validity::Unknown)
         }
     }
 
@@ -576,7 +576,7 @@ impl<'a> KeySignature<'a> {
 
     pub fn key_algorithm(&self) -> KeyAlgorithm {
         unsafe {
-            KeyAlgorithm::from_u32((*self.raw).pubkey_algo as u32).unwrap_or(KeyAlgorithm::Unknown)
+            KeyAlgorithm::from_u64((*self.raw).pubkey_algo as u64).unwrap_or(KeyAlgorithm::Unknown)
         }
     }
 

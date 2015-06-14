@@ -1,7 +1,5 @@
-use std::ffi::{CStr, CString};
-use std::fmt;
+use std::ffi::CString;
 use std::ptr;
-use std::str;
 
 use libc;
 
@@ -9,49 +7,22 @@ use enum_primitive::FromPrimitive;
 
 use gpgme_sys as sys;
 
+use {Protocol, LibToken};
 use error::{Result, Error};
 use keys::Key;
+use engine::{EngineInfo, EngineInfoIter};
 use data::Data;
 use ops;
-use GpgMe;
-
-enum_from_primitive! {
-    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-    pub enum Protocol {
-        OpenPgp = sys::GPGME_PROTOCOL_OpenPGP as isize,
-        Cms = sys::GPGME_PROTOCOL_CMS as isize,
-        GpgConf = sys::GPGME_PROTOCOL_GPGCONF as isize,
-        Assuan = sys::GPGME_PROTOCOL_ASSUAN as isize,
-        G13 = sys::GPGME_PROTOCOL_G13 as isize,
-        UiServer = sys::GPGME_PROTOCOL_UISERVER as isize,
-        Default  = sys::GPGME_PROTOCOL_DEFAULT as isize,
-        Unknown = sys::GPGME_PROTOCOL_UNKNOWN as isize,
-    }
-}
-
-impl fmt::Display for Protocol {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let name = unsafe {
-            let result = sys::gpgme_get_protocol_name(*self as sys::gpgme_protocol_t);
-            if !result.is_null() {
-                Some(CStr::from_ptr(result as *const _).to_bytes())
-            } else {
-                None
-            }
-        };
-        write!(f, "{}", name.and_then(|b| str::from_utf8(b).ok()).unwrap_or("Unknown"))
-    }
-}
 
 /// A context for cryptographic operations
 #[derive(Debug)]
 pub struct Context {
     raw: sys::gpgme_ctx_t,
-    lib: GpgMe,
+    lib: LibToken,
 }
 
 impl Context {
-    pub unsafe fn from_raw(ctx: sys::gpgme_ctx_t, lib: GpgMe) -> Context {
+    pub unsafe fn from_raw(ctx: sys::gpgme_ctx_t, lib: LibToken) -> Context {
         Context { raw: ctx, lib: lib }
     }
 
@@ -59,7 +30,7 @@ impl Context {
         self.raw
     }
 
-    pub fn new(lib: GpgMe) -> Result<Context> {
+    pub fn new(lib: LibToken) -> Result<Context> {
         let mut ctx: sys::gpgme_ctx_t = ptr::null_mut();
         let result = unsafe {
             sys::gpgme_new(&mut ctx)
@@ -71,7 +42,7 @@ impl Context {
         }
     }
 
-    pub fn owner(&self) -> &GpgMe {
+    pub fn token(&self) -> &LibToken {
         &self.lib
     }
 
@@ -101,13 +72,47 @@ impl Context {
 
     pub fn protocol(&self) -> Protocol {
         unsafe {
-            Protocol::from_u32(sys::gpgme_get_protocol(self.raw) as u32).unwrap_or(Protocol::Unknown)
+            Protocol::from_u64(sys::gpgme_get_protocol(self.raw) as u64)
+                .unwrap_or(Protocol::Unknown)
         }
     }
 
     pub fn set_protocol(&mut self, proto: Protocol) -> Result<()> {
         let result = unsafe {
             sys::gpgme_set_protocol(self.raw, proto as sys::gpgme_protocol_t)
+        };
+        if result == 0 {
+            Ok(())
+        } else {
+            Err(Error::new(result))
+        }
+    }
+
+    pub fn engine_info(&self) -> EngineInfoIter<Context> {
+        unsafe {
+            EngineInfoIter::from_list(sys::gpgme_ctx_get_engine_info(self.raw))
+        }
+    }
+
+    pub fn get_engine_info(&self, proto: Protocol) -> Option<EngineInfo<Context>> {
+        self.engine_info().find(|info| info.protocol() == proto)
+    }
+
+    pub fn set_engine_info(&mut self, proto: Protocol, file_name: Option<String>,
+                           home_dir: Option<String>) -> Result<()> {
+        let file_name = match file_name {
+            Some(v) => Some(try!(CString::new(v))),
+            None => None,
+        };
+        let home_dir = match home_dir {
+            Some(v) => Some(try!(CString::new(v))),
+            None => None,
+        };
+        let result = unsafe {
+            let file_name = file_name.map_or(ptr::null(), |s| s.as_ptr());
+            let home_dir = home_dir.map_or(ptr::null(), |s| s.as_ptr());
+            sys::gpgme_ctx_set_engine_info(self.raw, proto as sys::gpgme_protocol_t,
+                                           file_name, home_dir)
         };
         if result == 0 {
             Ok(())
@@ -125,7 +130,8 @@ impl Context {
     pub fn set_key_list_mode(&mut self, mask: ops::KeyListMode) -> Result<()> {
         let result = unsafe {
             let old = sys::gpgme_get_keylist_mode(self.raw);
-            sys::gpgme_set_keylist_mode(self.raw, (old & !ops::KeyListMode::all().bits()) | mask.bits())
+            sys::gpgme_set_keylist_mode(self.raw, (old & !ops::KeyListMode::all().bits()) |
+                                        mask.bits())
         };
         if result == 0 {
             Ok(())
@@ -389,10 +395,9 @@ impl Context {
     /// # Examples
     ///
     /// ```no_run
-    /// use gpgme::{self, Context, Data, ops};
+    /// use gpgme::{self, Data, ops};
     ///
-    /// let gpgme = gpgme::init().unwrap();
-    /// let mut ctx = Context::new(gpgme).unwrap();
+    /// let mut ctx = gpgme::init().unwrap().create_context().unwrap();
     /// let key = ctx.find_key("some pattern").unwrap();
     /// let (mut plain, mut cipher) = (Data::new().unwrap(), Data::new().unwrap());
     /// ctx.encrypt(Some(&key), ops::EncryptFlags::empty(), &mut plain, &mut cipher).unwrap();
@@ -435,10 +440,9 @@ impl Context {
     ///
     /// ```no_run
     /// use std::fs::File;
-    /// use gpgme::{self, Context, Data, ops};
+    /// use gpgme::{self, Data, ops};
     ///
-    /// let gpgme = gpgme::init().unwrap();
-    /// let mut ctx = Context::new(gpgme).unwrap();
+    /// let mut ctx = gpgme::init().unwrap().create_context().unwrap();
     /// let mut cipher = Data::load(&"some file").unwrap();
     /// let mut plain = Data::new().unwrap();
     /// ctx.decrypt(&mut cipher, &mut plain).unwrap();
@@ -471,10 +475,9 @@ impl Context {
     /// # Examples
     ///
     /// ```no_run
-    /// use gpgme::{self, Context, Data, ops};
+    /// use gpgme::{self, Data, ops};
     ///
-    /// let gpgme = gpgme::init().unwrap();
-    /// let mut ctx = Context::new(gpgme).unwrap();
+    /// let mut ctx = gpgme::init().unwrap().create_context().unwrap();
     /// let key = ctx.find_key("some pattern").unwrap();
     /// let (mut plain, mut cipher) = (Data::new().unwrap(), Data::new().unwrap());
     /// ctx.encrypt_and_sign(Some(&key), ops::EncryptFlags::empty(),
@@ -506,10 +509,9 @@ impl Context {
     ///
     /// ```no_run
     /// use std::fs::File;
-    /// use gpgme::{self, Context, Data, ops};
+    /// use gpgme::{self, Data, ops};
     ///
-    /// let gpgme = gpgme::init().unwrap();
-    /// let mut ctx = Context::new(gpgme).unwrap();
+    /// let mut ctx = gpgme::init().unwrap().create_context().unwrap();
     /// let mut cipher = Data::load(&"some file").unwrap();
     /// let mut plain = Data::new().unwrap();
     /// ctx.decrypt_and_verify(&mut cipher, &mut plain).unwrap();

@@ -364,7 +364,7 @@ impl<'a> Recipient<'a> {
 
     pub fn algorithm(&self) -> KeyAlgorithm {
         unsafe {
-            KeyAlgorithm::from_u32((*self.raw).pubkey_algo as u32).unwrap_or(KeyAlgorithm::Unknown)
+            KeyAlgorithm::from_u64((*self.raw).pubkey_algo as u64).unwrap_or(KeyAlgorithm::Unknown)
         }
     }
 
@@ -415,7 +415,7 @@ impl<'a> NewSignature<'a> {
 
     pub fn kind(&self) -> SignMode {
         unsafe {
-            SignMode::from_u32((*self.raw).sig_type as u32).unwrap_or(SignMode::Unknown)
+            SignMode::from_u64((*self.raw).sig_type as u64).unwrap_or(SignMode::Unknown)
         }
     }
 
@@ -425,13 +425,13 @@ impl<'a> NewSignature<'a> {
 
     pub fn key_algorithm(&self) -> KeyAlgorithm {
         unsafe {
-            KeyAlgorithm::from_u32((*self.raw).pubkey_algo as u32).unwrap_or(KeyAlgorithm::Unknown)
+            KeyAlgorithm::from_u64((*self.raw).pubkey_algo as u64).unwrap_or(KeyAlgorithm::Unknown)
         }
     }
 
     pub fn hash_algorithm(&self) -> HashAlgorithm {
         unsafe {
-            HashAlgorithm::from_u32((*self.raw).hash_algo as u32).unwrap_or(HashAlgorithm::Unknown)
+            HashAlgorithm::from_u64((*self.raw).hash_algo as u64).unwrap_or(HashAlgorithm::Unknown)
         }
     }
 }
@@ -517,7 +517,7 @@ impl<'a> Signature<'a> {
 
     pub fn validity(&self) -> Validity {
         unsafe {
-            Validity::from_u32((*self.raw).validity as u32).unwrap_or(Validity::Unknown)
+            Validity::from_u64((*self.raw).validity as u64).unwrap_or(Validity::Unknown)
         }
     }
 
@@ -527,13 +527,13 @@ impl<'a> Signature<'a> {
 
     pub fn key_algorithm(&self) -> KeyAlgorithm {
         unsafe {
-            KeyAlgorithm::from_u32((*self.raw).pubkey_algo as u32).unwrap_or(KeyAlgorithm::Unknown)
+            KeyAlgorithm::from_u64((*self.raw).pubkey_algo as u64).unwrap_or(KeyAlgorithm::Unknown)
         }
     }
 
     pub fn hash_algorithm(&self) -> HashAlgorithm {
         unsafe {
-            HashAlgorithm::from_u32((*self.raw).hash_algo as u32).unwrap_or(HashAlgorithm::Unknown)
+            HashAlgorithm::from_u64((*self.raw).hash_algo as u64).unwrap_or(HashAlgorithm::Unknown)
         }
     }
 
@@ -553,7 +553,7 @@ impl<'a> Signature<'a> {
 
     pub fn pka_trust(&self) -> PkaTrust {
         unsafe {
-            PkaTrust::from_u32((*self.raw).pka_trust() as u32).unwrap_or(PkaTrust::Unknown)
+            PkaTrust::from_u64((*self.raw).pka_trust() as u64).unwrap_or(PkaTrust::Unknown)
         }
     }
 

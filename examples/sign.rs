@@ -9,7 +9,7 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Context, Data, Protocol};
+use gpgme::{Data, Protocol};
 use gpgme::ops;
 
 fn print_usage(program: &str, opts: &Options) {
@@ -76,8 +76,7 @@ fn main() {
         ops::SignMode::Normal
     };
 
-    let gpgme = gpgme::init().unwrap();
-    let mut ctx = Context::new(gpgme).unwrap();
+    let mut ctx = gpgme::init().unwrap().create_context().unwrap();
     ctx.set_protocol(proto).unwrap();
     ctx.set_armor(true);
 

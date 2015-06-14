@@ -10,7 +10,7 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Context, Data, Protocol};
+use gpgme::{Data, Protocol};
 use gpgme::ops;
 
 fn print_usage(program: &str, opts: &Options) {
@@ -111,8 +111,7 @@ fn main() {
         Protocol::OpenPgp
     };
 
-    let gpgme = gpgme::init().unwrap();
-    let mut ctx = Context::new(gpgme).unwrap();
+    let mut ctx = gpgme::init().unwrap().create_context().unwrap();
     ctx.set_protocol(proto).unwrap();
 
     let mut signature = {
@@ -140,7 +139,7 @@ fn main() {
             Ok(file) => file,
             Err(err) => {
                 writeln!(io::stderr(), "{}: can't open '{}': {}",
-                         &program, &matches.free[0], err);
+                         &program, &matches.free[1], err);
                 exit(1);
             }
         };

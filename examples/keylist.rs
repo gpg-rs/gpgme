@@ -9,7 +9,7 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Context, Protocol};
+use gpgme::Protocol;
 use gpgme::ops;
 
 fn print_usage(program: &str, opts: &Options) {
@@ -72,8 +72,7 @@ fn main() {
         mode.insert(ops::KEY_LIST_MODE_VALIDATE);
     }
 
-    let gpgme = gpgme::init().unwrap();
-    let mut ctx = Context::new(gpgme).unwrap();
+    let mut ctx = gpgme::init().unwrap().create_context().unwrap();
     ctx.set_protocol(proto).unwrap();
     ctx.set_key_list_mode(mode).unwrap();
 

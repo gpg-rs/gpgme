@@ -311,7 +311,7 @@ impl<'a> Data<'a> {
 
     pub fn encoding(&self) -> DataEncoding {
         unsafe {
-            DataEncoding::from_u32(sys::gpgme_data_get_encoding(self.raw) as u32)
+            DataEncoding::from_u64(sys::gpgme_data_get_encoding(self.raw) as u64)
                 .unwrap_or(DataEncoding::Unknown)
         }
     }
@@ -329,7 +329,7 @@ impl<'a> Data<'a> {
 
     pub fn identify(&mut self) -> DataType {
         unsafe {
-            DataType::from_u32(sys::gpgme_data_identify(self.raw, 0) as u32)
+            DataType::from_u64(sys::gpgme_data_identify(self.raw, 0) as u64)
                 .unwrap_or(DataType::Unknown)
         }
     }

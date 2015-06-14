@@ -4,7 +4,7 @@ extern crate libgpg_error_sys;
 
 use libc::{c_void, c_char, c_uchar, c_short, c_ushort, c_int, c_uint, c_long, c_ulong, ssize_t, size_t};
 
-use super::consts::*;
+use consts::*;
 
 pub use libgpg_error_sys::gpg_error_t as gpgme_error_t;
 
