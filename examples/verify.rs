@@ -162,12 +162,11 @@ fn main() {
         None
     };
 
-    let err = ctx.verify(&mut signature, signed.as_mut(), plain.as_mut()).err();
-    if let Some(result) = ctx.verify_result() {
-        print_result(&result);
-    }
-    if let Some(err) = err {
-        writeln!(io::stderr(), "{}: verification failed: {}", &program, err);
-        exit(1);
+    match ctx.verify(&mut signature, signed.as_mut(), plain.as_mut()) {
+        Ok(result) => print_result(&result),
+        Err(err) => {
+            writeln!(io::stderr(), "{}: verification failed: {}", &program, err);
+            exit(1);
+        },
     }
 }

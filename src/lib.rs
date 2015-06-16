@@ -16,7 +16,7 @@ use gpgme_sys as sys;
 
 pub use self::error::{Result, Error, ErrorCode};
 pub use self::engine::{EngineInfo, EngineInfoGuard};
-pub use self::context::Context;
+pub use self::context::{Context, Keys};
 pub use self::keys::{Validity, KeyAlgorithm, HashAlgorithm, Key, KeySignature, SubKey, UserId};
 pub use self::data::{DataEncoding, DataType, Data};
 

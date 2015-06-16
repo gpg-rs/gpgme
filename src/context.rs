@@ -1,4 +1,5 @@
 use std::ffi::CString;
+use std::mem;
 use std::ptr;
 
 use libc;
@@ -140,12 +141,12 @@ impl Context {
         }
     }
 
-    pub fn keys(&mut self) -> Result<KeyIter> {
-        KeyIter::new(self, None::<String>, false)
+    pub fn keys(&mut self) -> Result<Keys> {
+        Keys::new(self, None::<String>, false)
     }
 
-    pub fn secret_keys(&mut self) -> Result<KeyIter> {
-        KeyIter::new(self, None::<String>, true)
+    pub fn secret_keys(&mut self) -> Result<Keys> {
+        Keys::new(self, None::<String>, true)
     }
 
     pub fn find_key<S: Into<String>>(&self, pattern: S) -> Result<Key> {
@@ -176,14 +177,14 @@ impl Context {
         }
     }
 
-    pub fn find_keys<I>(&mut self, patterns: I) -> Result<KeyIter>
+    pub fn find_keys<I>(&mut self, patterns: I) -> Result<Keys>
             where I: IntoIterator, I::Item: Into<String> {
-        KeyIter::new(self, patterns, false)
+        Keys::new(self, patterns, false)
     }
 
-    pub fn find_secret_keys<I>(&mut self, patterns: I) -> Result<KeyIter>
+    pub fn find_secret_keys<I>(&mut self, patterns: I) -> Result<Keys>
             where I: IntoIterator, I::Item: Into<String> {
-        KeyIter::new(self, patterns, true)
+        Keys::new(self, patterns, true)
     }
 
     pub fn key_list_result(&self) -> Option<ops::KeyListResult> {
@@ -537,13 +538,13 @@ impl Drop for Context {
     }
 }
 
-pub struct KeyIter<'a> {
+pub struct Keys<'a> {
     ctx: &'a mut Context,
 }
 
-impl<'a> KeyIter<'a> {
+impl<'a> Keys<'a> {
     fn new<'b, I>(ctx: &'b mut Context, patterns: I,
-               secret_only: bool) -> Result<KeyIter<'b>>
+               secret_only: bool) -> Result<Keys<'b>>
             where I: IntoIterator, I::Item: Into<String> {
         let mut strings = Vec::new();
         for pattern in patterns.into_iter() {
@@ -552,38 +553,51 @@ impl<'a> KeyIter<'a> {
         let result = match strings.len() {
             0 | 1 => unsafe {
                 let pattern = strings.first().map_or(ptr::null(), |s| s.as_ptr());
-                sys::gpgme_op_keylist_start(ctx.raw, pattern, secret_only as libc::c_int)
+                sys::gpgme_op_keylist_start(ctx.as_raw(), pattern, secret_only as libc::c_int)
             },
             _ => unsafe {
                 let mut ptrs: Vec<_> = strings.iter().map(|s| s.as_ptr()).collect();
                 ptrs.push(ptr::null());
-                sys::gpgme_op_keylist_ext_start(ctx.raw, ptrs.as_mut_ptr(),
+                sys::gpgme_op_keylist_ext_start(ctx.as_raw(), ptrs.as_mut_ptr(),
                                                 secret_only as libc::c_int, 0)
             },
         };
         if result == 0 {
-            Ok(KeyIter { ctx: ctx })
+            Ok(Keys { ctx: ctx })
         } else {
             Err(Error::new(result))
         }
     }
+
+    pub fn result(self) -> Result<ops::KeyListResult> {
+        let result = unsafe {
+            sys::gpgme_op_keylist_end(self.ctx.as_raw())
+        };
+        let result = if result == 0 {
+            Ok(self.ctx.key_list_result().unwrap())
+        } else {
+            Err(Error::new(result))
+        };
+        mem::forget(self);
+        result
+    }
 }
 
-impl<'a> Drop for KeyIter<'a> {
+impl<'a> Drop for Keys<'a> {
     fn drop(&mut self) {
         unsafe {
-            sys::gpgme_op_keylist_end(self.ctx.raw);
+            sys::gpgme_op_keylist_end(self.ctx.as_raw());
         }
     }
 }
 
-impl<'a> Iterator for KeyIter<'a> {
+impl<'a> Iterator for Keys<'a> {
     type Item = Result<Key>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut key: sys::gpgme_key_t = ptr::null_mut();
         unsafe {
-            let result = sys::gpgme_op_keylist_next(self.ctx.raw, &mut key);
+            let result = sys::gpgme_op_keylist_next(self.ctx.as_raw(), &mut key);
             if sys::gpgme_err_code(result) != sys::GPG_ERR_EOF {
                 if result == 0 {
                     Some(Ok(Key::from_raw(key)))

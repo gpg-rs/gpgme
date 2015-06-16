@@ -7,24 +7,14 @@ use std::io;
 use std::io::prelude::*;
 use std::process::exit;
 
-use getopts::Options;
+use getopts::{Options, HasArg, Occur};
 
-use gpgme::{Data, Protocol};
+use gpgme::{Protocol, Data};
 use gpgme::ops;
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] FILENAME", program);
     write!(io::stderr(), "{}", opts.usage(&brief));
-}
-
-fn print_result(result: &ops::SignResult) {
-    for sig in result.signatures() {
-        println!("Key fingerprint: {}", sig.fingerprint().unwrap_or("[none]"));
-        println!("Signature type : {:?}", sig.kind());
-        println!("Public key algo: {}", sig.key_algorithm());
-        println!("Hash algo .....: {}", sig.hash_algorithm());
-        println!("Creation time .: {}", sig.timestamp());
-    }
 }
 
 fn main() {
@@ -35,11 +25,7 @@ fn main() {
     opts.optflag("h", "help", "display this help message");
     opts.optflag("", "openpgp", "use the OpenPGP protocol (default)");
     opts.optflag("", "cms", "use the CMS protocol");
-    opts.optflag("", "uiserver", "use the UI server");
-    opts.optflag("", "normal", "create a normal signature (default)");
-    opts.optflag("", "detach", "create a detached signature");
-    opts.optflag("", "clear", "create a clear text signature");
-    opts.optopt("", "key", "use key NAME for signing", "NAME");
+    opts.opt("r", "recipient", "encrypt message for NAME", "NAME", HasArg::Yes, Occur::Multi);
 
     let matches = match opts.parse(&args[1..]) {
         Ok(matches) => matches,
@@ -62,35 +48,22 @@ fn main() {
 
     let proto = if matches.opt_present("cms") {
         Protocol::Cms
-    } else if matches.opt_present("uiserver") {
-        Protocol::UiServer
     } else {
         Protocol::OpenPgp
-    };
-
-    let mode = if matches.opt_present("detach") {
-        ops::SignMode::Detach
-    } else if matches.opt_present("clear") {
-        ops::SignMode::Clear
-    } else {
-        ops::SignMode::Normal
     };
 
     let mut ctx = gpgme::init().unwrap().create_context().unwrap();
     ctx.set_protocol(proto).unwrap();
     ctx.set_armor(true);
 
-    match matches.opt_str("key") {
-        Some(key) => {
-            if proto != Protocol::UiServer {
-                let key = ctx.find_secret_key(key).unwrap();
-                ctx.add_signer(&key).unwrap();
-            } else {
-                writeln!(io::stderr(), "{}: ignoring --key in UI-server mode", &program);
-            }
-        },
-        None => (),
-    }
+    let recipients = matches.opt_strs("r");
+    let keys = if !recipients.is_empty() {
+        ctx.find_keys(recipients).unwrap().filter_map(Result::ok).filter(|k| {
+            k.can_encrypt()
+        }).collect()
+    } else {
+        Vec::new()
+    };
 
     let mut input = match Data::load(&matches.free[0]) {
         Ok(input) => input,
@@ -102,12 +75,12 @@ fn main() {
     };
 
     let mut output = Data::new().unwrap();
-    match ctx.sign(mode, &mut input, &mut output) {
-        Ok(result) => print_result(&result),
+    match ctx.encrypt(&keys, ops::EncryptFlags::empty(), &mut input, &mut output) {
+        Ok(_) => (),
         Err(err) => {
-            writeln!(io::stderr(), "{}: signing failed: {}", &program, err);
+            writeln!(io::stderr(), "{}: encrypting failed: {}", &program, err);
             exit(1);
-        },
+        }
     }
 
     println!("Begin Output:");

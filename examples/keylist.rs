@@ -76,9 +76,8 @@ fn main() {
     ctx.set_protocol(proto).unwrap();
     ctx.set_key_list_mode(mode).unwrap();
 
-    for res in ctx.find_keys(matches.free).unwrap() {
-        let key = res.unwrap();
-
+    let mut keys = ctx.find_keys(matches.free).unwrap();
+    for key in keys.by_ref().filter_map(Result::ok) {
         println!("keyid   : {}", key.id().unwrap_or("?"));
         println!("fpr     : {}", key.fingerprint().unwrap_or("?"));
         println!("caps    : {}{}{}{}",
@@ -100,7 +99,7 @@ fn main() {
         println!("");
     }
 
-    if ctx.key_list_result().unwrap().truncated() {
+    if keys.result().unwrap().truncated() {
         writeln!(io::stderr(), "{}: key listing unexpectedly truncated",
                program);
     }

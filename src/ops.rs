@@ -220,7 +220,7 @@ impl ImportResult {
         unsafe { (*self.raw).new_user_ids as u32 }
     }
 
-    pub fn new_sub_keys(&self) -> u32 {
+    pub fn new_subkeys(&self) -> u32 {
         unsafe { (*self.raw).new_sub_keys as u32 }
     }
 
