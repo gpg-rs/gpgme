@@ -3,8 +3,9 @@ rust:
 - 1.0.0
 - beta
 - nightly
-before_script:
-- sudo apt-get update -qq && sudo apt-get install -y gpgv libgpgme11
+before_install:
+- sudo apt-get update -qq
+- sudo apt-get install -y libgpgme11-dev
 script:
 - cargo build --verbose
 - cargo test --verbose

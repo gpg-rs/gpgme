@@ -1,5 +1,6 @@
 # rust-gpgme
 
+[![Build Status](https://travis-ci.org/johnschug/rust-gpgme.svg?branch=master)](https://travis-ci.org/johnschug/rust-gpgme)
 [![LGPL-2.1 licensed](https://img.shields.io/badge/license-LGPL--2.1-blue.svg)](./COPYING)
 [![crates.io](https://meritbadge.herokuapp.com/gpgme)](https://crates.io/crates/gpgme)
 
