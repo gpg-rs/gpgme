@@ -20,3 +20,10 @@ version = "0.1.1"
 
 [dev-dependencies]
 getopts = "0.2"
+tempdir = "0.3"
+
+[[test]]
+name = "encrypt"
+
+[[test]]
+name = "keylist"

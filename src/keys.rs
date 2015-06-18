@@ -180,6 +180,39 @@ impl Key {
         }
     }
 
+    pub fn issuer_serial(&self) -> Option<&str> {
+        unsafe {
+            let issuer_serial = (*self.raw).issuer_serial;
+            if !issuer_serial.is_null() {
+                str::from_utf8(CStr::from_ptr(issuer_serial).to_bytes()).ok()
+            } else {
+                None
+            }
+        }
+    }
+
+    pub fn issuer_name(&self) -> Option<&str> {
+        unsafe {
+            let issuer_name = (*self.raw).issuer_name;
+            if !issuer_name.is_null() {
+                str::from_utf8(CStr::from_ptr(issuer_name).to_bytes()).ok()
+            } else {
+                None
+            }
+        }
+    }
+
+    pub fn chain_id(&self) -> Option<&str> {
+        unsafe {
+            let chain_id = (*self.raw).chain_id;
+            if !chain_id.is_null() {
+                str::from_utf8(CStr::from_ptr(chain_id).to_bytes()).ok()
+            } else {
+                None
+            }
+        }
+    }
+
     pub fn primary_key(&self) -> Option<SubKey> {
         self.subkeys().next()
     }
@@ -301,6 +334,12 @@ impl<'a> SubKey<'a> {
         }
     }
 
+    pub fn length(&self) -> usize {
+        unsafe {
+            (*self.raw).length as usize
+        }
+    }
+
     pub fn timestamp(&self) -> Option<i64> {
         let timestamp = unsafe {
             (*self.raw).timestamp
@@ -320,6 +359,17 @@ impl<'a> SubKey<'a> {
             Some(expires)
         } else {
             None
+        }
+    }
+
+    pub fn card_number(&self) -> Option<&'a str> {
+        unsafe {
+            let card_number = (*self.raw).card_number;
+            if !card_number.is_null() {
+                str::from_utf8(CStr::from_ptr(card_number).to_bytes()).ok()
+            } else {
+                None
+            }
         }
     }
 }
