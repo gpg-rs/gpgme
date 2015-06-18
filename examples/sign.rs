@@ -76,7 +76,7 @@ fn main() {
         ops::SignMode::Normal
     };
 
-    let mut ctx = gpgme::init().unwrap().create_context().unwrap();
+    let mut ctx = gpgme::create_context().unwrap();
     ctx.set_protocol(proto).unwrap();
     ctx.set_armor(true);
 

@@ -94,7 +94,7 @@ fn main() {
         None
     };
 
-    let mut ctx = gpgme::init().unwrap().create_context().unwrap();
+    let mut ctx = gpgme::create_context().unwrap();
     ctx.set_protocol(Protocol::OpenPgp).unwrap();
 
     for file in matches.free {

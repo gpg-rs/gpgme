@@ -3,6 +3,8 @@ extern crate libc;
 extern crate bitflags;
 #[macro_use]
 extern crate enum_primitive;
+#[macro_use]
+extern crate lazy_static;
 extern crate gpgme_sys;
 
 use std::ffi::{CStr, CString};
@@ -10,7 +12,7 @@ use std::fmt;
 use std::mem;
 use std::ptr;
 use std::str;
-use std::sync::{Arc, RwLock, Once, ONCE_INIT};
+use std::sync::{Arc, RwLock};
 
 use gpgme_sys as sys;
 
@@ -27,7 +29,7 @@ mod keys;
 mod data;
 pub mod ops;
 
-/// Constants for use with `LibToken::get_dir_info`.
+/// Constants for use with `Token::get_dir_info`.
 pub mod info {
     pub const HOME_DIR: &'static str = "homedir";
     pub const AGENT_SOCKET: &'static str = "agent-socket";
@@ -70,22 +72,19 @@ impl fmt::Display for Protocol {
     }
 }
 
-/// Initializes the gpgme library.
-///
-/// # Failures
-///
-/// This function returns `None` if the library was already initialized.
-///
-/// # Examples
-///
-/// ```no_run
-/// let gpgme = gpgme::init().unwrap();
-/// ```
-pub fn init() -> Option<LibToken> {
-    static INIT: Once = ONCE_INIT;
+struct TokenImp {
+    version: &'static str,
+    engine_info: RwLock<()>,
+}
 
-    let mut token: Option<InternalToken> = None;
-    INIT.call_once(|| {
+impl fmt::Debug for TokenImp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "")
+    }
+}
+
+lazy_static! {
+    static ref TOKEN: Token = {
         let version = unsafe {
             let base: sys::_gpgme_signature = mem::zeroed();
             let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
@@ -93,22 +92,38 @@ pub fn init() -> Option<LibToken> {
             let result = sys::gpgme_check_version_internal(ptr::null(), offset as libc::size_t);
             str::from_utf8(CStr::from_ptr(result as *const _).to_bytes()).unwrap()
         };
-        token = Some(InternalToken { version: version, engine_info: RwLock::new(()) })
-    });
-    token.map(|x| LibToken(Arc::new(x)))
+        Token(Arc::new(TokenImp { version: version, engine_info: RwLock::new(()) }))
+    };
 }
 
-#[derive(Debug)]
-struct InternalToken {
-    version: &'static str,
-    engine_info: RwLock<()>,
+/// Initializes the gpgme library.
+///
+///
+/// # Examples
+///
+/// ```no_run
+/// let gpgme = gpgme::init();
+/// ```
+pub fn init() -> Token {
+    TOKEN.clone()
+}
+
+/// Creates a new context for cryptographic operations.
+///
+/// # Examples
+///
+/// ```no_run
+/// let mut ctx = gpgme::create_context().unwrap();
+/// ```
+pub fn create_context() -> Result<Context> {
+    Context::new(init())
 }
 
 /// A type for managing global resources within the library.
 #[derive(Debug, Clone)]
-pub struct LibToken(Arc<InternalToken>);
+pub struct Token(Arc<TokenImp>);
 
-impl LibToken {
+impl Token {
     /// Checks that the linked version of the library is at least the
     /// specified version.
     ///
@@ -117,7 +132,7 @@ impl LibToken {
     /// # Examples
     ///
     /// ```no_run
-    /// let gpgme = gpgme::init().unwrap();
+    /// let gpgme = gpgme::init();
     /// assert!(gpgme.check_version("1.4.0"));
     /// ```
     pub fn check_version<S: Into<String>>(&self, version: S) -> bool {
@@ -192,16 +207,5 @@ impl LibToken {
         } else {
             Err(Error::new(result))
         }
-    }
-
-    /// Creates a new context for cryptographic operations.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// let mut ctx = gpgme::init().unwrap().create_context().unwrap();
-    /// ```
-    pub fn create_context(self) -> Result<Context> {
-        Context::new(self)
     }
 }

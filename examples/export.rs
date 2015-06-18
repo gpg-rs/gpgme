@@ -50,7 +50,7 @@ fn main() {
         ops::ExportMode::empty()
     };
 
-    let mut ctx = gpgme::init().unwrap().create_context().unwrap();
+    let mut ctx = gpgme::create_context().unwrap();
     ctx.set_protocol(Protocol::OpenPgp).unwrap();
     ctx.set_armor(true);
 

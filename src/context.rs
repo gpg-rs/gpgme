@@ -8,7 +8,7 @@ use enum_primitive::FromPrimitive;
 
 use gpgme_sys as sys;
 
-use {Protocol, LibToken};
+use {Protocol, Token};
 use error::{Result, Error};
 use keys::Key;
 use engine::{EngineInfo, EngineInfoIter};
@@ -19,11 +19,11 @@ use ops;
 #[derive(Debug)]
 pub struct Context {
     raw: sys::gpgme_ctx_t,
-    lib: LibToken,
+    lib: Token,
 }
 
 impl Context {
-    pub unsafe fn from_raw(ctx: sys::gpgme_ctx_t, lib: LibToken) -> Context {
+    pub unsafe fn from_raw(ctx: sys::gpgme_ctx_t, lib: Token) -> Context {
         Context { raw: ctx, lib: lib }
     }
 
@@ -31,7 +31,7 @@ impl Context {
         self.raw
     }
 
-    pub fn new(lib: LibToken) -> Result<Context> {
+    pub fn new(lib: Token) -> Result<Context> {
         let mut ctx: sys::gpgme_ctx_t = ptr::null_mut();
         let result = unsafe {
             sys::gpgme_new(&mut ctx)
@@ -43,7 +43,7 @@ impl Context {
         }
     }
 
-    pub fn token(&self) -> &LibToken {
+    pub fn token(&self) -> &Token {
         &self.lib
     }
 
@@ -398,7 +398,7 @@ impl Context {
     /// ```no_run
     /// use gpgme::{self, Data, ops};
     ///
-    /// let mut ctx = gpgme::init().unwrap().create_context().unwrap();
+    /// let mut ctx = gpgme::create_context().unwrap();
     /// let key = ctx.find_key("some pattern").unwrap();
     /// let (mut plain, mut cipher) = (Data::new().unwrap(), Data::new().unwrap());
     /// ctx.encrypt(Some(&key), ops::EncryptFlags::empty(), &mut plain, &mut cipher).unwrap();
@@ -443,7 +443,7 @@ impl Context {
     /// use std::fs::File;
     /// use gpgme::{self, Data, ops};
     ///
-    /// let mut ctx = gpgme::init().unwrap().create_context().unwrap();
+    /// let mut ctx = gpgme::create_context().unwrap();
     /// let mut cipher = Data::load(&"some file").unwrap();
     /// let mut plain = Data::new().unwrap();
     /// ctx.decrypt(&mut cipher, &mut plain).unwrap();
@@ -478,7 +478,7 @@ impl Context {
     /// ```no_run
     /// use gpgme::{self, Data, ops};
     ///
-    /// let mut ctx = gpgme::init().unwrap().create_context().unwrap();
+    /// let mut ctx = gpgme::create_context().unwrap();
     /// let key = ctx.find_key("some pattern").unwrap();
     /// let (mut plain, mut cipher) = (Data::new().unwrap(), Data::new().unwrap());
     /// ctx.encrypt_and_sign(Some(&key), ops::EncryptFlags::empty(),
@@ -512,7 +512,7 @@ impl Context {
     /// use std::fs::File;
     /// use gpgme::{self, Data, ops};
     ///
-    /// let mut ctx = gpgme::init().unwrap().create_context().unwrap();
+    /// let mut ctx = gpgme::create_context().unwrap();
     /// let mut cipher = Data::load(&"some file").unwrap();
     /// let mut plain = Data::new().unwrap();
     /// ctx.decrypt_and_verify(&mut cipher, &mut plain).unwrap();

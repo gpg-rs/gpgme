@@ -12,6 +12,7 @@ keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 libc = "0.1"
 bitflags = "0.1"
 enum_primitive = "*"
+lazy_static = "0.1"
 
 [dependencies.gpgme-sys]
 path = "gpgme-sys"

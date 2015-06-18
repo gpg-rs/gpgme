@@ -199,7 +199,8 @@ impl<'a> Data<'a> {
         }
     }
 
-    unsafe fn from_callbacks<S>(cbs: sys::gpgme_data_cbs, src: S) -> StdResult<Data<'static>, S> {
+    unsafe fn from_callbacks<S: 'static>(cbs: sys::gpgme_data_cbs, src: S)
+        -> StdResult<Data<'static>, S> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
         let mut src = Box::new(CallbackWrapper {
             cbs: cbs,
@@ -215,7 +216,7 @@ impl<'a> Data<'a> {
         }
     }
 
-    pub fn from_reader<R: Read>(r: R) -> StdResult<Data<'static>, R> {
+    pub fn from_reader<R: Read + 'static>(r: R) -> StdResult<Data<'static>, R> {
         let cbs = sys::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -225,7 +226,7 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, r) }
     }
 
-    pub fn from_seekable_reader<R: Read + Seek>(r: R) -> StdResult<Data<'static>, R> {
+    pub fn from_seekable_reader<R: Read + Seek + 'static>(r: R) -> StdResult<Data<'static>, R> {
         let cbs = sys::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -235,7 +236,7 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, r) }
     }
 
-    pub fn from_writer<W: Write>(w: W) -> StdResult<Data<'static>, W> {
+    pub fn from_writer<W: Write + 'static>(w: W) -> StdResult<Data<'static>, W> {
         let cbs = sys::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -245,7 +246,7 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, w) }
     }
 
-    pub fn from_seekable_writer<W: Write + Seek>(w: W) -> StdResult<Data<'static>, W> {
+    pub fn from_seekable_writer<W: Write + Seek + 'static>(w: W) -> StdResult<Data<'static>, W> {
         let cbs = sys::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -255,7 +256,7 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, w) }
     }
 
-    pub fn from_stream<S: Read + Write>(s: S) -> StdResult<Data<'static>, S> {
+    pub fn from_stream<S: Read + Write + 'static>(s: S) -> StdResult<Data<'static>, S> {
         let cbs = sys::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -265,7 +266,7 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, s) }
     }
 
-    pub fn from_seekable_stream<S: Read + Write + Seek>(s: S) -> StdResult<Data<'static>, S> {
+    pub fn from_seekable_stream<S: Read + Write + Seek + 'static>(s: S) -> StdResult<Data<'static>, S> {
         let cbs = sys::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
