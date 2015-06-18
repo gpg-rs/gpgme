@@ -27,7 +27,7 @@ fn fail<S: AsRef<str>>(s: S) -> ! {
 
 fn main() {
     let mut command = Command::new("gpg-error-config");
-    command.arg("--mt").arg("--libs");
+    command.arg("--libs");
     let output = match command.output() {
         Ok(out) => out,
         Err(err) => {
