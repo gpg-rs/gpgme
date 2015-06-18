@@ -6,6 +6,8 @@ version = "0.1.1"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
+links = "gpgme"
+build = "build.rs"
 
 [lib]
 name = "gpgme_sys"

@@ -502,7 +502,18 @@ pub mod funcs {
         (err >> GPG_ERR_SOURCE_SHIFT) & GPG_ERR_SOURCE_MASK
     }
 
-    #[link(name = "gpg-error")]
+    pub unsafe fn gpg_err_make_from_errno(source: gpg_err_source_t, err: libc::c_int) -> gpg_error_t {
+        gpg_err_make(source, gpg_error_from_errno(err))
+    }
+
+    pub unsafe fn gpg_error_from_errno(err: libc::c_int) -> gpg_error_t {
+        gpg_err_make_from_errno(GPG_ERR_SOURCE_USER_1, err)
+    }
+
+    pub unsafe fn gpg_error_from_syserror() -> gpg_error_t {
+        gpg_err_make(GPG_ERR_SOURCE_USER_1, gpg_err_code_from_syserror())
+    }
+
     extern {
         pub fn gpg_err_init() -> gpg_error_t;
         pub fn gpg_err_deinit(mode: libc::c_int);
@@ -512,6 +523,7 @@ pub mod funcs {
 
         pub fn gpg_strsource(err: gpg_error_t) -> *const libc::c_char;
 
+        pub fn gpg_err_code_from_errno(err: libc::c_int) -> gpg_err_code_t;
         pub fn gpg_err_code_to_errno(code: gpg_err_code_t) -> libc::c_int;
         pub fn gpg_err_code_from_syserror() -> gpg_err_code_t;
 

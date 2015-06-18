@@ -6,24 +6,21 @@ use libc::{c_void, c_char, c_uchar, c_short, c_ushort, c_int, c_uint, c_long, c_
 pub use libgpg_error_sys::gpg_err_make as gpgme_err_make;
 pub use libgpg_error_sys::gpg_err_code as gpgme_err_code;
 pub use libgpg_error_sys::gpg_err_source as gpgme_err_source;
+pub use libgpg_error_sys::gpg_strerror as gpgme_strerror;
+pub use libgpg_error_sys::gpg_strerror_r as gpgme_strerror_r;
+pub use libgpg_error_sys::gpg_strsource as gpgme_strsource;
+pub use libgpg_error_sys::gpg_err_code_from_errno as gpgme_err_code_from_errno;
+pub use libgpg_error_sys::gpg_err_code_to_errno as gpgme_err_code_to_errno;
+pub use libgpg_error_sys::gpg_err_code_from_syserror as gpgme_err_code_from_syserror;
+pub use libgpg_error_sys::gpg_err_set_errno as gpgme_err_set_errno;
+pub use libgpg_error_sys::gpg_err_make_from_errno as gpgme_err_make_from_errno;
+pub use libgpg_error_sys::gpg_error_from_errno as gpgme_error_from_errno;
+pub use libgpg_error_sys::gpg_error_from_syserror as gpgme_error_from_syserror;
 
 use consts::*;
 use types::*;
 
-#[link(name = "gpgme")]
 extern {
-    pub fn gpgme_strerror(err: gpgme_error_t) -> *const c_char;
-    pub fn gpgme_strerror_r(err: gpgme_error_t, buf: *mut c_char, buflen: size_t) -> c_int;
-
-    pub fn gpgme_strsource(err: gpgme_error_t) ->  *const c_char;
-
-    pub fn gpgme_err_code_from_errno(err: c_int) -> gpgme_err_code_t;
-    pub fn gpgme_err_code_to_errno(code: gpgme_err_code_t) -> c_int;
-    pub fn gpgme_err_code_from_syserror() -> gpgme_err_code_t;
-    pub fn gpgme_err_set_errno(err: c_int);
-    pub fn gpgme_err_make_from_errno(source: gpgme_err_source_t, err: c_int) -> gpgme_error_t;
-    pub fn gpgme_error_from_errno(err: c_int) -> gpgme_error_t;
-
     pub fn gpgme_set_global_flag(name: *const c_char, value: *const c_char) -> c_int;
 
     pub fn gpgme_check_version(req_version: *const c_char) -> *const c_char;

@@ -8,6 +8,9 @@ authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 
+[[test]]
+name = "tests"
+
 [dependencies]
 libc = "0.1"
 bitflags = "0.1"
@@ -20,3 +23,4 @@ version = "0.1.1"
 
 [dev-dependencies]
 getopts = "0.2"
+tempdir = "0.3"
