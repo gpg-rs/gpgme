@@ -750,11 +750,15 @@ extern fn passphrase_callback<C: PassphraseCallback>(hook: *mut libc::c_void,
         let uid_hint = str::from_utf8_unchecked(CStr::from_ptr(uid_hint).to_bytes());
         let info = str::from_utf8_unchecked(CStr::from_ptr(info).to_bytes());
         (*cb).read(uid_hint, info, was_bad != 0).and_then(|result| {
-            match sys::gpgme_io_writen(fd, result.as_ptr() as *const _,
-                                       result.len() as libc::size_t) {
-                0 => Ok(()),
-                _ => Err(Error::last_os_error()),
+            let mut buf = &result[..];
+            while !buf.is_empty() {
+                match sys::gpgme_io_write(fd, buf.as_ptr() as *const _,
+                                           buf.len() as libc::size_t) {
+                    n if n >= 0 => buf = &buf[(n as usize)..],
+                    _ => return Err(Error::last_os_error()),
+                }
             }
+            Ok(())
         }).err().map_or(0, |err| err.raw())
     }
 }

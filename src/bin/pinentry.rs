@@ -1,6 +1,7 @@
 use std::io;
 use std::io::prelude::*;
 
+#[allow(dead_code)]
 fn main() {
     let stdin = io::stdin();
     println!("OK Your orders please");

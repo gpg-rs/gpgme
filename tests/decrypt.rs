@@ -19,11 +19,7 @@ fn test_decrypt() {
     let mut input = Data::from_bytes(CIPHER_1).unwrap();
     let mut output = Data::new().unwrap();
 
-    let result = guard.decrypt(&mut input, &mut output);
-    if let Err(err) = result {
-        panic!("error: {}", err);
-    }
-    match result.unwrap().unsupported_algorithm() {
+    match guard.decrypt(&mut input, &mut output).unwrap().unsupported_algorithm() {
         Some(alg) => panic!("unsupported algorithm: {}", alg),
         None => (),
     }
