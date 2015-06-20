@@ -23,7 +23,7 @@ pub use self::keys::{Validity, KeyAlgorithm, HashAlgorithm, Key, KeySignature, S
 pub use self::data::{DataEncoding, DataType, Data};
 pub use self::traits::{PassphraseCallback, ProgressCallback};
 
-mod error;
+pub mod error;
 mod engine;
 mod context;
 mod keys;

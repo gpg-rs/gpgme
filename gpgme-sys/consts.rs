@@ -5,7 +5,11 @@ extern crate libgpg_error_sys;
 pub use libgpg_error_sys::gpg_err_source_t as gpgme_err_source_t;
 pub use libgpg_error_sys::gpg_err_code_t as gpgme_err_code_t;
 
-pub use libgpg_error_sys::consts::*;
+pub mod errors {
+    pub use libgpg_error_sys::consts::*;
+}
+
+pub use self::errors::*;
 
 pub type gpgme_data_encoding_t = libc::c_uint;
 pub const GPGME_DATA_ENCODING_NONE: gpgme_data_encoding_t = 0;

@@ -8,6 +8,14 @@ use tempdir::TempDir;
 
 use gpgme;
 
+#[macro_export]
+macro_rules! fail_if_err {
+    ($e:expr) => (match $e {
+        Ok(v) => v,
+        Err(err) => panic!("Operation failed: {}", err),
+    });
+}
+
 const KEYS: [(&'static str, &'static [u8]); 5] = [
     ("13CD0F3BDF24BE53FE192D62F18737256FF6E4FD",
      include_bytes!("./data/13CD0F3BDF24BE53FE192D62F18737256FF6E4FD")),
@@ -42,12 +50,10 @@ fn import_key(key: &[u8]) {
 fn setup_agent(dir: &Path) {
     env::set_var("GNUPGHOME", dir);
     env::set_var("GPG_AGENT_INFO", "");
-    let mut source = env::current_exe().unwrap();
-    source.pop();
-    source.push("pinentry");
-    source.set_extension(env::consts::EXE_EXTENSION);
-    let pinentry = dir.join("pinentry");
-    fs::copy(&source, &pinentry).unwrap();
+    let mut pinentry = env::current_exe().unwrap();
+    pinentry.pop();
+    pinentry.push("pinentry");
+    pinentry.set_extension(env::consts::EXE_EXTENSION);
 
     let agent_conf = dir.join("gpg-agent.conf");
     let mut agent_conf = File::create(agent_conf).unwrap();

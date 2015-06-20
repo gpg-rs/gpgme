@@ -9,6 +9,8 @@ use gpgme_sys as sys;
 
 const TMPBUF_SZ: usize = 0x0400;
 
+pub use gpgme_sys::errors::*;
+
 pub type ErrorCode = sys::gpgme_err_code_t;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]

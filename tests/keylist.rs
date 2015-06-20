@@ -5,6 +5,7 @@ use gpgme::{Protocol, Key, KeyAlgorithm, Validity};
 
 use self::support::setup;
 
+#[macro_use]
 mod support;
 
 struct Uid {
@@ -313,12 +314,13 @@ fn check_whisky(_info: &KeyInfo, key: &Key) {
 #[test]
 fn test_keylist() {
     let _gpghome = setup();
-    let mut ctx = gpgme::create_context().unwrap();
-    ctx.set_protocol(Protocol::OpenPgp).unwrap();
+    let mut ctx = fail_if_err!(gpgme::create_context());
+    fail_if_err!(ctx.set_protocol(Protocol::OpenPgp));
 
     let mut i = 0;
-    let mut keys = ctx.keys().unwrap();
-    for key in keys.by_ref().filter_map(Result::ok) {
+    let mut keys = fail_if_err!(ctx.keys());
+    for key in keys.by_ref() {
+        let key = fail_if_err!(key);
         assert!(i < KEY_INFOS.len());
         assert!(!key.is_revoked());
         assert!(!key.is_expired());
@@ -387,6 +389,6 @@ fn test_keylist() {
         }
         i += 1;
     }
-    assert!(!keys.result().unwrap().truncated());
+    assert!(!fail_if_err!(keys.result()).truncated());
     assert_eq!(i, KEY_INFOS.len());
 }
