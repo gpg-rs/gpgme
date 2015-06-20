@@ -1,6 +1,9 @@
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
+use std::fmt;
 use std::mem;
+use std::ops::{Deref, DerefMut};
 use std::ptr;
+use std::str;
 
 use libc;
 
@@ -13,13 +16,22 @@ use error::{Result, Error};
 use keys::Key;
 use engine::{EngineInfo, EngineInfoIter};
 use data::Data;
+use traits::{PassphraseCallback, ProgressCallback};
 use ops;
 
+
 /// A context for cryptographic operations
-#[derive(Debug)]
 pub struct Context {
     raw: sys::gpgme_ctx_t,
     lib: Token,
+}
+
+impl Drop for Context {
+    fn drop(&mut self) {
+        unsafe {
+            sys::gpgme_release(self.raw)
+        }
+    }
 }
 
 impl Context {
@@ -86,6 +98,50 @@ impl Context {
             Ok(())
         } else {
             Err(Error::new(result))
+        }
+    }
+
+    /// Sets the passphrase callback for the context and returns a guard for the context.
+    ///
+    /// When the guard is dropped the context's passphrase callback will be reset to its
+    /// previous value.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// let mut ctx = gpgme::create_context().unwrap();
+    /// let mut guard = ctx.with_passphrase_cb(|_: &str, _: &str, _| { Ok(vec![b'\n']) });
+    /// // Do something with guard requiring a passphrase e.g. decryption
+    /// ```
+    pub fn with_passphrase_cb<C: PassphraseCallback>(&mut self, cb: C)
+        -> PassphraseCallbackGuard<C> {
+        let cb = Box::new(cb);
+        unsafe {
+            let mut old = (None, ptr::null_mut());
+            sys::gpgme_get_passphrase_cb(self.raw, &mut old.0, &mut old.1);
+            sys::gpgme_set_passphrase_cb(self.raw, Some(passphrase_callback::<C>),
+                                         mem::transmute(&*cb));
+            PassphraseCallbackGuard {
+                ctx: self,
+                old: old,
+                _cb: cb,
+            }
+        }
+    }
+
+    pub fn with_progress_cb<C: ProgressCallback>(&mut self, cb: C)
+        -> ProgressCallbackGuard<C> {
+        let cb = Box::new(cb);
+        unsafe {
+            let mut old = (None, ptr::null_mut());
+            sys::gpgme_get_progress_cb(self.raw, &mut old.0, &mut old.1);
+            sys::gpgme_set_progress_cb(self.raw, Some(progress_callback::<C>),
+                                         mem::transmute(&*cb));
+            ProgressCallbackGuard {
+                ctx: self,
+                old: old,
+                _cb: cb,
+            }
         }
     }
 
@@ -530,11 +586,9 @@ impl Context {
     }
 }
 
-impl Drop for Context {
-    fn drop(&mut self) {
-        unsafe {
-            sys::gpgme_release(self.raw)
-        }
+impl fmt::Debug for Context {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Context {{ raw: {:p} }}", self.raw)
     }
 }
 
@@ -685,3 +739,90 @@ impl<'a> DoubleEndedIterator for SignersIter<'a> {
 }
 
 impl<'a> ExactSizeIterator for SignersIter<'a> {}
+
+extern fn passphrase_callback<C: PassphraseCallback>(hook: *mut libc::c_void,
+                                                     uid_hint: *const libc::c_char,
+                                                     info: *const libc::c_char,
+                                                     was_bad: libc::c_int,
+                                                     fd: libc::c_int) -> sys::gpgme_error_t {
+    let cb = hook as *mut C;
+    unsafe {
+        let uid_hint = str::from_utf8_unchecked(CStr::from_ptr(uid_hint).to_bytes());
+        let info = str::from_utf8_unchecked(CStr::from_ptr(info).to_bytes());
+        (*cb).read(uid_hint, info, was_bad != 0).and_then(|result| {
+            match sys::gpgme_io_writen(fd, result.as_ptr() as *const _,
+                                       result.len() as libc::size_t) {
+                0 => Ok(()),
+                _ => Err(Error::last_os_error()),
+            }
+        }).err().map_or(0, |err| err.raw())
+    }
+}
+
+extern fn progress_callback<C: ProgressCallback>(hook: *mut libc::c_void,
+                                                 what: *const libc::c_char,
+                                                 typ: libc::c_int,
+                                                 current: libc::c_int,
+                                                 total: libc::c_int) {
+    let cb = hook as *mut C;
+    unsafe {
+        let what = str::from_utf8_unchecked(CStr::from_ptr(what).to_bytes());
+        (*cb).report(what, typ as isize, current as isize, total as isize);
+    }
+}
+
+pub struct PassphraseCallbackGuard<'a, C> {
+    ctx: &'a mut Context,
+    old: (sys::gpgme_passphrase_cb_t, *mut libc::c_void),
+    _cb: Box<C>,
+}
+
+impl<'a, C> Drop for PassphraseCallbackGuard<'a, C> {
+    fn drop(&mut self) {
+        unsafe {
+            sys::gpgme_set_passphrase_cb(self.ctx.as_raw(), self.old.0, self.old.1);
+        }
+    }
+}
+
+impl<'a, C> Deref for PassphraseCallbackGuard<'a, C> {
+    type Target = Context;
+
+    fn deref(&self) -> &Context {
+        self.ctx
+    }
+}
+
+impl<'a, C> DerefMut for PassphraseCallbackGuard<'a, C> {
+    fn deref_mut(&mut self) -> &mut Context {
+        self.ctx
+    }
+}
+
+pub struct ProgressCallbackGuard<'a, C> {
+    ctx: &'a mut Context,
+    old: (sys::gpgme_progress_cb_t, *mut libc::c_void),
+    _cb: Box<C>,
+}
+
+impl<'a, C> Drop for ProgressCallbackGuard<'a, C> {
+    fn drop(&mut self) {
+        unsafe {
+            sys::gpgme_set_progress_cb(self.ctx.as_raw(), self.old.0, self.old.1);
+        }
+    }
+}
+
+impl<'a, C> Deref for ProgressCallbackGuard<'a, C> {
+    type Target = Context;
+
+    fn deref(&self) -> &Context {
+        self.ctx
+    }
+}
+
+impl<'a, C> DerefMut for ProgressCallbackGuard<'a, C> {
+    fn deref_mut(&mut self) -> &mut Context {
+        self.ctx
+    }
+}

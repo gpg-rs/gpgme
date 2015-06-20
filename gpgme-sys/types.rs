@@ -212,7 +212,7 @@ impl _gpgme_key {
     }
 }
 
-pub type gpgme_passphrase_cb_t = Option<extern fn(*mut c_void, *const c_char, *const c_char, c_int, c_int)>;
+pub type gpgme_passphrase_cb_t = Option<extern fn(*mut c_void, *const c_char, *const c_char, c_int, c_int) -> gpgme_error_t>;
 pub type gpgme_progress_cb_t = Option<extern fn(*mut c_void, *const c_char, c_int, c_int, c_int)>;
 pub type gpgme_edit_cb_t = Option<extern fn(*mut c_void, gpgme_status_code_t, *const c_char, c_int) -> gpgme_error_t>;
 

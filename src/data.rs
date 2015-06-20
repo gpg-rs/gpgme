@@ -50,75 +50,6 @@ enum_from_primitive! {
     }
 }
 
-struct CallbackWrapper<S> {
-    cbs: sys::gpgme_data_cbs,
-    inner: S,
-}
-
-extern fn read_callback<S: Read>(handle: *mut libc::c_void,
-                                 buffer: *mut libc::c_void,
-                                 size: libc::size_t) -> libc::ssize_t {
-    let handle = handle as *mut CallbackWrapper<S>;
-    unsafe {
-        let slice = slice::from_raw_parts_mut(buffer as *mut u8, size as usize);
-        (*handle).inner.read(slice).map(|n| n as libc::ssize_t).unwrap_or_else(|err| {
-            let err = err.raw_os_error().unwrap_or_else(|| {
-                sys::gpgme_err_code_to_errno(sys::GPG_ERR_EIO)
-            });
-            sys::gpgme_err_set_errno(err);
-            -1
-        })
-    }
-}
-
-extern fn write_callback<S: Write>(handle: *mut libc::c_void,
-                                   buffer: *const libc::c_void,
-                                   size: libc::size_t) -> libc::ssize_t {
-    let handle = handle as *mut CallbackWrapper<S>;
-    unsafe {
-        let slice = slice::from_raw_parts(buffer as *const u8, size as usize);
-        (*handle).inner.write(slice).map(|n| n as libc::ssize_t).unwrap_or_else(|err| {
-            let err = err.raw_os_error().unwrap_or_else(|| {
-                sys::gpgme_err_code_to_errno(sys::GPG_ERR_EIO)
-            });
-            sys::gpgme_err_set_errno(err);
-            -1
-        })
-    }
-}
-
-extern fn seek_callback<S: Seek>(handle: *mut libc::c_void,
-                                 offset: libc::off_t,
-                                 whence: libc::c_int) -> libc::off_t {
-    let handle = handle as *mut CallbackWrapper<S>;
-    let pos = match whence {
-        libc::SEEK_SET => io::SeekFrom::Start(offset as u64),
-        libc::SEEK_END => io::SeekFrom::End(offset as i64),
-        libc::SEEK_CUR => io::SeekFrom::Current(offset as i64),
-        _ => {
-            unsafe {
-                sys::gpgme_err_set_errno(sys::gpgme_err_code_to_errno(sys::GPG_ERR_EINVAL));
-            }
-            return -1 as libc::off_t;
-        },
-    };
-    unsafe {
-        (*handle).inner.seek(pos).map(|n| n as libc::off_t).unwrap_or_else(|err| {
-            let err = err.raw_os_error().unwrap_or_else(|| {
-                sys::gpgme_err_code_to_errno(sys::GPG_ERR_EIO)
-            });
-            sys::gpgme_err_set_errno(err);
-            -1
-        })
-    }
-}
-
-extern fn release_callback<S>(handle: *mut libc::c_void) {
-    unsafe {
-        drop(mem::transmute::<_, Box<CallbackWrapper<S>>>(handle));
-    }
-}
-
 #[derive(Debug)]
 pub struct Data<'a> {
     raw: sys::gpgme_data_t,
@@ -328,6 +259,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    // GPGME_VERSION >= 1.4.3
     pub fn identify(&mut self) -> DataType {
         unsafe {
             DataType::from_u64(sys::gpgme_data_identify(self.raw, 0) as u64)
@@ -414,5 +346,74 @@ impl<'a> Seek for Data<'a> {
         } else {
             Err(io::Error::last_os_error())
         }
+    }
+}
+
+struct CallbackWrapper<S> {
+    cbs: sys::gpgme_data_cbs,
+    inner: S,
+}
+
+extern fn read_callback<S: Read>(handle: *mut libc::c_void,
+                                 buffer: *mut libc::c_void,
+                                 size: libc::size_t) -> libc::ssize_t {
+    let handle = handle as *mut CallbackWrapper<S>;
+    unsafe {
+        let slice = slice::from_raw_parts_mut(buffer as *mut u8, size as usize);
+        (*handle).inner.read(slice).map(|n| n as libc::ssize_t).unwrap_or_else(|err| {
+            let err = err.raw_os_error().unwrap_or_else(|| {
+                sys::gpgme_err_code_to_errno(sys::GPG_ERR_EIO)
+            });
+            sys::gpgme_err_set_errno(err);
+            -1
+        })
+    }
+}
+
+extern fn write_callback<S: Write>(handle: *mut libc::c_void,
+                                   buffer: *const libc::c_void,
+                                   size: libc::size_t) -> libc::ssize_t {
+    let handle = handle as *mut CallbackWrapper<S>;
+    unsafe {
+        let slice = slice::from_raw_parts(buffer as *const u8, size as usize);
+        (*handle).inner.write(slice).map(|n| n as libc::ssize_t).unwrap_or_else(|err| {
+            let err = err.raw_os_error().unwrap_or_else(|| {
+                sys::gpgme_err_code_to_errno(sys::GPG_ERR_EIO)
+            });
+            sys::gpgme_err_set_errno(err);
+            -1
+        })
+    }
+}
+
+extern fn seek_callback<S: Seek>(handle: *mut libc::c_void,
+                                 offset: libc::off_t,
+                                 whence: libc::c_int) -> libc::off_t {
+    let handle = handle as *mut CallbackWrapper<S>;
+    let pos = match whence {
+        libc::SEEK_SET => io::SeekFrom::Start(offset as u64),
+        libc::SEEK_END => io::SeekFrom::End(offset as i64),
+        libc::SEEK_CUR => io::SeekFrom::Current(offset as i64),
+        _ => {
+            unsafe {
+                sys::gpgme_err_set_errno(sys::gpgme_err_code_to_errno(sys::GPG_ERR_EINVAL));
+            }
+            return -1 as libc::off_t;
+        },
+    };
+    unsafe {
+        (*handle).inner.seek(pos).map(|n| n as libc::off_t).unwrap_or_else(|err| {
+            let err = err.raw_os_error().unwrap_or_else(|| {
+                sys::gpgme_err_code_to_errno(sys::GPG_ERR_EIO)
+            });
+            sys::gpgme_err_set_errno(err);
+            -1
+        })
+    }
+}
+
+extern fn release_callback<S>(handle: *mut libc::c_void) {
+    unsafe {
+        drop(mem::transmute::<_, Box<CallbackWrapper<S>>>(handle));
     }
 }

@@ -6,17 +6,19 @@ use std::process::{Command, Stdio};
 
 use tempdir::TempDir;
 
+use gpgme;
+
 const KEYS: [(&'static str, &'static [u8]); 5] = [
     ("13CD0F3BDF24BE53FE192D62F18737256FF6E4FD",
-     include_bytes!("./keys/13CD0F3BDF24BE53FE192D62F18737256FF6E4FD")),
+     include_bytes!("./data/13CD0F3BDF24BE53FE192D62F18737256FF6E4FD")),
     ("76F7E2B35832976B50A27A282D9B87E44577EB66",
-     include_bytes!("./keys/76F7E2B35832976B50A27A282D9B87E44577EB66")),
+     include_bytes!("./data/76F7E2B35832976B50A27A282D9B87E44577EB66")),
     ("A0747D5F9425E6664F4FFBEED20FBCA79FDED2BD",
-     include_bytes!("./keys/A0747D5F9425E6664F4FFBEED20FBCA79FDED2BD")),
+     include_bytes!("./data/A0747D5F9425E6664F4FFBEED20FBCA79FDED2BD")),
     ("13CBE3758AFE42B5E5E2AE4CED27AFA455E3F87F",
-     include_bytes!("./keys/13CBE3758AFE42B5E5E2AE4CED27AFA455E3F87F")),
+     include_bytes!("./data/13CBE3758AFE42B5E5E2AE4CED27AFA455E3F87F")),
     ("7A030357C0F253A5BBCD282FFC4E521B37558F5C",
-     include_bytes!("./keys/7A030357C0F253A5BBCD282FFC4E521B37558F5C")),
+     include_bytes!("./data/7A030357C0F253A5BBCD282FFC4E521B37558F5C")),
 ];
 
 fn create_keys(dir: &Path) {
@@ -37,11 +39,33 @@ fn import_key(key: &[u8]) {
     assert!(child.wait().unwrap().success());
 }
 
+fn setup_agent(dir: &Path) {
+    env::set_var("GNUPGHOME", dir);
+    env::set_var("GPG_AGENT_INFO", "");
+    let mut source = env::current_exe().unwrap();
+    source.pop();
+    source.push("pinentry");
+    source.set_extension(env::consts::EXE_EXTENSION);
+    let pinentry = dir.join("pinentry");
+    fs::copy(&source, &pinentry).unwrap();
+
+    let agent_conf = dir.join("gpg-agent.conf");
+    let mut agent_conf = File::create(agent_conf).unwrap();
+    agent_conf.write_all(b"pinentry-program ").unwrap();
+    agent_conf.write_all(pinentry.to_str().unwrap().as_ref()).unwrap();
+    agent_conf.write_all(b"\n").unwrap();
+}
+
 pub fn setup() -> TempDir {
     let dir = TempDir::new(".test-gpgme").unwrap();
-    env::set_var("GNUPGHOME", dir.path());
+    setup_agent(dir.path());
     create_keys(dir.path());
-    import_key(include_bytes!("./keys/pubdemo.asc"));
-    import_key(include_bytes!("./keys/secdemo.asc"));
+    import_key(include_bytes!("./data/pubdemo.asc"));
+    import_key(include_bytes!("./data/secdemo.asc"));
     dir
+}
+
+#[allow(dead_code)]
+pub fn passphrase_cb(_hint: &str, _info: &str, _prev_was_bad: bool) -> gpgme::Result<Vec<u8>> {
+    Ok(b"abc\n".to_vec())
 }

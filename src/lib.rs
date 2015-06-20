@@ -21,12 +21,14 @@ pub use self::engine::{EngineInfo, EngineInfoGuard};
 pub use self::context::{Context, Keys};
 pub use self::keys::{Validity, KeyAlgorithm, HashAlgorithm, Key, KeySignature, SubKey, UserId};
 pub use self::data::{DataEncoding, DataType, Data};
+pub use self::traits::{PassphraseCallback, ProgressCallback};
 
 mod error;
 mod engine;
 mod context;
 mod keys;
 mod data;
+mod traits;
 pub mod ops;
 
 /// Constants for use with `Token::get_dir_info`.
@@ -153,6 +155,8 @@ impl Token {
     /// Returns the default value for specified configuration option.
     ///
     /// Commonly supported values for `what` are specified in [`info`](info/).
+    ///
+    /// This function requires a version of GPGme >= 1.5.0.
     pub fn get_dir_info<S: Into<String>>(&self, what: S) -> Option<&'static str> {
         let what = match CString::new(what.into()) {
             Ok(s) => s,
@@ -182,7 +186,7 @@ impl Token {
     }
 
     pub fn engine_info(&self) -> Result<EngineInfoGuard> {
-        EngineInfoGuard::new(self)
+        EngineInfoGuard::new(&TOKEN)
     }
 
     pub fn set_engine_info(&self, proto: Protocol, file_name: Option<String>,

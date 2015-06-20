@@ -22,8 +22,14 @@ version = "0.1.1"
 getopts = "0.2"
 tempdir = "0.3"
 
+[[bin]]
+name = "pinentry"
+
+[[test]]
+name = "keylist"
+
 [[test]]
 name = "encrypt"
 
 [[test]]
-name = "keylist"
+name = "decrypt"

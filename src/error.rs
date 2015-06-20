@@ -21,19 +21,23 @@ impl Error {
         Error { err: err }
     }
 
+    pub fn raw(&self) -> sys::gpgme_error_t {
+        self.err
+    }
+
     pub fn from_source(source: sys::gpgme_err_source_t, code: sys::gpgme_err_code_t) -> Error {
         Error::new(sys::gpgme_err_make(source, code))
     }
 
     pub fn last_os_error() -> Error {
         unsafe {
-            Error::from_source(sys::GPG_ERR_SOURCE_USER_1, sys::gpgme_err_code_from_syserror())
+            Error::new(sys::gpgme_error_from_syserror())
         }
     }
 
     pub fn from_raw_os_error(code: i32) -> Error {
         unsafe {
-            Error::from_source(sys::GPG_ERR_SOURCE_USER_1, sys::gpgme_err_code_from_errno(code as libc::c_int))
+            Error::new(sys::gpgme_error_from_errno(code as libc::c_int))
         }
     }
 

@@ -8,7 +8,7 @@ use enum_primitive::FromPrimitive;
 
 use gpgme_sys as sys;
 
-use {Protocol, Token};
+use {Protocol, Token, TOKEN};
 use error::{Error, Result};
 
 #[derive(Debug, Copy, Clone)]
@@ -106,11 +106,11 @@ impl<'a, T> Iterator for EngineInfoIter<'a, T> {
     }
 }
 
-pub struct EngineInfoGuard<'a>(RwLockReadGuard<'a, ()>);
+pub struct EngineInfoGuard(RwLockReadGuard<'static, ()>);
 
-impl<'a> EngineInfoGuard<'a> {
-    pub fn new<'b>(lib: &'b Token) -> Result<EngineInfoGuard<'b>> {
-        let lock = lib.0.engine_info.read().unwrap();
+impl EngineInfoGuard {
+    pub fn new(_token: &Token) -> Result<EngineInfoGuard> {
+        let lock = TOKEN.0.engine_info.read().unwrap();
         let result = unsafe {
             let mut info: sys::gpgme_engine_info_t = ptr::null_mut();
             sys::gpgme_get_engine_info(&mut info)
@@ -135,9 +135,9 @@ impl<'a> EngineInfoGuard<'a> {
     }
 }
 
-impl<'a, 'b> IntoIterator for &'b EngineInfoGuard<'a> {
-    type Item = EngineInfo<'b, ()>;
-    type IntoIter = EngineInfoIter<'b, ()>;
+impl<'a> IntoIterator for &'a EngineInfoGuard {
+    type Item = EngineInfo<'a, ()>;
+    type IntoIter = EngineInfoIter<'a, ()>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
