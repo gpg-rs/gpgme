@@ -2,7 +2,7 @@
 name = "libgpg-error-sys"
 description = "Raw bindings for libgpg-error"
 repository = "https://github.com/johnschug/rust-gpgme"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
 keywords = ["gpg"]
