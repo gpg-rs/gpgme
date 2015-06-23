@@ -10,6 +10,7 @@ use gpgme_sys as sys;
 
 use error::Error;
 use keys::{KeyAlgorithm, HashAlgorithm, Validity};
+use notation::SignatureNotationIter;
 
 macro_rules! impl_result {
     ($Name:ident: $T:ty) => {
@@ -419,6 +420,10 @@ impl<'a> NewSignature<'a> {
         }
     }
 
+    pub fn class(&self) -> u32 {
+        unsafe { (*self.raw).sig_class as u32 }
+    }
+
     pub fn timestamp(&self) -> i64 {
         unsafe { (*self.raw).timestamp as i64 }
     }
@@ -496,18 +501,13 @@ impl<'a> Signature<'a> {
         }
     }
 
-    pub fn timestamp(&self) -> i64 {
-        unsafe { (*self.raw).timestamp as i64 }
+    pub fn chain_model(&self) -> bool {
+        unsafe { (*self.raw).chain_model() }
     }
 
-    pub fn expires(&self) -> Option<i64> {
-        let expires = unsafe {
-            (*self.raw).exp_timestamp
-        };
-        if expires > 0 {
-            Some(expires as i64)
-        } else {
-            None
+    pub fn pka_trust(&self) -> PkaTrust {
+        unsafe {
+            PkaTrust::from_u64((*self.raw).pka_trust() as u64).unwrap_or(PkaTrust::Unknown)
         }
     }
 
@@ -523,6 +523,21 @@ impl<'a> Signature<'a> {
 
     pub fn validity_reason(&self) -> Error {
         unsafe { Error::new((*self.raw).validity_reason) }
+    }
+
+    pub fn timestamp(&self) -> i64 {
+        unsafe { (*self.raw).timestamp as i64 }
+    }
+
+    pub fn expires(&self) -> Option<i64> {
+        let expires = unsafe {
+            (*self.raw).exp_timestamp
+        };
+        if expires > 0 {
+            Some(expires as i64)
+        } else {
+            None
+        }
     }
 
     pub fn key_algorithm(&self) -> KeyAlgorithm {
@@ -547,16 +562,6 @@ impl<'a> Signature<'a> {
         }
     }
 
-    pub fn chain_model(&self) -> bool {
-        unsafe { (*self.raw).chain_model() }
-    }
-
-    pub fn pka_trust(&self) -> PkaTrust {
-        unsafe {
-            PkaTrust::from_u64((*self.raw).pka_trust() as u64).unwrap_or(PkaTrust::Unknown)
-        }
-    }
-
     pub fn pka_address(&self) -> Option<&'a str> {
         unsafe {
             let pka_address = (*self.raw).pka_address;
@@ -565,6 +570,12 @@ impl<'a> Signature<'a> {
             } else {
                 None
             }
+        }
+    }
+
+    pub fn notations(&self) -> SignatureNotationIter<'a, VerifyResult> {
+        unsafe {
+            SignatureNotationIter::from_list((*self.raw).notations)
         }
     }
 }

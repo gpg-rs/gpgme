@@ -42,6 +42,12 @@ name = "decrypt"
 name = "sign"
 
 [[test]]
+name = "signers"
+
+[[test]]
+name = "notations"
+
+[[test]]
 name = "verify"
 
 [[test]]

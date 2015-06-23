@@ -10,6 +10,7 @@ use gpgme_sys as sys;
 use Protocol;
 use error::Error;
 use ops::KeyListMode;
+use notation::SignatureNotationIter;
 
 enum_from_primitive! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -45,6 +46,7 @@ enum_from_primitive! {
         RsaSign         = sys::GPGME_PK_RSA_S as isize,
         ElGamalEncrypt  = sys::GPGME_PK_ELG_E as isize,
         Dsa             = sys::GPGME_PK_DSA as isize,
+        Ecc             = sys::GPGME_PK_ECC as isize,
         ElGamal         = sys::GPGME_PK_ELG as isize,
         Ecdsa           = sys::GPGME_PK_ECDSA as isize,
         Ecdh            = sys::GPGME_PK_ECDH as isize,
@@ -77,6 +79,7 @@ enum_from_primitive! {
         Sha256        = sys::GPGME_MD_SHA256 as isize,
         Sha384        = sys::GPGME_MD_SHA384 as isize,
         Sha512        = sys::GPGME_MD_SHA512 as isize,
+        Sha224        = sys::GPGME_MD_SHA224 as isize,
         Rmd160        = sys::GPGME_MD_RMD160 as isize,
         Tiger         = sys::GPGME_MD_TIGER as isize,
         Haval         = sys::GPGME_MD_HAVAL as isize,
@@ -372,6 +375,17 @@ impl<'a> SubKey<'a> {
             }
         }
     }
+
+    pub fn curve(&self) -> Option<&'a str> {
+        unsafe {
+            let curve = (*self.raw).curve;
+            if !curve.is_null() {
+                str::from_utf8(CStr::from_ptr(curve).to_bytes()).ok()
+            } else {
+                None
+            }
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -531,19 +545,19 @@ impl<'a> KeySignature<'a> {
         self.raw
     }
 
-    pub fn revoked(&self) -> bool {
+    pub fn is_revoked(&self) -> bool {
         unsafe { (*self.raw).revoked() }
     }
 
-    pub fn expired(&self) -> bool {
+    pub fn is_expired(&self) -> bool {
         unsafe { (*self.raw).expired() }
     }
 
-    pub fn invalid(&self) -> bool {
+    pub fn is_invalid(&self) -> bool {
         unsafe { (*self.raw).invalid() }
     }
 
-    pub fn exportable(&self) -> bool {
+    pub fn is_exportable(&self) -> bool {
         unsafe { (*self.raw).exportable() }
     }
 
@@ -630,8 +644,18 @@ impl<'a> KeySignature<'a> {
         }
     }
 
+    pub fn class(&self) -> u32 {
+        unsafe { (*self.raw).sig_class as u32 }
+    }
+
     pub fn status(&self) -> Error {
         unsafe { Error::new((*self.raw).status) }
+    }
+
+    pub fn notations(&self) -> SignatureNotationIter<'a, Key> {
+        unsafe {
+            SignatureNotationIter::from_list((*self.raw).notations)
+        }
     }
 }
 

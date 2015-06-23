@@ -20,6 +20,7 @@ fn check_result(result: ops::SignResult, kind: ops::SignMode) {
     if signature.hash_algorithm() != HashAlgorithm::Sha1 {
         assert_eq!(signature.hash_algorithm(), HashAlgorithm::Rmd160);
     }
+    assert_eq!(signature.class(), 0);
     assert_eq!(signature.fingerprint(), Some("A0FF4590BB6122EDEF6E3C542D727CC768697734"));
 }
 

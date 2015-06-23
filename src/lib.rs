@@ -19,15 +19,18 @@ use gpgme_sys as sys;
 pub use self::error::{Result, Error, ErrorCode};
 pub use self::engine::{EngineInfo, EngineInfoGuard};
 pub use self::context::{Context, Keys};
-pub use self::keys::{Validity, KeyAlgorithm, HashAlgorithm, Key, KeySignature, SubKey, UserId};
 pub use self::data::{DataEncoding, DataType, Data};
+pub use self::keys::{Validity, KeyAlgorithm, HashAlgorithm, Key, KeySignature, SubKey, UserId};
+pub use self::notation::{SignatureNotationFlags, SignatureNotation, NOTATION_HUMAN_READABLE,
+    NOTATION_CRITICAL};
 pub use self::traits::{PassphraseCallback, ProgressCallback};
 
 pub mod error;
 mod engine;
 mod context;
-mod keys;
 mod data;
+mod keys;
+mod notation;
 mod traits;
 pub mod ops;
 
@@ -55,6 +58,7 @@ enum_from_primitive! {
         Assuan = sys::GPGME_PROTOCOL_ASSUAN as isize,
         G13 = sys::GPGME_PROTOCOL_G13 as isize,
         UiServer = sys::GPGME_PROTOCOL_UISERVER as isize,
+        Spawn = sys::GPGME_PROTOCOL_SPAWN as isize,
         Default  = sys::GPGME_PROTOCOL_DEFAULT as isize,
         Unknown = sys::GPGME_PROTOCOL_UNKNOWN as isize,
     }

@@ -1,3 +1,4 @@
+use std::env;
 use std::process::Command;
 use std::str;
 
@@ -26,7 +27,7 @@ fn fail<S: AsRef<str>>(s: S) -> ! {
 }
 
 fn main() {
-    let mut command = Command::new("gpgme-config");
+    let mut command = Command::new(env::var_os("GPGME_CONFIG").unwrap_or("gpgme-config".into()));
     if cfg!(unix) {
         command.arg("--thread=pthread");
     }

@@ -26,7 +26,7 @@ pub type gpgme_data_t = *mut gpgme_data;
 #[repr(C)]
 #[derive(Clone)]
 pub struct _gpgme_sig_notation {
-  pub next: *mut _gpgme_sig_notation,
+  pub next: gpgme_sig_notation_t,
   pub name: *mut c_char,
   pub value: *mut c_char,
   pub name_len: c_int,
@@ -36,10 +36,20 @@ pub struct _gpgme_sig_notation {
 }
 pub type gpgme_sig_notation_t = *mut _gpgme_sig_notation;
 
+impl _gpgme_sig_notation {
+    pub fn human_readable(&self) -> bool {
+        (self.bitfield & 0x1) == 0x1
+    }
+
+    pub fn critical(&self) -> bool {
+        (self.bitfield & 0x2) == 0x2
+    }
+}
+
 #[repr(C)]
 #[derive(Clone)]
 pub struct _gpgme_engine_info {
-    pub next: *mut _gpgme_engine_info,
+    pub next: gpgme_engine_info_t,
     pub protocol: gpgme_protocol_t,
     pub file_name: *mut c_char,
     pub version: *mut c_char,
@@ -51,7 +61,7 @@ pub type gpgme_engine_info_t = *mut _gpgme_engine_info;
 #[repr(C)]
 #[derive(Clone)]
 pub struct _gpgme_subkey {
-    pub next: *mut _gpgme_subkey,
+    pub next: gpgme_subkey_t,
     pub bitfield: u32,
     pub pubkey_algo: gpgme_pubkey_algo_t,
     pub length: c_uint,
@@ -60,7 +70,8 @@ pub struct _gpgme_subkey {
     pub fpr: *mut c_char,
     pub timestamp: c_long,
     pub expires: c_long,
-    pub card_number: *mut c_char
+    pub card_number: *mut c_char,
+    pub curve: *mut c_char,
 }
 pub type gpgme_subkey_t = *mut _gpgme_subkey;
 
@@ -103,7 +114,7 @@ impl _gpgme_subkey {
 #[repr(C)]
 #[derive(Clone)]
 pub struct _gpgme_key_sig {
-    pub next: *mut _gpgme_key_sig,
+    pub next: gpgme_key_sig_t,
     pub bitfield: u32,
     pub pubkey_algo: gpgme_pubkey_algo_t,
     pub keyid: *mut c_char,
@@ -140,7 +151,7 @@ impl _gpgme_key_sig {
 #[repr(C)]
 #[derive(Clone)]
 pub struct _gpgme_user_id {
-    pub next: *mut _gpgme_user_id,
+    pub next: gpgme_user_id_t,
     pub bitfield: u32,
     pub validity: gpgme_validity_t,
     pub uid: *mut c_char,
@@ -259,7 +270,7 @@ pub type gpgme_data_cbs_t = *mut gpgme_data_cbs;
 #[repr(C)]
 #[derive(Clone)]
 pub struct _gpgme_invalid_key {
-  pub next: *mut _gpgme_invalid_key,
+  pub next: gpgme_invalid_key_t,
   pub fpr: *mut c_char,
   pub reason: gpgme_error_t
 }
@@ -275,7 +286,7 @@ pub type gpgme_encrypt_result_t = *mut _gpgme_op_encrypt_result;
 #[repr(C)]
 #[derive(Clone)]
 pub struct _gpgme_recipient {
-    pub next: *mut _gpgme_recipient,
+    pub next: gpgme_recipient_t,
     pub keyid: *mut c_char,
     _keyid: [c_char; 17],
     pub pubkey_algo: gpgme_pubkey_algo_t,
@@ -302,7 +313,7 @@ impl _gpgme_op_decrypt_result {
 #[repr(C)]
 #[derive(Clone)]
 pub struct _gpgme_new_signature {
-    pub next: *mut _gpgme_new_signature,
+    pub next: gpgme_new_signature_t,
     pub sig_type: gpgme_sig_mode_t,
     pub pubkey_algo: gpgme_pubkey_algo_t,
     pub hash_algo: gpgme_hash_algo_t,
@@ -325,7 +336,7 @@ pub type gpgme_sign_result_t = *mut _gpgme_op_sign_result;
 #[repr(C)]
 #[derive(Clone)]
 pub struct _gpgme_signature {
-    pub next: *mut _gpgme_signature,
+    pub next: gpgme_signature_t,
     pub summary: gpgme_sigsum_t,
     pub fpr: *mut c_char,
     pub status: gpgme_error_t,
@@ -366,7 +377,7 @@ pub type gpgme_verify_result_t = *mut _gpgme_op_verify_result;
 #[repr(C)]
 #[derive(Clone)]
 pub struct _gpgme_import_status {
-    pub next: *mut _gpgme_import_status,
+    pub next: gpgme_import_status_t,
     pub fpr: *mut c_char,
     pub result: gpgme_error_t,
     pub status: c_uint
@@ -455,7 +466,7 @@ pub type gpgme_vfs_mount_result_t = *mut _gpgme_op_vfs_mount_result;
 #[repr(C)]
 #[derive(Clone)]
 pub struct gpgme_conf_arg {
-    pub next: *mut gpgme_conf_arg,
+    pub next: gpgme_conf_arg_t,
     pub no_arg: c_uint,
     pub union: libc::uintptr_t
 }
@@ -464,7 +475,7 @@ pub type gpgme_conf_arg_t = *mut gpgme_conf_arg;
 #[repr(C)]
 #[derive(Clone)]
 pub struct gpgme_conf_opt {
-    pub next: *mut gpgme_conf_opt,
+    pub next: gpgme_conf_opt_t,
     pub name: *mut c_char,
     pub flags: c_uint,
     pub level: gpgme_conf_level_t,
@@ -486,7 +497,7 @@ pub type gpgme_conf_opt_t = *mut gpgme_conf_opt;
 #[repr(C)]
 #[derive(Clone)]
 pub struct gpgme_conf_comp {
-    pub next: *mut gpgme_conf_comp,
+    pub next: gpgme_conf_comp_t,
     _last_opt_p: *mut gpgme_conf_opt_t,
     pub name: *mut c_char,
     pub description: *mut c_char,

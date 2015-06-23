@@ -1,3 +1,4 @@
+use std::env;
 use std::process::Command;
 use std::str;
 
@@ -26,7 +27,8 @@ fn fail<S: AsRef<str>>(s: S) -> ! {
 }
 
 fn main() {
-    let mut command = Command::new("gpg-error-config");
+    let mut command = Command::new(env::var_os("GPG_ERROR_CONFIG")
+                                   .unwrap_or("gpg-error-config".into()));
     command.arg("--libs");
     let output = match command.output() {
         Ok(out) => out,

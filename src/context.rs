@@ -13,9 +13,10 @@ use gpgme_sys as sys;
 
 use {Protocol, Token};
 use error::{Result, Error};
-use keys::Key;
 use engine::{EngineInfo, EngineInfoIter};
 use data::Data;
+use keys::Key;
+use notation::{SignatureNotationFlags, SignatureNotationIter};
 use traits::{PassphraseCallback, ProgressCallback};
 use ops;
 
@@ -394,8 +395,44 @@ impl Context {
         }
     }
 
+    pub fn signers_count(&self) -> usize {
+        unsafe {
+            sys::gpgme_signers_count(self.raw) as usize
+        }
+    }
+
     pub fn signers(&self) -> SignersIter {
-        SignersIter::new(self)
+        SignersIter { ctx: self, current: 0 }
+    }
+
+    pub fn clear_notations(&mut self) {
+        unsafe {
+            sys::gpgme_sig_notation_clear(self.raw);
+        }
+    }
+
+    pub fn add_notation<S: Into<String>>(&mut self, name: Option<String>, value: S,
+                        flags: SignatureNotationFlags) -> Result<()> {
+        let name = match name {
+            Some(v) => Some(try!(CString::new(v))),
+            None => None,
+        };
+        let value = try!(CString::new(value.into()));
+        let result = unsafe {
+            let name = name.map_or(ptr::null(), |s| s.as_ptr());
+            sys::gpgme_sig_notation_add(self.raw, name, value.as_ptr(), flags.bits())
+        };
+        if result == 0 {
+            Ok(())
+        } else {
+            Err(Error::new(result))
+        }
+    }
+
+    pub fn notations(&self) -> SignatureNotationIter<Context> {
+        unsafe {
+            SignatureNotationIter::from_list(sys::gpgme_sig_notation_get(self.raw))
+        }
     }
 
     pub fn sign(&mut self, mode: ops::SignMode, plain: &mut Data,
@@ -671,76 +708,28 @@ impl<'a> Iterator for Keys<'a> {
 pub struct SignersIter<'a> {
     ctx: &'a Context,
     current: usize,
-    count: usize,
-}
-
-impl<'a> SignersIter<'a> {
-    fn new<'b>(ctx: &'b Context) -> SignersIter<'b> {
-        let count = unsafe {
-            sys::gpgme_signers_count(ctx.as_raw()) as usize
-        };
-        SignersIter { ctx: ctx, current: 0, count: count }
-    }
 }
 
 impl<'a> Iterator for SignersIter<'a> {
     type Item = Key;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current < self.count {
-            unsafe {
-                let key = sys::gpgme_signers_enum(self.ctx.as_raw(), self.current as libc::c_int);
+        unsafe {
+            let key = sys::gpgme_signers_enum(self.ctx.as_raw(), self.current as libc::c_int);
+            if !key.is_null() {
                 self.current += 1;
                 Some(Key::from_raw(key))
+            } else {
+                None
             }
-        } else {
-            None
         }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.count - self.current;
-        (size, Some(size))
-    }
-
-    fn count(self) -> usize {
-        self.size_hint().0
     }
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        if (n <= self.count) && (self.current < (self.count - n)) {
-            let current = self.current + n;
-            self.current += n + 1;
-            unsafe {
-                let key = sys::gpgme_signers_enum(self.ctx.as_raw(), current as libc::c_int);
-                Some(Key::from_raw(key))
-            }
-        } else {
-            self.current = self.count;
-            None
-        }
-    }
-
-    fn last(mut self) -> Option<Self::Item> {
-        self.next_back()
+        self.current += n;
+        self.next()
     }
 }
-
-impl<'a> DoubleEndedIterator for SignersIter<'a> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        if self.count > self.current {
-            unsafe {
-                self.count -= 1;
-                let key = sys::gpgme_signers_enum(self.ctx.as_raw(), self.count as libc::c_int);
-                Some(Key::from_raw(key))
-            }
-        } else {
-            None
-        }
-    }
-}
-
-impl<'a> ExactSizeIterator for SignersIter<'a> {}
 
 extern fn passphrase_callback<C: PassphraseCallback>(hook: *mut libc::c_void,
                                                      uid_hint: *const libc::c_char,

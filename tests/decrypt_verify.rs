@@ -19,6 +19,7 @@ fn check_result(result: ops::VerifyResult, fpr: &str, summary: ops::SignatureSum
     assert_eq!(signature.summary(), summary);
     assert_eq!(signature.fingerprint(), Some(fpr));
     assert_eq!(signature.status().code(), status);
+    assert_eq!(signature.notations().count(), 0);
     assert!(!signature.wrong_key_usage());
     assert_eq!(signature.validity(), Validity::Unknown);
     assert_eq!(signature.validity_reason().code(), 0);

@@ -38,6 +38,7 @@ pub const GPGME_PK_RSA_E: gpgme_pubkey_algo_t = 2;
 pub const GPGME_PK_RSA_S: gpgme_pubkey_algo_t = 3;
 pub const GPGME_PK_ELG_E: gpgme_pubkey_algo_t = 16;
 pub const GPGME_PK_DSA: gpgme_pubkey_algo_t = 17;
+pub const GPGME_PK_ECC: gpgme_pubkey_algo_t = 18;
 pub const GPGME_PK_ELG: gpgme_pubkey_algo_t = 20;
 pub const GPGME_PK_ECDSA: gpgme_pubkey_algo_t = 301;
 pub const GPGME_PK_ECDH: gpgme_pubkey_algo_t = 302;
@@ -53,60 +54,16 @@ pub const GPGME_MD_HAVAL: gpgme_hash_algo_t = 7;
 pub const GPGME_MD_SHA256: gpgme_hash_algo_t = 8;
 pub const GPGME_MD_SHA384: gpgme_hash_algo_t = 9;
 pub const GPGME_MD_SHA512: gpgme_hash_algo_t = 10;
+pub const GPGME_MD_SHA224: gpgme_hash_algo_t = 11;
 pub const GPGME_MD_MD4: gpgme_hash_algo_t = 301;
 pub const GPGME_MD_CRC32: gpgme_hash_algo_t = 302;
 pub const GPGME_MD_CRC32_RFC1510: gpgme_hash_algo_t = 303;
 pub const GPGME_MD_CRC24_RFC2440: gpgme_hash_algo_t = 304;
 
-pub type gpgme_sig_stat_t = libc::c_uint;
-pub const GPGME_SIG_STAT_NONE: gpgme_sig_stat_t = 0;
-pub const GPGME_SIG_STAT_GOOD: gpgme_sig_stat_t = 1;
-pub const GPGME_SIG_STAT_BAD: gpgme_sig_stat_t = 2;
-pub const GPGME_SIG_STAT_NOKEY: gpgme_sig_stat_t = 3;
-pub const GPGME_SIG_STAT_NOSIG: gpgme_sig_stat_t = 4;
-pub const GPGME_SIG_STAT_ERROR: gpgme_sig_stat_t = 5;
-pub const GPGME_SIG_STAT_DIFF: gpgme_sig_stat_t = 6;
-pub const GPGME_SIG_STAT_GOOD_EXP: gpgme_sig_stat_t = 7;
-pub const GPGME_SIG_STAT_GOOD_EXPKEY: gpgme_sig_stat_t = 8;
-
 pub type gpgme_sig_mode_t = libc::c_uint;
 pub const GPGME_SIG_MODE_NORMAL: gpgme_sig_mode_t = 0;
 pub const GPGME_SIG_MODE_DETACH: gpgme_sig_mode_t = 1;
 pub const GPGME_SIG_MODE_CLEAR: gpgme_sig_mode_t = 2;
-
-pub type gpgme_attr_t = libc::c_uint;
-pub const GPGME_ATTR_KEYID: gpgme_attr_t = 1;
-pub const GPGME_ATTR_FPR: gpgme_attr_t = 2;
-pub const GPGME_ATTR_ALGO: gpgme_attr_t = 3;
-pub const GPGME_ATTR_LEN: gpgme_attr_t = 4;
-pub const GPGME_ATTR_CREATED: gpgme_attr_t = 5;
-pub const GPGME_ATTR_EXPIRE: gpgme_attr_t = 6;
-pub const GPGME_ATTR_OTRUST: gpgme_attr_t = 7;
-pub const GPGME_ATTR_USERID: gpgme_attr_t = 8;
-pub const GPGME_ATTR_NAME: gpgme_attr_t = 9;
-pub const GPGME_ATTR_EMAIL: gpgme_attr_t = 10;
-pub const GPGME_ATTR_COMMENT: gpgme_attr_t = 11;
-pub const GPGME_ATTR_VALIDITY: gpgme_attr_t = 12;
-pub const GPGME_ATTR_LEVEL: gpgme_attr_t = 13;
-pub const GPGME_ATTR_TYPE: gpgme_attr_t = 14;
-pub const GPGME_ATTR_IS_SECRET: gpgme_attr_t = 15;
-pub const GPGME_ATTR_KEY_REVOKED: gpgme_attr_t = 16;
-pub const GPGME_ATTR_KEY_INVALID: gpgme_attr_t = 17;
-pub const GPGME_ATTR_UID_REVOKED: gpgme_attr_t = 18;
-pub const GPGME_ATTR_UID_INVALID: gpgme_attr_t = 19;
-pub const GPGME_ATTR_KEY_CAPS: gpgme_attr_t = 20;
-pub const GPGME_ATTR_CAN_ENCRYPT: gpgme_attr_t = 21;
-pub const GPGME_ATTR_CAN_SIGN: gpgme_attr_t = 22;
-pub const GPGME_ATTR_CAN_CERTIFY: gpgme_attr_t = 23;
-pub const GPGME_ATTR_KEY_EXPIRED: gpgme_attr_t = 24;
-pub const GPGME_ATTR_KEY_DISABLED: gpgme_attr_t = 25;
-pub const GPGME_ATTR_SERIAL: gpgme_attr_t = 26;
-pub const GPGME_ATTR_ISSUER: gpgme_attr_t = 27;
-pub const GPGME_ATTR_CHAINID: gpgme_attr_t = 28;
-pub const GPGME_ATTR_SIG_STATUS: gpgme_attr_t = 29;
-pub const GPGME_ATTR_ERRTOK: gpgme_attr_t = 30;
-pub const GPGME_ATTR_SIG_SUMMARY: gpgme_attr_t = 31;
-pub const GPGME_ATTR_SIG_CLASS: gpgme_attr_t = 32;
 
 pub type gpgme_validity_t = libc::c_uint;
 pub const GPGME_VALIDITY_UNKNOWN: gpgme_validity_t = 0;
@@ -123,6 +80,7 @@ pub const GPGME_PROTOCOL_GPGCONF: gpgme_protocol_t = 2;
 pub const GPGME_PROTOCOL_ASSUAN: gpgme_protocol_t = 3;
 pub const GPGME_PROTOCOL_G13: gpgme_protocol_t = 4;
 pub const GPGME_PROTOCOL_UISERVER: gpgme_protocol_t = 5;
+pub const GPGME_PROTOCOL_SPAWN: gpgme_protocol_t = 6;
 pub const GPGME_PROTOCOL_DEFAULT: gpgme_protocol_t = 254;
 pub const GPGME_PROTOCOL_UNKNOWN: gpgme_protocol_t = 255;
 
@@ -131,6 +89,7 @@ pub const GPGME_KEYLIST_MODE_LOCAL: gpgme_keylist_mode_t = 1;
 pub const GPGME_KEYLIST_MODE_EXTERN: gpgme_keylist_mode_t = 2;
 pub const GPGME_KEYLIST_MODE_SIGS: gpgme_keylist_mode_t = 4;
 pub const GPGME_KEYLIST_MODE_SIG_NOTATIONS: gpgme_keylist_mode_t = 8;
+pub const GPGME_KEYLIST_MODE_WITH_SECRET: gpgme_keylist_mode_t = 16;
 pub const GPGME_KEYLIST_MODE_EPHEMERAL: gpgme_keylist_mode_t = 128;
 pub const GPGME_KEYLIST_MODE_VALIDATE: gpgme_keylist_mode_t = 256;
 
@@ -248,6 +207,12 @@ pub const GPGME_STATUS_INV_SGNR: gpgme_status_code_t = 82;
 pub const GPGME_STATUS_NO_SGNR: gpgme_status_code_t = 83;
 pub const GPGME_STATUS_SUCCESS: gpgme_status_code_t = 84;
 pub const GPGME_STATUS_DECRYPTION_INFO: gpgme_status_code_t = 85;
+pub const GPGME_STATUS_PLAINTEXT_LENGTH: gpgme_status_code_t = 86;
+pub const GPGME_STATUS_MOUNTPOINT: gpgme_status_code_t = 87;
+pub const GPGME_STATUS_PINENTRY_LAUNCHED: gpgme_status_code_t = 88;
+pub const GPGME_STATUS_ATTRIBUTE: gpgme_status_code_t = 89;
+pub const GPGME_STATUS_BEGIN_SIGNING: gpgme_status_code_t = 90;
+pub const GPGME_STATUS_KEY_NOT_CREATED: gpgme_status_code_t = 91;
 
 pub const GPGME_INCLUDE_CERTS_DEFAULT: libc::c_int = -256;
 
@@ -262,6 +227,7 @@ pub const GPGME_ENCRYPT_ALWAYS_TRUST: gpgme_encrypt_flags_t = 1;
 pub const GPGME_ENCRYPT_NO_ENCRYPT_TO: gpgme_encrypt_flags_t = 2;
 pub const GPGME_ENCRYPT_PREPARE: gpgme_encrypt_flags_t = 4;
 pub const GPGME_ENCRYPT_EXPECT_SIGN: gpgme_encrypt_flags_t = 8;
+pub const GPGME_ENCRYPT_NO_COMPRESS: gpgme_encrypt_flags_t = 16;
 
 
 pub type gpgme_sigsum_t = libc::c_uint;
@@ -282,6 +248,9 @@ pub const GPGME_IMPORT_UID: libc::c_uint = 2;
 pub const GPGME_IMPORT_SIG: libc::c_uint = 4;
 pub const GPGME_IMPORT_SUBKEY: libc::c_uint = 8;
 pub const GPGME_IMPORT_SECRET: libc::c_uint = 16;
+
+pub const GPGME_SPAWN_DETACHED: libc::c_uint = 1;
+pub const GPGME_SPAWN_ALLOW_SET_FG: libc::c_uint = 2;
 
 pub type gpgme_conf_level_t = libc::c_uint;
 pub const GPGME_CONF_BASIC: gpgme_conf_level_t = 0;

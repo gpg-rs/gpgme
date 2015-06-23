@@ -178,6 +178,13 @@ extern {
     pub fn gpgme_op_card_edit_start(ctx: gpgme_ctx_t, key: gpgme_key_t, fnc: gpgme_edit_cb_t, fnc_value: *mut c_void, out: gpgme_data_t) -> gpgme_error_t;
     pub fn gpgme_op_card_edit(ctx: gpgme_ctx_t, key: gpgme_key_t, fnc: gpgme_edit_cb_t, fnc_value: *mut c_void, out: gpgme_data_t) -> gpgme_error_t;
 
+    pub fn gpgme_op_spawn_start(ctx: gpgme_ctx_t, file: *const c_char, argv: *mut *const c_char,
+                                datain: gpgme_data_t, dataout: gpgme_data_t, dataerr: gpgme_data_t,
+                                flags: c_uint) -> gpgme_error_t;
+    pub fn gpgme_op_spawn(ctx: gpgme_ctx_t, file: *const c_char, argv: *mut *const c_char,
+                          datain: gpgme_data_t, dataout: gpgme_data_t, dataerr: gpgme_data_t,
+                          flags: c_uint) -> gpgme_error_t;
+
     pub fn gpgme_op_keylist_result(ctx: gpgme_ctx_t) -> gpgme_keylist_result_t;
     pub fn gpgme_op_keylist_start(ctx: gpgme_ctx_t, pattern: *const c_char, secret_only: c_int) -> gpgme_error_t;
     pub fn gpgme_op_keylist_ext_start(ctx: gpgme_ctx_t, pattern: *mut *const c_char, secret_only: c_int, _reserved: c_int) -> gpgme_error_t;
