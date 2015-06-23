@@ -41,7 +41,8 @@ UqVooWlGXHwNw/xg/fVzt9VNbtjtJ/fhUqYo0/LyCGEA\n\
 =6+AK\n\
 -----END PGP MESSAGE-----\n";
 
-fn check_result(result: ops::VerifyResult, fpr: &str, summary: ops::SignatureSummary, status: ErrorCode) {
+fn check_result(result: ops::VerifyResult, fpr: &str, summary: ops::SignatureSummary,
+                status: ErrorCode) {
     assert_eq!(result.signatures().count(), 1);
 
     let signature = result.signatures().next().unwrap();
@@ -59,23 +60,23 @@ fn test_verify() {
     let mut ctx = fail_if_err!(gpgme::create_context());
     fail_if_err!(ctx.set_protocol(Protocol::OpenPgp));
 
-    let mut text = fail_if_err!(Data::from_bytes(TEST_TEXT1));
-    let mut sig = fail_if_err!(Data::from_bytes(TEST_SIG1));
+    let mut text = fail_if_err!(Data::from_buffer(TEST_TEXT1));
+    let mut sig = fail_if_err!(Data::from_buffer(TEST_SIG1));
     check_result(fail_if_err!(ctx.verify(&mut sig, Some(&mut text), None)),
         "A0FF4590BB6122EDEF6E3C542D727CC768697734", ops::SignatureSummary::empty(), 0);
 
-    text = fail_if_err!(Data::from_bytes(TEST_TEXT1F));
+    text = fail_if_err!(Data::from_buffer(TEST_TEXT1F));
     sig.seek(io::SeekFrom::Start(0)).unwrap();
     check_result(fail_if_err!(ctx.verify(&mut sig, Some(&mut text), None)),
         "2D727CC768697734", ops::SIGNATURE_RED, error::GPG_ERR_BAD_SIGNATURE);
 
     text = fail_if_err!(Data::new());
-    sig = fail_if_err!(Data::from_bytes(TEST_SIG2));
+    sig = fail_if_err!(Data::from_buffer(TEST_SIG2));
     check_result(fail_if_err!(ctx.verify(&mut sig, None, Some(&mut text))),
         "A0FF4590BB6122EDEF6E3C542D727CC768697734", ops::SignatureSummary::empty(), 0);
 
     text = fail_if_err!(Data::new());
-    sig = fail_if_err!(Data::from_bytes(DOUBLE_PLAINTEXT_SIG));
+    sig = fail_if_err!(Data::from_buffer(DOUBLE_PLAINTEXT_SIG));
     assert_eq!(ctx.verify(&mut sig, None, Some(&mut text)).err()
         .map_or(0, |err| err.code()), error::GPG_ERR_BAD_DATA);
 }

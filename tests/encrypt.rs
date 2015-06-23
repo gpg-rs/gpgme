@@ -15,7 +15,7 @@ fn test_encrypt() {
     let mut ctx = fail_if_err!(gpgme::create_context());
     fail_if_err!(ctx.set_protocol(Protocol::OpenPgp));
 
-    let mut input = fail_if_err!(Data::from_bytes(b"Hallo Leute\n"));
+    let mut input = fail_if_err!(Data::from_buffer(b"Hallo Leute\n"));
     let mut output = fail_if_err!(Data::new());
 
     let key1 = fail_if_err!(ctx.find_key("A0FF4590BB6122EDEF6E3C542D727CC768697734"));

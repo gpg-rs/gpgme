@@ -3,7 +3,7 @@ extern crate gpgme;
 
 use gpgme::{Protocol, Data};
 
-use self::support::{setup, passphrase_cb};
+use self::support::{setup, passphrase_cb, check_data};
 
 #[macro_use]
 mod support;
@@ -17,10 +17,12 @@ fn test_decrypt() {
     ctx.set_protocol(Protocol::OpenPgp).unwrap();
     let mut guard = ctx.with_passphrase_cb(passphrase_cb);
 
-    let mut input = fail_if_err!(Data::from_bytes(CIPHER_1));
+    let mut input = fail_if_err!(Data::from_buffer(CIPHER_1));
     let mut output = fail_if_err!(Data::new());
     if let Some(alg) = fail_if_err!(guard.decrypt(&mut input,
                                                   &mut output)).unsupported_algorithm() {
         panic!("unsupported algorithm: {}", alg);
     }
+    check_data(&mut output, b"Wenn Sie dies lesen k\xf6nnen, ist es wohl nicht\n\
+               geheim genug.\n");
 }

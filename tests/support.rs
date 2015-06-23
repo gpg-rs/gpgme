@@ -1,12 +1,14 @@
+#![allow(dead_code)]
 use std::env;
 use std::fs::{self, File};
+use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
 use tempdir::TempDir;
 
-use gpgme;
+use gpgme::{self, Data};
 
 #[macro_export]
 macro_rules! fail_if_err {
@@ -47,7 +49,7 @@ fn import_key(key: &[u8]) {
     assert!(child.wait().unwrap().success());
 }
 
-fn setup_agent(dir: &Path) {
+pub fn setup_agent(dir: &Path) {
     env::set_var("GNUPGHOME", dir);
     env::set_var("GPG_AGENT_INFO", "");
     let mut pinentry = env::current_exe().unwrap();
@@ -71,7 +73,13 @@ pub fn setup() -> TempDir {
     dir
 }
 
-#[allow(dead_code)]
 pub fn passphrase_cb(_hint: &str, _info: &str, _prev_was_bad: bool) -> gpgme::Result<Vec<u8>> {
     Ok(b"abc\n".to_vec())
+}
+
+pub fn check_data(data: &mut Data, expected: &[u8]) {
+    let mut buffer = Vec::new();
+    data.seek(io::SeekFrom::Start(0)).unwrap();
+    data.read_to_end(&mut buffer).unwrap();
+    assert_eq!(buffer, expected);
 }

@@ -65,6 +65,7 @@ impl<'a> Data<'a> {
         self.raw
     }
 
+    /// Constructs an empty data object.
     pub fn new() -> Result<Data<'static>> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
         let result = unsafe {
@@ -77,6 +78,8 @@ impl<'a> Data<'a> {
         }
     }
 
+    /// Constructs a data object and fills it with the contents of the file
+    /// referenced by `path`.
     pub fn load<P: AsRef<Path>>(path: &P) -> Result<Data<'static>> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
         let filename = path.as_ref().to_str().and_then(|s| CString::new(s.as_bytes()).ok());
@@ -93,12 +96,28 @@ impl<'a> Data<'a> {
         }
     }
 
+    /// Constructs a data object and fills it with a copy of `bytes`.
     pub fn from_bytes<B: AsRef<[u8]>>(bytes: B) -> Result<Data<'static>> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
         let bytes = bytes.as_ref();
         let result = unsafe {
             sys::gpgme_data_new_from_mem(&mut data, bytes.as_ptr() as *const _,
                                          bytes.len() as u64, 1)
+        };
+        if result == 0 {
+            Ok(Data { raw: data, phantom: PhantomData })
+        } else {
+            Err(Error::new(result))
+        }
+    }
+
+    /// Constructs a data object which copies from `buf` as needed.
+    pub fn from_buffer<B: AsRef<[u8]> + ?Sized>(buf: &B) -> Result<Data> {
+        let mut data: sys::gpgme_data_t = ptr::null_mut();
+        let buf = buf.as_ref();
+        let result = unsafe {
+            sys::gpgme_data_new_from_mem(&mut data, buf.as_ptr() as *const _,
+                                         buf.len() as u64, 0)
         };
         if result == 0 {
             Ok(Data { raw: data, phantom: PhantomData })

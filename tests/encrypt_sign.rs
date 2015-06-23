@@ -1,9 +1,6 @@
 extern crate tempdir;
 extern crate gpgme;
 
-use std::io;
-use std::io::prelude::*;
-
 use gpgme::{Protocol, KeyAlgorithm, HashAlgorithm, Data};
 use gpgme::ops;
 
@@ -20,12 +17,14 @@ fn check_result(result: ops::SignResult, kind: ops::SignMode) {
     let signature = result.signatures().next().unwrap();
     assert_eq!(signature.kind(), kind);
     assert_eq!(signature.key_algorithm(), KeyAlgorithm::Dsa);
-    assert_eq!(signature.hash_algorithm(), HashAlgorithm::Sha1);
+    if signature.hash_algorithm() != HashAlgorithm::Sha1 {
+        assert_eq!(signature.hash_algorithm(), HashAlgorithm::Rmd160);
+    }
     assert_eq!(signature.fingerprint(), Some("A0FF4590BB6122EDEF6E3C542D727CC768697734"));
 }
 
 #[test]
-fn test_sign() {
+fn test_encrypt_sign() {
     let _gpghome = setup();
     let mut ctx = fail_if_err!(gpgme::create_context());
     fail_if_err!(ctx.set_protocol(Protocol::OpenPgp));
@@ -36,16 +35,18 @@ fn test_sign() {
 
     let mut input = fail_if_err!(Data::from_buffer(b"Hallo Leute\n"));
     let mut output = fail_if_err!(Data::new());
-    check_result(fail_if_err!(guard.sign(ops::SignMode::Normal, &mut input, &mut output)),
+    let key1 = fail_if_err!(guard.find_key("A0FF4590BB6122EDEF6E3C542D727CC768697734"));
+    let key2 = fail_if_err!(guard.find_key("D695676BDCEDCC2CDD6152BCFE180B1DA9E3B0B2"));
+    let result = fail_if_err!(guard.encrypt_and_sign(&[key1, key2], ops::ENCRYPT_ALWAYS_TRUST,
+                                                     &mut input, &mut output));
+    if let Some(recp) = result.0.invalid_recipients().next() {
+        panic!("Invalid recipient encountered: {:?}", recp.fingerprint());
+    }
+    check_result(result.1, ops::SignMode::Normal);
+
+    input = fail_if_err!(Data::from_buffer(b"Hallo Leute\n"));
+    output = fail_if_err!(Data::new());
+    check_result(fail_if_err!(guard.encrypt_and_sign(None, ops::ENCRYPT_ALWAYS_TRUST,
+                                                     &mut input, &mut output)).1,
                  ops::SignMode::Normal);
-
-    input.seek(io::SeekFrom::Start(0)).unwrap();
-    output = fail_if_err!(Data::new());
-    check_result(fail_if_err!(guard.sign(ops::SignMode::Detach, &mut input, &mut output)),
-                 ops::SignMode::Detach);
-
-    input.seek(io::SeekFrom::Start(0)).unwrap();
-    output = fail_if_err!(Data::new());
-    check_result(fail_if_err!(guard.sign(ops::SignMode::Clear, &mut input, &mut output)),
-                 ops::SignMode::Clear);
 }

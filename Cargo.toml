@@ -30,6 +30,9 @@ test = false
 name = "keylist"
 
 [[test]]
+name = "symmetric"
+
+[[test]]
 name = "encrypt"
 
 [[test]]
@@ -40,3 +43,15 @@ name = "sign"
 
 [[test]]
 name = "verify"
+
+[[test]]
+name = "encrypt_sign"
+
+[[test]]
+name = "decrypt_verify"
+
+[[test]]
+name = "import"
+
+[[test]]
+name = "export"
