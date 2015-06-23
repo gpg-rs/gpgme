@@ -110,7 +110,9 @@ impl Context {
     ///
     /// ```no_run
     /// let mut ctx = gpgme::create_context().unwrap();
-    /// let mut guard = ctx.with_passphrase_cb(|_: &str, _: &str, _| { Ok(vec![b'\n']) });
+    /// let mut guard = ctx.with_passphrase_cb(|_: Option<&str>, _: Option<&str>, _| {
+    ///     Ok(vec![b'\n'])
+    /// });
     /// // Do something with guard requiring a passphrase e.g. decryption
     /// ```
     pub fn with_passphrase_cb<C: PassphraseCallback>(&mut self, cb: C)
@@ -747,8 +749,16 @@ extern fn passphrase_callback<C: PassphraseCallback>(hook: *mut libc::c_void,
                                                      fd: libc::c_int) -> sys::gpgme_error_t {
     let cb = hook as *mut C;
     unsafe {
-        let uid_hint = str::from_utf8_unchecked(CStr::from_ptr(uid_hint).to_bytes());
-        let info = str::from_utf8_unchecked(CStr::from_ptr(info).to_bytes());
+        let uid_hint = if !uid_hint.is_null() {
+            str::from_utf8(CStr::from_ptr(uid_hint).to_bytes()).ok()
+        } else {
+            None
+        };
+        let info = if !info.is_null() {
+            str::from_utf8(CStr::from_ptr(info).to_bytes()).ok()
+        } else {
+            None
+        };
         (*cb).read(uid_hint, info, was_bad != 0).and_then(|result| {
             let mut buf = &result[..];
             while !buf.is_empty() {
@@ -770,7 +780,11 @@ extern fn progress_callback<C: ProgressCallback>(hook: *mut libc::c_void,
                                                  total: libc::c_int) {
     let cb = hook as *mut C;
     unsafe {
-        let what = str::from_utf8_unchecked(CStr::from_ptr(what).to_bytes());
+        let what = if !what.is_null() {
+            str::from_utf8(CStr::from_ptr(what).to_bytes()).ok()
+        } else {
+            None
+        };
         (*cb).report(what, typ as isize, current as isize, total as isize);
     }
 }

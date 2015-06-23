@@ -42,7 +42,8 @@ fn create_keys(dir: &Path) {
 }
 
 fn import_key(key: &[u8]) {
-    let mut child = Command::new("gpg").arg("--no-permission-warning")
+    let gpg = env::var_os("GPG").unwrap_or("gpg".into());
+    let mut child = Command::new(&gpg).arg("--no-permission-warning")
         .arg("--import").stdin(Stdio::piped()).stdout(Stdio::null())
         .stderr(Stdio::null()).spawn().unwrap();
     child.stdin.as_mut().unwrap().write_all(key).unwrap();
@@ -73,7 +74,8 @@ pub fn setup() -> TempDir {
     dir
 }
 
-pub fn passphrase_cb(_hint: &str, _info: &str, _prev_was_bad: bool) -> gpgme::Result<Vec<u8>> {
+pub fn passphrase_cb(_hint: Option<&str>, _info: Option<&str>,
+                     _prev_was_bad: bool) -> gpgme::Result<Vec<u8>> {
     Ok(b"abc\n".to_vec())
 }
 
