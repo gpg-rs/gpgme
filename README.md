@@ -10,8 +10,26 @@
 
 ## Requirements
 
-The GPGme libraries are required to use this library.
+Version 1.20 or greater of GPGme is required to use this library. Some features may require a more recent version.
 
+The gpgme-sys and libgpg-error-sys crates require the commands gpg-error-config and gpgme-config to be executable 
+in order to build the crates. The paths to these commands can be set using the environment variables GPG_ERROR_CONFIG and GPGME_CONFIG.
+
+The appropriate dependencies can be installed by running:
+#### Debian / Ubuntu
+```shell
+$ sudo apt-get install libgpgme11-dev
+```
+
+#### RHEL / CentOS / Fedora
+```shell
+$ sudo yum install gpgme-devel
+```
+
+#### Mac OS X
+```shell
+$ brew install gpgme
+```
 
 ## Usage
 
