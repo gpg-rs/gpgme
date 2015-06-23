@@ -44,9 +44,11 @@ fn test_encrypt_sign() {
     }
     check_result(result.1, ops::SignMode::Normal);
 
-    input = fail_if_err!(Data::from_buffer(b"Hallo Leute\n"));
-    output = fail_if_err!(Data::new());
-    check_result(fail_if_err!(guard.encrypt_and_sign(None, ops::ENCRYPT_ALWAYS_TRUST,
-                                                     &mut input, &mut output)).1,
-                 ops::SignMode::Normal);
+    if guard.token().check_version("1.4.3") {
+        input = fail_if_err!(Data::from_buffer(b"Hallo Leute\n"));
+        output = fail_if_err!(Data::new());
+        check_result(fail_if_err!(guard.encrypt_and_sign(None, ops::EncryptFlags::empty(),
+                                                         &mut input, &mut output)).1,
+        ops::SignMode::Normal);
+    }
 }
