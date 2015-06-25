@@ -1,7 +1,5 @@
-use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::ptr;
-use std::str;
 use std::sync::RwLockReadGuard;
 
 use enum_primitive::FromPrimitive;
@@ -9,7 +7,8 @@ use enum_primitive::FromPrimitive;
 use gpgme_sys as sys;
 
 use {Protocol, Token, TOKEN};
-use error::{Error, Result};
+use error::Result;
+use utils;
 
 #[derive(Debug, Copy, Clone)]
 pub struct EngineInfo<'a, T: 'a> {
@@ -35,45 +34,25 @@ impl<'a, T> EngineInfo<'a, T> {
 
     pub fn file_name(&self) -> Option<&'a str> {
         unsafe {
-            let file_name = (*self.raw).file_name;
-            if !file_name.is_null() {
-                str::from_utf8(CStr::from_ptr(file_name).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).file_name)
         }
     }
 
     pub fn home_dir(&self) -> Option<&'a str> {
         unsafe {
-            let home_dir = (*self.raw).home_dir;
-            if !home_dir.is_null() {
-                str::from_utf8(CStr::from_ptr(home_dir).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).home_dir)
         }
     }
 
     pub fn version(&self) -> Option<&'a str> {
         unsafe {
-            let version = (*self.raw).version;
-            if !version.is_null() {
-                str::from_utf8(CStr::from_ptr(version).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).version)
         }
     }
 
     pub fn required_version(&self) -> Option<&'a str> {
         unsafe {
-            let req_version = (*self.raw).req_version;
-            if !req_version.is_null() {
-                str::from_utf8(CStr::from_ptr(req_version).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).req_version)
         }
     }
 }
@@ -91,19 +70,7 @@ impl<'a, T> EngineInfoIter<'a, T> {
 }
 
 impl<'a, T> Iterator for EngineInfoIter<'a, T> {
-    type Item = EngineInfo<'a, T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let current = self.current;
-        if !current.is_null() {
-            unsafe {
-                self.current = (*current).next;
-                Some(EngineInfo::from_raw(current))
-            }
-        } else {
-            None
-        }
-    }
+    list_iterator!(EngineInfo<'a, T>, EngineInfo::from_raw);
 }
 
 pub struct EngineInfoGuard(RwLockReadGuard<'static, ()>);
@@ -111,15 +78,11 @@ pub struct EngineInfoGuard(RwLockReadGuard<'static, ()>);
 impl EngineInfoGuard {
     pub fn new(_token: &Token) -> Result<EngineInfoGuard> {
         let lock = TOKEN.0.engine_info.read().unwrap();
-        let result = unsafe {
+        unsafe {
             let mut info: sys::gpgme_engine_info_t = ptr::null_mut();
-            sys::gpgme_get_engine_info(&mut info)
-        };
-        if result == 0 {
-            Ok(EngineInfoGuard(lock))
-        } else {
-            Err(Error::new(result))
+            return_err!(sys::gpgme_get_engine_info(&mut info));
         }
+        Ok(EngineInfoGuard(lock))
     }
 
     pub fn get(&self, proto: Protocol) -> Option<EngineInfo<()>> {

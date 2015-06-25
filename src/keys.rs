@@ -1,7 +1,5 @@
-use std::ffi::CStr;
 use std::fmt;
 use std::marker::PhantomData;
-use std::str;
 
 use enum_primitive::FromPrimitive;
 
@@ -11,6 +9,7 @@ use Protocol;
 use error::Error;
 use ops::KeyListMode;
 use notation::SignatureNotationIter;
+use utils;
 
 enum_from_primitive! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -56,14 +55,9 @@ enum_from_primitive! {
 impl fmt::Display for KeyAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let name = unsafe {
-            let result = sys::gpgme_pubkey_algo_name(*self as sys::gpgme_pubkey_algo_t);
-            if !result.is_null() {
-                Some(CStr::from_ptr(result as *const _).to_bytes())
-            } else {
-                None
-            }
+            utils::from_cstr(sys::gpgme_pubkey_algo_name(*self as sys::gpgme_pubkey_algo_t))
         };
-        write!(f, "{}", name.and_then(|b| str::from_utf8(b).ok()).unwrap_or("Unknown"))
+        write!(f, "{}", name.unwrap_or("Unknown"))
     }
 }
 
@@ -92,14 +86,9 @@ enum_from_primitive! {
 impl fmt::Display for HashAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let name = unsafe {
-            let result = sys::gpgme_hash_algo_name(*self as sys::gpgme_hash_algo_t);
-            if !result.is_null() {
-                Some(CStr::from_ptr(result as *const _).to_bytes())
-            } else {
-                None
-            }
+            utils::from_cstr(sys::gpgme_hash_algo_name(*self as sys::gpgme_pubkey_algo_t))
         };
-        write!(f, "{}", name.and_then(|b| str::from_utf8(b).ok()).unwrap_or("Unknown"))
+        write!(f, "{}", name.unwrap_or("Unknown"))
     }
 }
 
@@ -185,34 +174,19 @@ impl Key {
 
     pub fn issuer_serial(&self) -> Option<&str> {
         unsafe {
-            let issuer_serial = (*self.raw).issuer_serial;
-            if !issuer_serial.is_null() {
-                str::from_utf8(CStr::from_ptr(issuer_serial).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).issuer_serial)
         }
     }
 
     pub fn issuer_name(&self) -> Option<&str> {
         unsafe {
-            let issuer_name = (*self.raw).issuer_name;
-            if !issuer_name.is_null() {
-                str::from_utf8(CStr::from_ptr(issuer_name).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).issuer_name)
         }
     }
 
     pub fn chain_id(&self) -> Option<&str> {
         unsafe {
-            let chain_id = (*self.raw).chain_id;
-            if !chain_id.is_null() {
-                str::from_utf8(CStr::from_ptr(chain_id).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).chain_id)
         }
     }
 
@@ -311,23 +285,13 @@ impl<'a> SubKey<'a> {
 
     pub fn id(&self) -> Option<&'a str> {
         unsafe {
-            let id = (*self.raw).keyid;
-            if !id.is_null() {
-                str::from_utf8(CStr::from_ptr(id).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).keyid)
         }
     }
 
     pub fn fingerprint(&self) -> Option<&'a str> {
         unsafe {
-            let fpr = (*self.raw).fpr;
-            if !fpr.is_null() {
-                str::from_utf8(CStr::from_ptr(fpr).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).fpr)
         }
     }
 
@@ -367,23 +331,13 @@ impl<'a> SubKey<'a> {
 
     pub fn card_number(&self) -> Option<&'a str> {
         unsafe {
-            let card_number = (*self.raw).card_number;
-            if !card_number.is_null() {
-                str::from_utf8(CStr::from_ptr(card_number).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).card_number)
         }
     }
 
     pub fn curve(&self) -> Option<&'a str> {
         unsafe {
-            let curve = (*self.raw).curve;
-            if !curve.is_null() {
-                str::from_utf8(CStr::from_ptr(curve).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).curve)
         }
     }
 }
@@ -401,19 +355,7 @@ impl<'a> SubKeyIter<'a> {
 }
 
 impl<'a> Iterator for SubKeyIter<'a> {
-    type Item = SubKey<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let current = self.current;
-        if !current.is_null() {
-            unsafe {
-                self.current = (*current).next;
-                Some(SubKey::from_raw(current))
-            }
-        } else {
-            None
-        }
-    }
+    list_iterator!(SubKey<'a>, SubKey::from_raw);
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -441,45 +383,25 @@ impl<'a> UserId<'a> {
 
     pub fn uid(&self) -> Option<&'a str> {
         unsafe {
-            let uid = (*self.raw).uid;
-            if !uid.is_null() {
-                str::from_utf8(CStr::from_ptr(uid).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).uid)
         }
     }
 
     pub fn name(&self) -> Option<&'a str> {
         unsafe {
-            let name = (*self.raw).name;
-            if !name.is_null() {
-                str::from_utf8(CStr::from_ptr(name).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).name)
         }
     }
 
     pub fn email(&self) -> Option<&'a str> {
         unsafe {
-            let email = (*self.raw).email;
-            if !email.is_null() {
-                str::from_utf8(CStr::from_ptr(email).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).email)
         }
     }
 
     pub fn comment(&self) -> Option<&'a str> {
         unsafe {
-            let comment = (*self.raw).comment;
-            if !comment.is_null() {
-                str::from_utf8(CStr::from_ptr(comment).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).comment)
         }
     }
 
@@ -515,19 +437,7 @@ impl<'a> UserIdIter<'a> {
 }
 
 impl<'a> Iterator for UserIdIter<'a> {
-    type Item = UserId<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let current = self.current;
-        if !current.is_null() {
-            unsafe {
-                self.current = (*current).next;
-                Some(UserId::from_raw(current))
-            }
-        } else {
-            None
-        }
-    }
+    list_iterator!(UserId<'a>, UserId::from_raw);
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -563,56 +473,31 @@ impl<'a> KeySignature<'a> {
 
     pub fn key_id(&self) -> Option<&'a str> {
         unsafe {
-            let id = (*self.raw).keyid;
-            if !id.is_null() {
-                str::from_utf8(CStr::from_ptr(id).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).keyid)
         }
     }
 
     pub fn uid(&self) -> Option<&'a str> {
         unsafe {
-            let uid = (*self.raw).uid;
-            if !uid.is_null() {
-                str::from_utf8(CStr::from_ptr(uid).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).uid)
         }
     }
 
     pub fn name(&self) -> Option<&'a str> {
         unsafe {
-            let name = (*self.raw).name;
-            if !name.is_null() {
-                str::from_utf8(CStr::from_ptr(name).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).name)
         }
     }
 
     pub fn email(&self) -> Option<&'a str> {
         unsafe {
-            let email = (*self.raw).email;
-            if !email.is_null() {
-                str::from_utf8(CStr::from_ptr(email).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).email)
         }
     }
 
     pub fn comment(&self) -> Option<&'a str> {
         unsafe {
-            let comment = (*self.raw).comment;
-            if !comment.is_null() {
-                str::from_utf8(CStr::from_ptr(comment).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).comment)
         }
     }
 
@@ -672,17 +557,5 @@ impl<'a> KeySignatureIter<'a> {
 }
 
 impl<'a> Iterator for KeySignatureIter<'a> {
-    type Item = KeySignature<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let current = self.current;
-        if !current.is_null() {
-            unsafe {
-                self.current = (*current).next;
-                Some(KeySignature::from_raw(current))
-            }
-        } else {
-            None
-        }
-    }
+    list_iterator!(KeySignature<'a>, KeySignature::from_raw);
 }

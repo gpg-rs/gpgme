@@ -1,8 +1,8 @@
-use std::ffi::CStr;
 use std::marker::PhantomData;
-use std::str;
 
 use gpgme_sys as sys;
+
+use utils;
 
 bitflags! {
     flags SignatureNotationFlags: sys::gpgme_sig_notation_flags_t {
@@ -41,23 +41,13 @@ impl<'a, T> SignatureNotation<'a, T> {
 
     pub fn name(&self) -> Option<&'a str> {
         unsafe {
-            let name = (*self.raw).name;
-            if !name.is_null() {
-                str::from_utf8(CStr::from_ptr(name).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).name)
         }
     }
 
     pub fn value(&self) -> Option<&'a str> {
         unsafe {
-            let value = (*self.raw).value;
-            if !value.is_null() {
-                str::from_utf8(CStr::from_ptr(value).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).value)
         }
     }
 }
@@ -74,17 +64,5 @@ impl<'a, T> SignatureNotationIter<'a, T> {
 }
 
 impl<'a, T> Iterator for SignatureNotationIter<'a, T> {
-    type Item = SignatureNotation<'a, T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let current = self.current;
-        if !current.is_null() {
-            unsafe {
-                self.current = (*current).next;
-                Some(SignatureNotation::from_raw(current))
-            }
-        } else {
-            None
-        }
-    }
+    list_iterator!(SignatureNotation<'a, T>, SignatureNotation::from_raw);
 }

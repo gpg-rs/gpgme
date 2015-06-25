@@ -75,8 +75,9 @@ pub fn setup() -> TempDir {
 }
 
 pub fn passphrase_cb(_hint: Option<&str>, _info: Option<&str>,
-                     _prev_was_bad: bool) -> gpgme::Result<Vec<u8>> {
-    Ok(b"abc\n".to_vec())
+                     _prev_was_bad: bool, out: &mut Write) -> gpgme::Result<()> {
+    try!(out.write_all(b"abc\n"));
+    Ok(())
 }
 
 pub fn check_data(data: &mut Data, expected: &[u8]) {

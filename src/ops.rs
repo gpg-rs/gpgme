@@ -1,6 +1,4 @@
-use std::ffi::CStr;
 use std::marker::PhantomData;
-use std::str;
 
 use libc;
 
@@ -9,24 +7,26 @@ use enum_primitive::FromPrimitive;
 use gpgme_sys as sys;
 
 use error::Error;
+use context::Context;
 use keys::{KeyAlgorithm, HashAlgorithm, Validity};
 use notation::SignatureNotationIter;
+use utils;
+
+pub unsafe trait Result: Clone {
+    type Raw: Copy;
+
+    unsafe fn from_raw(raw: Self::Raw) -> Self;
+
+    fn as_raw(&self) -> Self::Raw;
+
+    fn from_context(ctx: &Context) -> Option<Self>;
+}
 
 macro_rules! impl_result {
-    ($Name:ident: $T:ty) => {
+    ($Name:ident: $T:ty = $Constructor:path) => {
         #[derive(Debug)]
         pub struct $Name {
             raw: $T,
-        }
-
-        impl $Name {
-            pub unsafe fn from_raw(raw: $T) -> $Name {
-                $Name { raw: raw }
-            }
-
-            pub fn as_raw(&self) -> $T {
-                self.raw
-            }
         }
 
         impl Drop for $Name {
@@ -42,6 +42,30 @@ macro_rules! impl_result {
                 unsafe {
                     sys::gpgme_result_ref(self.raw as *mut libc::c_void);
                     $Name { raw: self.raw }
+                }
+            }
+        }
+
+        unsafe impl Result for $Name {
+            type Raw = $T;
+
+            unsafe fn from_raw(raw: $T) -> $Name {
+                $Name { raw: raw }
+            }
+
+            fn as_raw(&self) -> $T {
+                self.raw
+            }
+
+            fn from_context(ctx: &Context) -> Option<$Name> {
+                unsafe {
+                    let result = $Constructor(ctx.as_raw());
+                    if !result.is_null() {
+                        sys::gpgme_result_ref(result as *mut libc::c_void);
+                        Some($Name::from_raw(result))
+                    } else {
+                        None
+                    }
                 }
             }
         }
@@ -79,19 +103,7 @@ macro_rules! impl_subresult {
         }
 
         impl<'a> Iterator for $IterName<'a> {
-            type Item = $Name<'a>;
-
-            fn next(&mut self) -> Option<Self::Item> {
-                let current = self.current;
-                if !current.is_null() {
-                    unsafe {
-                        self.current = (*current).next;
-                        Some($Name::from_raw(current))
-                    }
-                } else {
-                    None
-                }
-            }
+            list_iterator!($Name<'a>, $Name::from_raw);
         }
     };
 }
@@ -113,12 +125,7 @@ impl<'a, T> InvalidKey<'a, T> {
 
     pub fn fingerprint(&self) -> Option<&'a str> {
         unsafe {
-            let fpr = (*self.raw).fpr;
-            if !fpr.is_null() {
-                str::from_utf8(CStr::from_ptr(fpr).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).fpr)
         }
     }
 
@@ -166,14 +173,14 @@ bitflags! {
     }
 }
 
-impl_result!(KeyListResult: sys::gpgme_keylist_result_t);
+impl_result!(KeyListResult: sys::gpgme_keylist_result_t = sys::gpgme_op_keylist_result);
 impl KeyListResult {
     pub fn truncated(&self) -> bool {
         unsafe { (*self.raw).truncated() }
     }
 }
 
-impl_result!(KeyGenerateResult: sys::gpgme_genkey_result_t);
+impl_result!(KeyGenerateResult: sys::gpgme_genkey_result_t = sys::gpgme_op_genkey_result);
 impl KeyGenerateResult {
     pub fn has_primary_key(&self) -> bool {
         unsafe { (*self.raw).primary() }
@@ -185,17 +192,12 @@ impl KeyGenerateResult {
 
     pub fn fingerprint(&self) -> Option<&str> {
         unsafe {
-            let fpr = (*self.raw).fpr;
-            if !fpr.is_null() {
-                str::from_utf8(CStr::from_ptr(fpr).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).fpr)
         }
     }
 }
 
-impl_result!(ImportResult: sys::gpgme_import_result_t);
+impl_result!(ImportResult: sys::gpgme_import_result_t = sys::gpgme_op_import_result);
 impl ImportResult {
     pub fn considered(&self) -> u32 {
         unsafe { (*self.raw).considered as u32 }
@@ -270,12 +272,7 @@ impl_subresult!(ImportStatus: sys::gpgme_import_status_t, ImportStatusIter, Impo
 impl<'a> ImportStatus<'a> {
     pub fn fingerprint(&self) -> Option<&'a str> {
         unsafe {
-            let fpr = (*self.raw).fpr;
-            if !fpr.is_null() {
-                str::from_utf8(CStr::from_ptr(fpr).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).fpr)
         }
     }
 
@@ -306,7 +303,7 @@ bitflags! {
     }
 }
 
-impl_result!(EncryptResult: sys::gpgme_encrypt_result_t);
+impl_result!(EncryptResult: sys::gpgme_encrypt_result_t = sys::gpgme_op_encrypt_result);
 impl EncryptResult {
     pub fn invalid_recipients(&self) -> InvalidKeyIter<EncryptResult> {
         unsafe {
@@ -315,27 +312,17 @@ impl EncryptResult {
     }
 }
 
-impl_result!(DecryptResult: sys::gpgme_decrypt_result_t);
+impl_result!(DecryptResult: sys::gpgme_decrypt_result_t = sys::gpgme_op_decrypt_result);
 impl DecryptResult {
     pub fn filename(&self) -> Option<&str> {
         unsafe {
-            let name = (*self.raw).file_name;
-            if !name.is_null() {
-                str::from_utf8(CStr::from_ptr(name).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).file_name)
         }
     }
 
     pub fn unsupported_algorithm(&self) -> Option<&str> {
         unsafe {
-            let desc = (*self.raw).unsupported_algorithm;
-            if !desc.is_null() {
-                str::from_utf8(CStr::from_ptr(desc).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).unsupported_algorithm)
         }
     }
 
@@ -354,12 +341,7 @@ impl_subresult!(Recipient: sys::gpgme_recipient_t, RecipientIter, DecryptResult)
 impl<'a> Recipient<'a> {
     pub fn key_id(&self) -> Option<&'a str> {
         unsafe {
-            let keyid = (*self.raw).keyid;
-            if !keyid.is_null() {
-                str::from_utf8(CStr::from_ptr(keyid).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).keyid)
         }
     }
 
@@ -386,7 +368,7 @@ enum_from_primitive! {
     }
 }
 
-impl_result!(SignResult: sys::gpgme_sign_result_t);
+impl_result!(SignResult: sys::gpgme_sign_result_t = sys::gpgme_op_sign_result);
 impl SignResult {
     pub fn invalid_signers(&self) -> InvalidKeyIter<SignResult> {
         unsafe {
@@ -405,12 +387,7 @@ impl_subresult!(NewSignature: sys::gpgme_new_signature_t, NewSignatureIter, Sign
 impl<'a> NewSignature<'a> {
     pub fn fingerprint(&self) -> Option<&'a str> {
         unsafe {
-            let fpr = (*self.raw).fpr;
-            if !fpr.is_null() {
-                str::from_utf8(CStr::from_ptr(fpr).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).fpr)
         }
     }
 
@@ -441,16 +418,11 @@ impl<'a> NewSignature<'a> {
     }
 }
 
-impl_result!(VerifyResult: sys::gpgme_verify_result_t);
+impl_result!(VerifyResult: sys::gpgme_verify_result_t = sys::gpgme_op_verify_result);
 impl VerifyResult {
     pub fn filename(&self) -> Option<&str> {
         unsafe {
-            let name = (*self.raw).file_name;
-            if !name.is_null() {
-                str::from_utf8(CStr::from_ptr(name).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).file_name)
         }
     }
 
@@ -492,12 +464,7 @@ impl_subresult!(Signature: sys::gpgme_signature_t, SignatureIter, VerifyResult);
 impl<'a> Signature<'a> {
     pub fn fingerprint(&self) -> Option<&'a str> {
         unsafe {
-            let fpr = (*self.raw).fpr;
-            if !fpr.is_null() {
-                str::from_utf8(CStr::from_ptr(fpr).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).fpr)
         }
     }
 
@@ -564,12 +531,7 @@ impl<'a> Signature<'a> {
 
     pub fn pka_address(&self) -> Option<&'a str> {
         unsafe {
-            let pka_address = (*self.raw).pka_address;
-            if !pka_address.is_null() {
-                str::from_utf8(CStr::from_ptr(pka_address).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr((*self.raw).pka_address)
         }
     }
 

@@ -1,4 +1,4 @@
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::io;
 use std::io::prelude::*;
 use std::marker::PhantomData;
@@ -9,7 +9,6 @@ use std::path::Path;
 use std::ptr;
 use std::result::Result as StdResult;
 use std::slice;
-use std::str;
 use std::string::FromUtf8Error;
 
 use libc;
@@ -19,6 +18,7 @@ use enum_primitive::FromPrimitive;
 use gpgme_sys as sys;
 
 use error::{Error, Result};
+use utils;
 
 enum_from_primitive! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -50,6 +50,11 @@ enum_from_primitive! {
     }
 }
 
+struct CallbackWrapper<S> {
+    cbs: sys::gpgme_data_cbs,
+    inner: S,
+}
+
 #[derive(Debug)]
 pub struct Data<'a> {
     raw: sys::gpgme_data_t,
@@ -68,89 +73,63 @@ impl<'a> Data<'a> {
     /// Constructs an empty data object.
     pub fn new() -> Result<Data<'static>> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
-        let result = unsafe {
-            sys::gpgme_data_new(&mut data)
-        };
-        if result == 0 {
-            Ok(Data { raw: data, phantom: PhantomData })
-        } else {
-            Err(Error::new(result))
+        unsafe {
+            return_err!(sys::gpgme_data_new(&mut data));
         }
+        Ok(Data { raw: data, phantom: PhantomData })
     }
 
     /// Constructs a data object and fills it with the contents of the file
     /// referenced by `path`.
     pub fn load<P: AsRef<Path>>(path: &P) -> Result<Data<'static>> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
-        let filename = path.as_ref().to_str().and_then(|s| CString::new(s.as_bytes()).ok());
-        if filename.is_none() {
-            return Err(Error::from_source(sys::GPG_ERR_SOURCE_GPGME, sys::GPG_ERR_INV_VALUE));
+        let filename = try!(path.as_ref().to_str().and_then(|s| CString::new(s.as_bytes()).ok())
+            .ok_or(Error::from_source(sys::GPG_ERR_SOURCE_USER_1, sys::GPG_ERR_INV_VALUE)));
+        unsafe {
+            return_err!(sys::gpgme_data_new_from_file(&mut data, filename.as_ptr(), 1));
         }
-        let result = unsafe {
-            sys::gpgme_data_new_from_file(&mut data, filename.unwrap().as_ptr(), 1)
-        };
-        if result == 0 {
-            Ok(Data { raw: data, phantom: PhantomData })
-        } else {
-            Err(Error::new(result))
-        }
+        Ok(Data { raw: data, phantom: PhantomData })
     }
 
     /// Constructs a data object and fills it with a copy of `bytes`.
     pub fn from_bytes<B: AsRef<[u8]>>(bytes: B) -> Result<Data<'static>> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
         let bytes = bytes.as_ref();
-        let result = unsafe {
-            sys::gpgme_data_new_from_mem(&mut data, bytes.as_ptr() as *const _,
-                                         bytes.len() as u64, 1)
-        };
-        if result == 0 {
-            Ok(Data { raw: data, phantom: PhantomData })
-        } else {
-            Err(Error::new(result))
+        unsafe {
+            return_err!(sys::gpgme_data_new_from_mem(&mut data, bytes.as_ptr() as *const _,
+                                                     bytes.len() as u64, 1));
         }
+        Ok(Data { raw: data, phantom: PhantomData })
     }
 
     /// Constructs a data object which copies from `buf` as needed.
     pub fn from_buffer<B: AsRef<[u8]> + ?Sized>(buf: &B) -> Result<Data> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
         let buf = buf.as_ref();
-        let result = unsafe {
-            sys::gpgme_data_new_from_mem(&mut data, buf.as_ptr() as *const _,
-                                         buf.len() as u64, 0)
-        };
-        if result == 0 {
-            Ok(Data { raw: data, phantom: PhantomData })
-        } else {
-            Err(Error::new(result))
+        unsafe {
+            return_err!(sys::gpgme_data_new_from_mem(&mut data, buf.as_ptr() as *const _,
+                                                     buf.len() as u64, 0));
         }
+        Ok(Data { raw: data, phantom: PhantomData })
     }
 
     #[cfg(unix)]
-    pub fn from_fd<'b, T: AsRawFd>(file: &'b T) -> Result<Data<'b>> {
+    pub fn from_fd<T: AsRawFd + ?Sized>(file: &T) -> Result<Data> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
-        let result = unsafe {
-            sys::gpgme_data_new_from_fd(&mut data, file.as_raw_fd())
-        };
-        if result == 0 {
-            Ok(Data { raw: data, phantom: PhantomData })
-        } else {
-            Err(Error::new(result))
+        unsafe {
+            return_err!(sys::gpgme_data_new_from_fd(&mut data, file.as_raw_fd()));
         }
+        Ok(Data { raw: data, phantom: PhantomData })
     }
 
     pub unsafe fn from_raw_file<'b>(file: *mut libc::FILE) -> Result<Data<'b>> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
-        let result = sys::gpgme_data_new_from_stream(&mut data, file);
-        if result == 0 {
-            Ok(Data { raw: data, phantom: PhantomData })
-        } else {
-            Err(Error::new(result))
-        }
+        return_err!(sys::gpgme_data_new_from_stream(&mut data, file));
+        Ok(Data { raw: data, phantom: PhantomData })
     }
 
-    unsafe fn from_callbacks<S: 'static>(cbs: sys::gpgme_data_cbs, src: S)
-        -> StdResult<Data<'static>, S> {
+    unsafe fn from_callbacks<S: Send + 'static>(cbs: sys::gpgme_data_cbs, src: S)
+            -> StdResult<Data<'static>, S> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
         let mut src = Box::new(CallbackWrapper {
             cbs: cbs,
@@ -166,7 +145,7 @@ impl<'a> Data<'a> {
         }
     }
 
-    pub fn from_reader<R: Read + 'static>(r: R) -> StdResult<Data<'static>, R> {
+    pub fn from_reader<R: Send + 'static>(r: R) -> StdResult<Data<'static>, R> where R: Read {
         let cbs = sys::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -176,7 +155,8 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, r) }
     }
 
-    pub fn from_seekable_reader<R: Read + Seek + 'static>(r: R) -> StdResult<Data<'static>, R> {
+    pub fn from_seekable_reader<R: Send + 'static>(r: R) -> StdResult<Data<'static>, R>
+            where R: Read + Seek {
         let cbs = sys::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -186,7 +166,7 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, r) }
     }
 
-    pub fn from_writer<W: Write + 'static>(w: W) -> StdResult<Data<'static>, W> {
+    pub fn from_writer<W: Send + 'static>(w: W) -> StdResult<Data<'static>, W> where W: Write {
         let cbs = sys::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -196,7 +176,8 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, w) }
     }
 
-    pub fn from_seekable_writer<W: Write + Seek + 'static>(w: W) -> StdResult<Data<'static>, W> {
+    pub fn from_seekable_writer<W: Send + 'static>(w: W) -> StdResult<Data<'static>, W>
+            where W: Write + Seek {
         let cbs = sys::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -206,7 +187,8 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, w) }
     }
 
-    pub fn from_stream<S: Read + Write + 'static>(s: S) -> StdResult<Data<'static>, S> {
+    pub fn from_stream<S: Send + 'static>(s: S) -> StdResult<Data<'static>, S>
+            where S: Read + Write {
         let cbs = sys::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -216,7 +198,8 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, s) }
     }
 
-    pub fn from_seekable_stream<S: Read + Write + Seek + 'static>(s: S) -> StdResult<Data<'static>, S> {
+    pub fn from_seekable_stream<S: Send + 'static>(s: S) -> StdResult<Data<'static>, S>
+            where S: Read + Write + Seek {
         let cbs = sys::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -228,36 +211,23 @@ impl<'a> Data<'a> {
 
     pub fn file_name(&self) -> Option<&str> {
         unsafe {
-            let result = sys::gpgme_data_get_file_name(self.raw);
-            if !result.is_null() {
-                str::from_utf8(CStr::from_ptr(result as *const _).to_bytes()).ok()
-            } else {
-                None
-            }
+            utils::from_cstr(sys::gpgme_data_get_file_name(self.raw))
         }
     }
 
     pub fn clear_file_name(&mut self) -> Result<()> {
-        let result = unsafe {
-            sys::gpgme_data_set_file_name(self.raw, ptr::null())
-        };
-        if result == 0 {
-            Ok(())
-        } else {
-            Err(Error::new(result))
+        unsafe {
+            return_err!(sys::gpgme_data_set_file_name(self.raw, ptr::null()));
         }
+        Ok(())
     }
 
     pub fn set_file_name<S: Into<String>>(&mut self, name: S) -> Result<()> {
         let name = try!(CString::new(name.into()));
-        let result = unsafe {
-            sys::gpgme_data_set_file_name(self.raw, name.as_ptr())
-        };
-        if result == 0 {
-            Ok(())
-        } else {
-            Err(Error::new(result))
+        unsafe {
+            return_err!(sys::gpgme_data_set_file_name(self.raw, name.as_ptr()));
         }
+        Ok(())
     }
 
     pub fn encoding(&self) -> DataEncoding {
@@ -268,14 +238,10 @@ impl<'a> Data<'a> {
     }
 
     pub fn set_encoding(&mut self, enc: DataEncoding) -> Result<()> {
-        let result = unsafe {
-            sys::gpgme_data_set_encoding( self.raw, enc as sys::gpgme_data_encoding_t)
-        };
-        if result == 0 {
-            Ok(())
-        } else {
-            Err(Error::new(result))
+        unsafe {
+            return_err!(sys::gpgme_data_set_encoding(self.raw, enc as sys::gpgme_data_encoding_t))
         }
+        Ok(())
     }
 
     // GPGME_VERSION >= 1.4.3
@@ -294,9 +260,9 @@ impl<'a> Data<'a> {
 
             if !buf.is_null() {
                 let mut dst = Vec::with_capacity(size as usize);
-                dst.set_len(size as usize);
                 ptr::copy_nonoverlapping(buf as *const _, dst.as_mut_ptr(), size as usize);
                 sys::gpgme_free(buf as *mut _);
+                dst.set_len(size as usize);
                 Some(dst)
             } else {
                 None
@@ -327,7 +293,7 @@ impl<'a> Read for Data<'a> {
         if result >= 0 {
             Ok(result as usize)
         } else {
-            Err(io::Error::last_os_error())
+            Err(Error::last_os_error().into())
         }
     }
 }
@@ -341,7 +307,7 @@ impl<'a> Write for Data<'a> {
         if result >= 0 {
             Ok(result as usize)
         } else {
-            Err(io::Error::last_os_error())
+            Err(Error::last_os_error().into())
         }
     }
 
@@ -363,14 +329,9 @@ impl<'a> Seek for Data<'a> {
         if result >= 0 {
             Ok(result as u64)
         } else {
-            Err(io::Error::last_os_error())
+            Err(Error::last_os_error().into())
         }
     }
-}
-
-struct CallbackWrapper<S> {
-    cbs: sys::gpgme_data_cbs,
-    inner: S,
 }
 
 extern fn read_callback<S: Read>(handle: *mut libc::c_void,
@@ -380,10 +341,7 @@ extern fn read_callback<S: Read>(handle: *mut libc::c_void,
     unsafe {
         let slice = slice::from_raw_parts_mut(buffer as *mut u8, size as usize);
         (*handle).inner.read(slice).map(|n| n as libc::ssize_t).unwrap_or_else(|err| {
-            let err = err.raw_os_error().unwrap_or_else(|| {
-                sys::gpgme_err_code_to_errno(sys::GPG_ERR_EIO)
-            });
-            sys::gpgme_err_set_errno(err);
+            sys::gpgme_err_set_errno(Error::from(err).to_errno());
             -1
         })
     }
@@ -396,10 +354,7 @@ extern fn write_callback<S: Write>(handle: *mut libc::c_void,
     unsafe {
         let slice = slice::from_raw_parts(buffer as *const u8, size as usize);
         (*handle).inner.write(slice).map(|n| n as libc::ssize_t).unwrap_or_else(|err| {
-            let err = err.raw_os_error().unwrap_or_else(|| {
-                sys::gpgme_err_code_to_errno(sys::GPG_ERR_EIO)
-            });
-            sys::gpgme_err_set_errno(err);
+            sys::gpgme_err_set_errno(Error::from(err).to_errno());
             -1
         })
     }
@@ -422,10 +377,7 @@ extern fn seek_callback<S: Seek>(handle: *mut libc::c_void,
     };
     unsafe {
         (*handle).inner.seek(pos).map(|n| n as libc::off_t).unwrap_or_else(|err| {
-            let err = err.raw_os_error().unwrap_or_else(|| {
-                sys::gpgme_err_code_to_errno(sys::GPG_ERR_EIO)
-            });
-            sys::gpgme_err_set_errno(err);
+            sys::gpgme_err_set_errno(Error::from(err).to_errno());
             -1
         })
     }
