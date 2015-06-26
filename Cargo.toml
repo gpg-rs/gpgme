@@ -30,6 +30,9 @@ test = false
 name = "keylist"
 
 [[test]]
+name = "edit"
+
+[[test]]
 name = "symmetric"
 
 [[test]]

@@ -22,6 +22,7 @@ pub use self::data::{DataEncoding, DataType, Data};
 pub use self::keys::{Validity, KeyAlgorithm, HashAlgorithm, Key, KeySignature, SubKey, UserId};
 pub use self::notation::{SignatureNotationFlags, SignatureNotation, NOTATION_HUMAN_READABLE,
     NOTATION_CRITICAL};
+pub use self::edit::{StatusCode, EditorState, Editor, EditorWrapper};
 
 #[macro_use]
 mod utils;
@@ -31,6 +32,7 @@ mod context;
 mod data;
 mod keys;
 mod notation;
+pub mod edit;
 pub mod ops;
 
 /// Constants for use with `Token::get_dir_info`.

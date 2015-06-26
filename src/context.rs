@@ -17,6 +17,7 @@ use engine::{EngineInfo, EngineInfoIter};
 use data::Data;
 use keys::Key;
 use notation::{SignatureNotationFlags, SignatureNotationIter};
+use edit::{StatusCode, Editor, EditorWrapper};
 use utils::{self, FdWriter};
 use ops;
 
@@ -128,7 +129,7 @@ impl Context {
     ///
     /// let mut ctx = gpgme::create_context().unwrap();
     /// let mut guard = ctx.with_passphrase_cb(|_: Option<&str>, _: Option<&str>, _, out: &mut Write| {
-    ///     try!(out.write_all(b"\n"));
+    ///     try!(out.write_all(b"abc"));
     ///     Ok(())
     /// });
     /// // Do something with guard requiring a passphrase e.g. decryption
@@ -326,6 +327,16 @@ impl Context {
         };
         unsafe {
             return_err!(sys::gpgme_op_export_keys(self.raw, keys, mode.bits(), data));
+        }
+        Ok(())
+    }
+
+    pub fn edit_key<E: Editor>(&mut self, key: &Key, editor: E,
+                                  data: &mut Data) -> Result<()> {
+        let mut wrapper = EditorWrapper::new(editor);
+        unsafe {
+            return_err!(sys::gpgme_op_edit(self.raw, key.as_raw(), Some(edit_callback::<E>),
+                                           mem::transmute(&&mut wrapper), data.as_raw()));
         }
         Ok(())
     }
@@ -698,7 +709,9 @@ extern fn passphrase_callback<C: PassphraseCallback>(hook: *mut libc::c_void,
         let uid_hint = utils::from_cstr(uid_hint);
         let info = utils::from_cstr(info);
         let mut writer = FdWriter::new(fd);
-        (*cb).read(uid_hint, info, was_bad != 0, &mut writer).err().map_or(0, |err| err.raw())
+        (*cb).read(uid_hint, info, was_bad != 0, &mut writer).and_then(|_| {
+            writer.write_all(b"\n").map_err(|err| err.into())
+        }).err().map_or(0, |err| err.raw())
     }
 }
 
@@ -712,4 +725,19 @@ extern fn progress_callback<C: ProgressCallback>(hook: *mut libc::c_void,
         let what = utils::from_cstr(what);
         (*cb).report(what, typ as isize, current as isize, total as isize);
     }
+}
+
+extern fn edit_callback<E: Editor>(handle: *mut libc::c_void,
+                                   status: sys::gpgme_status_code_t,
+                                   args: *const libc::c_char,
+                                   fd: libc::c_int) -> sys::gpgme_error_t {
+    let wrapper = handle as *const *mut EditorWrapper<E>;
+    let status = StatusCode::from_u64(status as u64).unwrap_or(StatusCode::Unknown);
+    let args = unsafe {
+        utils::from_cstr(args)
+    };
+    let result = unsafe {
+        (**wrapper).callback(status, args, &mut FdWriter::new(fd))
+    };
+    result.err().map(|err| err.raw()).unwrap_or(0)
 }
