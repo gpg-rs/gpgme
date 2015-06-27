@@ -593,7 +593,7 @@ impl Context {
         Ok((self.decrypt_result().unwrap(), self.verify_result().unwrap()))
     }
 
-    pub fn get_result<R: ops::Result>(&self) -> Option<R> {
+    fn get_result<R: ops::Result>(&self) -> Option<R> {
         R::from_context(self)
     }
 }
