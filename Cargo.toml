@@ -10,7 +10,7 @@ keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 
 [dependencies]
 libc = "0.1"
-bitflags = "0.2"
+bitflags = "0.3"
 enum_primitive = "*"
 lazy_static = "0.1"
 

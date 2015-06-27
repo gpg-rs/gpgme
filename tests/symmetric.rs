@@ -31,7 +31,7 @@ fn test_symmetric() {
 
     let mut plain = fail_if_err!(Data::from_buffer(TEXT));
     let mut cipher = fail_if_err!(Data::new());
-    fail_if_err!(guard.encrypt(None, ops::EncryptFlags::empty(), &mut plain, &mut cipher));
+    fail_if_err!(guard.encrypt_symmetric(ops::EncryptFlags::empty(), &mut plain, &mut cipher));
 
     cipher.seek(io::SeekFrom::Start(0)).unwrap();
     plain = fail_if_err!(Data::new());

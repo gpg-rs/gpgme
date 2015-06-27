@@ -216,7 +216,7 @@ impl Drop for Key {
 }
 
 impl Clone for Key {
-    fn clone(&self) -> Self {
+    fn clone(&self) -> Key {
         unsafe {
             sys::gpgme_key_ref(self.raw);
             Key { raw: self.raw }

@@ -84,21 +84,21 @@ fn test_verify() {
 
     let mut text = fail_if_err!(Data::from_buffer(TEST_TEXT1));
     let mut sig = fail_if_err!(Data::from_buffer(TEST_SIG1));
-    check_result(fail_if_err!(ctx.verify(&mut sig, Some(&mut text), None)),
+    check_result(fail_if_err!(ctx.verify_detached(&mut sig, &mut text)),
         "A0FF4590BB6122EDEF6E3C542D727CC768697734", ops::SignatureSummary::empty(), 0, true);
 
     text = fail_if_err!(Data::from_buffer(TEST_TEXT1F));
     sig.seek(io::SeekFrom::Start(0)).unwrap();
-    check_result(fail_if_err!(ctx.verify(&mut sig, Some(&mut text), None)),
+    check_result(fail_if_err!(ctx.verify_detached(&mut sig, &mut text)),
         "2D727CC768697734", ops::SIGNATURE_RED, error::GPG_ERR_BAD_SIGNATURE, false);
 
     text = fail_if_err!(Data::new());
     sig = fail_if_err!(Data::from_buffer(TEST_SIG2));
-    check_result(fail_if_err!(ctx.verify(&mut sig, None, Some(&mut text))),
+    check_result(fail_if_err!(ctx.verify_opaque(&mut sig, &mut text)),
         "A0FF4590BB6122EDEF6E3C542D727CC768697734", ops::SignatureSummary::empty(), 0, false);
 
     text = fail_if_err!(Data::new());
     sig = fail_if_err!(Data::from_buffer(DOUBLE_PLAINTEXT_SIG));
-    assert_eq!(ctx.verify(&mut sig, None, Some(&mut text)).err()
+    assert_eq!(ctx.verify_opaque(&mut sig, &mut text).err()
         .map_or(0, |err| err.code()), error::GPG_ERR_BAD_DATA);
 }

@@ -15,7 +15,7 @@ use utils;
 
 pub type ErrorCode = sys::gpgme_err_code_t;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Error {
     err: sys::gpgme_error_t,
 }

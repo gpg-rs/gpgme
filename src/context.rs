@@ -16,6 +16,7 @@ use error::{Result, Error};
 use engine::{EngineInfo, EngineInfoIter};
 use data::Data;
 use keys::Key;
+use trust::TrustItem;
 use notation::{SignatureNotationFlags, SignatureNotationIter};
 use utils::{self, FdWriter};
 use ops;
@@ -188,6 +189,16 @@ impl Context {
         Ok(())
     }
 
+    pub fn find_trust_items<S: Into<String>>(&mut self, pattern: S,
+                                             max_level: isize) -> Result<TrustItems> {
+        let pattern = try!(CString::new(pattern.into()));
+        unsafe {
+            return_err!(sys::gpgme_op_trustlist_start(self.raw, pattern.as_ptr(),
+                                                      max_level as libc::c_int));
+        }
+        Ok(TrustItems { ctx: self })
+    }
+
     pub fn key_list_mode(&self) -> ops::KeyListMode {
         unsafe {
             ops::KeyListMode::from_bits_truncate(sys::gpgme_get_keylist_mode(self.raw))
@@ -211,31 +222,39 @@ impl Context {
         Keys::new(self, None::<String>, true)
     }
 
-    pub fn find_key<S: Into<String>>(&self, pattern: S) -> Result<Key> {
+    /// Returns the public key with the specified fingerprint, if such a key can
+    /// be found. Otherwise, an error is returned.
+    pub fn find_key<S: Into<String>>(&self, fingerprint: S) -> Result<Key> {
         let mut key: sys::gpgme_key_t = ptr::null_mut();
-        let pattern = try!(CString::new(pattern.into()));
+        let fingerprint = try!(CString::new(fingerprint.into()));
         unsafe {
-            return_err!(sys::gpgme_get_key(self.raw, pattern.as_ptr(),
+            return_err!(sys::gpgme_get_key(self.raw, fingerprint.as_ptr(),
                 &mut key, false as libc::c_int));
             Ok(Key::from_raw(key))
         }
     }
 
-    pub fn find_secret_key<S: Into<String>>(&self, pattern: S) -> Result<Key> {
+    /// Returns the secret key with the specified fingerprint, if such a key can
+    /// be found. Otherwise, an error is returned.
+    pub fn find_secret_key<S: Into<String>>(&self, fingerprint: S) -> Result<Key> {
         let mut key: sys::gpgme_key_t = ptr::null_mut();
-        let pattern = try!(CString::new(pattern.into()));
+        let fingerprint = try!(CString::new(fingerprint.into()));
         unsafe {
-            return_err!(sys::gpgme_get_key(self.raw, pattern.as_ptr(),
+            return_err!(sys::gpgme_get_key(self.raw, fingerprint.as_ptr(),
                 &mut key, true as libc::c_int));
             Ok(Key::from_raw(key))
         }
     }
 
+    /// Returns an iterator for a list of all public keys matching one or more of the
+    /// specified patterns.
     pub fn find_keys<I>(&mut self, patterns: I) -> Result<Keys>
             where I: IntoIterator, I::Item: Into<String> {
         Keys::new(self, patterns, false)
     }
 
+    /// Returns an iterator for a list of all secret keys matching one or more of the
+    /// specified patterns.
     pub fn find_secret_keys<I>(&mut self, patterns: I) -> Result<Keys>
             where I: IntoIterator, I::Item: Into<String> {
         Keys::new(self, patterns, true)
@@ -373,14 +392,28 @@ impl Context {
         }
     }
 
-    pub fn add_notation<S: Into<String>>(&mut self, name: Option<String>, value: S,
-                        flags: SignatureNotationFlags) -> Result<()> {
-        let name = try!(name.map_or(Ok(None), |s| CString::new(s).map(Some)));
+    pub fn add_notation<S1, S2>(&mut self, name: S1, value: S2,
+                                flags: SignatureNotationFlags) -> Result<()>
+            where S1: Into<String>, S2: Into<String> {
+        let name = try!(CString::new(name.into()));
         let value = try!(CString::new(value.into()));
         unsafe {
-            let name = name.map_or(ptr::null(), |s| s.as_ptr());
-            return_err!(sys::gpgme_sig_notation_add(self.raw, name, value.as_ptr(),
-                                                    flags.bits()));
+            return_err!(sys::gpgme_sig_notation_add(self.raw, name.as_ptr(),
+                                                    value.as_ptr(), flags.bits()));
+        }
+        Ok(())
+    }
+
+    pub fn add_policy_url<S: Into<String>>(&mut self, url: S, critical: bool) -> Result<()> {
+        let url = try!(CString::new(url.into()));
+        unsafe {
+            let critical = if critical {
+                sys::GPGME_SIG_NOTATION_CRITICAL
+            } else {
+                0
+            };
+            return_err!(sys::gpgme_sig_notation_add(self.raw, ptr::null(), url.as_ptr(),
+                                                    critical));
         }
         Ok(())
     }
@@ -400,6 +433,21 @@ impl Context {
         Ok(self.sign_result().unwrap())
     }
 
+    pub fn sign_clear(&mut self, plain: &mut Data,
+                      signature: &mut Data) -> Result<ops::SignResult> {
+        self.sign(ops::SignMode::Clear, plain, signature)
+    }
+
+    pub fn sign_detached(&mut self, plain: &mut Data,
+                         signature: &mut Data) -> Result<ops::SignResult> {
+        self.sign(ops::SignMode::Detach, plain, signature)
+    }
+
+    pub fn sign_normal(&mut self, plain: &mut Data,
+                       signature: &mut Data) -> Result<ops::SignResult> {
+        self.sign(ops::SignMode::Normal, plain, signature)
+    }
+
     pub fn sign_result(&self) -> Option<ops::SignResult> {
         self.get_result()
     }
@@ -412,6 +460,16 @@ impl Context {
             return_err!(sys::gpgme_op_verify(self.raw, signature.as_raw(), signed, plain));
         }
         Ok(self.verify_result().unwrap())
+    }
+
+    pub fn verify_detached(&mut self, signature: &mut Data,
+                           signed: &mut Data) -> Result<ops::VerifyResult> {
+        self.verify(signature, Some(signed), None)
+    }
+
+    pub fn verify_opaque(&mut self, signature: &mut Data,
+                         plain: &mut Data) -> Result<ops::VerifyResult> {
+        self.verify(signature, None, Some(plain))
     }
 
     pub fn verify_result(&self) -> Option<ops::VerifyResult> {
@@ -431,7 +489,7 @@ impl Context {
     /// ctx.encrypt(Some(&key), ops::EncryptFlags::empty(), &mut plain, &mut cipher).unwrap();
     /// ```
     pub fn encrypt<'k, I>(&mut self, recp: I, flags: ops::EncryptFlags,
-                   plain: &mut Data, cipher: &mut Data) -> Result<ops::EncryptResult>
+                          plain: &mut Data, cipher: &mut Data) -> Result<ops::EncryptResult>
             where I: IntoIterator<Item=&'k Key> {
         let mut ptrs: Vec<_> = recp.into_iter().map(|k| k.as_raw()).collect();
         let keys = if !ptrs.is_empty() {
@@ -447,8 +505,47 @@ impl Context {
         Ok(self.encrypt_result().unwrap())
     }
 
+    pub fn encrypt_symmetric(&mut self, flags: ops::EncryptFlags, plain: &mut Data,
+                             cipher: &mut Data) -> Result<()> {
+        unsafe {
+            return_err!(sys::gpgme_op_encrypt(self.raw, ptr::null_mut(), flags.bits(),
+                                              plain.as_raw(), cipher.as_raw()));
+        }
+        Ok(())
+    }
+
     pub fn encrypt_result(&self) -> Option<ops::EncryptResult> {
         self.get_result()
+    }
+
+    /// Encrypts and signs a message for the specified recipients.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use gpgme::{self, Data, ops};
+    ///
+    /// let mut ctx = gpgme::create_context().unwrap();
+    /// let key = ctx.find_key("some pattern").unwrap();
+    /// let (mut plain, mut cipher) = (Data::new().unwrap(), Data::new().unwrap());
+    /// ctx.encrypt_and_sign(Some(&key), ops::EncryptFlags::empty(),
+    ///                      &mut plain, &mut cipher).unwrap();
+    /// ```
+    pub fn encrypt_and_sign<'k, I>(&mut self, recp: I, flags: ops::EncryptFlags,
+                                   plain: &mut Data, cipher: &mut Data)
+            -> Result<(ops::EncryptResult, ops::SignResult)> where I: IntoIterator<Item=&'k Key> {
+        let mut ptrs: Vec<_> = recp.into_iter().map(|k| k.as_raw()).collect();
+        let keys = if !ptrs.is_empty() {
+            ptrs.push(ptr::null_mut());
+            ptrs.as_mut_ptr()
+        } else {
+            ptr::null_mut()
+        };
+        unsafe {
+            return_err!(sys::gpgme_op_encrypt_sign(self.raw, keys, flags.bits(), plain.as_raw(),
+                                                   cipher.as_raw()))
+        }
+        Ok((self.encrypt_result().unwrap(), self.sign_result().unwrap()))
     }
 
     /// Decrypts a message.
@@ -473,36 +570,6 @@ impl Context {
 
     pub fn decrypt_result(&self) -> Option<ops::DecryptResult> {
         self.get_result()
-    }
-
-    /// Encrypts and signs a message for the specified recipients.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use gpgme::{self, Data, ops};
-    ///
-    /// let mut ctx = gpgme::create_context().unwrap();
-    /// let key = ctx.find_key("some pattern").unwrap();
-    /// let (mut plain, mut cipher) = (Data::new().unwrap(), Data::new().unwrap());
-    /// ctx.encrypt_and_sign(Some(&key), ops::EncryptFlags::empty(),
-    ///                      &mut plain, &mut cipher).unwrap();
-    /// ```
-    pub fn encrypt_and_sign<'k, I>(&mut self, recp: I, flags: ops::EncryptFlags,
-                            plain: &mut Data, cipher: &mut Data) -> Result<(ops::EncryptResult, ops::SignResult)>
-            where I: IntoIterator<Item=&'k Key> {
-        let mut ptrs: Vec<_> = recp.into_iter().map(|k| k.as_raw()).collect();
-        let keys = if !ptrs.is_empty() {
-            ptrs.push(ptr::null_mut());
-            ptrs.as_mut_ptr()
-        } else {
-            ptr::null_mut()
-        };
-        unsafe {
-            return_err!(sys::gpgme_op_encrypt_sign(self.raw, keys, flags.bits(), plain.as_raw(),
-                                                   cipher.as_raw()))
-        }
-        Ok((self.encrypt_result().unwrap(), self.sign_result().unwrap()))
     }
 
     /// Decrypts and verifies a message.
@@ -543,7 +610,7 @@ pub struct Keys<'a> {
 
 impl<'a> Keys<'a> {
     fn new<'b, I>(ctx: &'b mut Context, patterns: I,
-               secret_only: bool) -> Result<Keys<'b>>
+                  secret_only: bool) -> Result<Keys<'b>>
             where I: IntoIterator, I::Item: Into<String> {
         let mut strings = Vec::new();
         for pattern in patterns.into_iter() {
@@ -593,6 +660,49 @@ impl<'a> Iterator for Keys<'a> {
             if sys::gpgme_err_code(result) != sys::GPG_ERR_EOF {
                 if result == 0 {
                     Some(Ok(Key::from_raw(key)))
+                } else {
+                    Some(Err(Error::new(result)))
+                }
+            } else {
+                None
+            }
+        }
+    }
+}
+
+pub struct TrustItems<'a> {
+    ctx: &'a mut Context,
+}
+
+impl<'a> TrustItems<'a> {
+    pub fn result(self) -> Result<()> {
+        let ctx = self.ctx as *mut Context;
+        mem::forget(self);
+        unsafe {
+            return_err!(sys::gpgme_op_trustlist_end((*ctx).as_raw()));
+        }
+        Ok(())
+    }
+}
+
+impl<'a> Drop for TrustItems<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            sys::gpgme_op_trustlist_end(self.ctx.as_raw());
+        }
+    }
+}
+
+impl<'a> Iterator for TrustItems<'a> {
+    type Item = Result<TrustItem>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut trust_item: sys::gpgme_trust_item_t = ptr::null_mut();
+        unsafe {
+            let result = sys::gpgme_op_trustlist_next(self.ctx.as_raw(), &mut trust_item);
+            if sys::gpgme_err_code(result) != sys::GPG_ERR_EOF {
+                if result == 0 {
+                    Some(Ok(TrustItem::from_raw(trust_item)))
                 } else {
                     Some(Err(Error::new(result)))
                 }

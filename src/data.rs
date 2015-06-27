@@ -1,4 +1,5 @@
 use std::ffi::CString;
+use std::fmt;
 use std::io;
 use std::io::prelude::*;
 use std::marker::PhantomData;
@@ -7,7 +8,7 @@ use std::mem;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 use std::ptr;
-use std::result::Result as StdResult;
+use std::result;
 use std::slice;
 use std::string::FromUtf8Error;
 
@@ -55,6 +56,31 @@ struct CallbackWrapper<S> {
     inner: S,
 }
 
+#[derive(Clone)]
+pub struct WrappedError<S>(Error, S);
+
+impl<S> WrappedError<S> {
+    pub fn error(&self) -> Error {
+        self.0
+    }
+
+    pub fn into_inner(self) -> S {
+        self.1
+    }
+}
+
+impl<S> fmt::Debug for WrappedError<S> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, fmt)
+    }
+}
+
+impl<S> fmt::Display for WrappedError<S> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.0, fmt)
+    }
+}
+
 #[derive(Debug)]
 pub struct Data<'a> {
     raw: sys::gpgme_data_t,
@@ -68,6 +94,18 @@ impl<'a> Data<'a> {
 
     pub fn as_raw(&self) -> sys::gpgme_data_t {
         self.raw
+    }
+
+    pub fn stdin() -> Result<Data<'static>> {
+        Data::from_reader(io::stdin()).map_err(|err| err.error())
+    }
+
+    pub fn stdout() -> Result<Data<'static>> {
+        Data::from_writer(io::stdout()).map_err(|err| err.error())
+    }
+
+    pub fn stderr() -> Result<Data<'static>> {
+        Data::from_writer(io::stdout()).map_err(|err| err.error())
     }
 
     /// Constructs an empty data object.
@@ -129,7 +167,7 @@ impl<'a> Data<'a> {
     }
 
     unsafe fn from_callbacks<S: Send + 'static>(cbs: sys::gpgme_data_cbs, src: S)
-            -> StdResult<Data<'static>, S> {
+            -> result::Result<Data<'static>, WrappedError<S>> {
         let mut data: sys::gpgme_data_t = ptr::null_mut();
         let mut src = Box::new(CallbackWrapper {
             cbs: cbs,
@@ -141,11 +179,14 @@ impl<'a> Data<'a> {
         if result == 0 {
             Ok(Data { raw: data, phantom: PhantomData })
         } else {
-            Err(mem::transmute::<_, Box<CallbackWrapper<S>>>(ptr).inner)
+            let error = Error::new(result);
+            let inner = mem::transmute::<_, Box<CallbackWrapper<S>>>(ptr).inner;
+            Err(WrappedError(error, inner))
         }
     }
 
-    pub fn from_reader<R: Send + 'static>(r: R) -> StdResult<Data<'static>, R> where R: Read {
+    pub fn from_reader<R: Send + 'static>(r: R) -> result::Result<Data<'static>, WrappedError<R>>
+            where R: Read {
         let cbs = sys::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -155,8 +196,8 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, r) }
     }
 
-    pub fn from_seekable_reader<R: Send + 'static>(r: R) -> StdResult<Data<'static>, R>
-            where R: Read + Seek {
+    pub fn from_seekable_reader<R: Send + 'static>(r: R)
+            -> result::Result<Data<'static>, WrappedError<R>> where R: Read + Seek {
         let cbs = sys::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -166,7 +207,8 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, r) }
     }
 
-    pub fn from_writer<W: Send + 'static>(w: W) -> StdResult<Data<'static>, W> where W: Write {
+    pub fn from_writer<W: Send + 'static>(w: W) -> result::Result<Data<'static>, WrappedError<W>>
+            where W: Write {
         let cbs = sys::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -176,8 +218,8 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, w) }
     }
 
-    pub fn from_seekable_writer<W: Send + 'static>(w: W) -> StdResult<Data<'static>, W>
-            where W: Write + Seek {
+    pub fn from_seekable_writer<W: Send + 'static>(w: W)
+            -> result::Result<Data<'static>, WrappedError<W>> where W: Write + Seek {
         let cbs = sys::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -187,7 +229,7 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, w) }
     }
 
-    pub fn from_stream<S: Send + 'static>(s: S) -> StdResult<Data<'static>, S>
+    pub fn from_stream<S: Send + 'static>(s: S) -> result::Result<Data<'static>, WrappedError<S>>
             where S: Read + Write {
         let cbs = sys::gpgme_data_cbs {
             read: Some(read_callback::<S>),
@@ -198,8 +240,8 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, s) }
     }
 
-    pub fn from_seekable_stream<S: Send + 'static>(s: S) -> StdResult<Data<'static>, S>
-            where S: Read + Write + Seek {
+    pub fn from_seekable_stream<S: Send + 'static>(s: S)
+            -> result::Result<Data<'static>, WrappedError<S>> where S: Read + Write + Seek {
         let cbs = sys::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -270,8 +312,8 @@ impl<'a> Data<'a> {
         }
     }
 
-    pub fn into_string(self) -> Option<StdResult<String, FromUtf8Error>> {
-        self.into_bytes().map(String::from_utf8)
+    pub fn into_string(self) -> result::Result<Option<String>, FromUtf8Error> {
+        self.into_bytes().map_or(Ok(None), |x| String::from_utf8(x).map(Some))
     }
 }
 

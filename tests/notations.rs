@@ -52,20 +52,20 @@ fn test_notations() {
                          gpgme::SignatureNotationFlags::empty(), 0)];
     guard.clear_notations();
     for notation in expected.iter() {
-        let name = if !notation.0.is_empty() {
-            Some(notation.0.to_owned())
+        if !notation.0.is_empty() {
+            fail_if_err!(guard.add_notation(notation.0, notation.1, notation.2));
         } else {
-            None
+            fail_if_err!(guard.add_policy_url(notation.1, notation.2
+                                              .contains(gpgme::NOTATION_CRITICAL)));
         };
-        fail_if_err!(guard.add_notation(name, notation.1, notation.2));
     }
 
     let mut input = fail_if_err!(Data::from_buffer(b"Hallo Leute\n"));
     let mut output = fail_if_err!(Data::new());
-    fail_if_err!(guard.sign(ops::SignMode::Normal, &mut input, &mut output));
+    fail_if_err!(guard.sign_normal(&mut input, &mut output));
 
     input = fail_if_err!(Data::new());
     output.seek(io::SeekFrom::Start(0)).unwrap();
-    check_result(fail_if_err!(guard.verify(&mut output, None, Some(&mut input))),
+    check_result(fail_if_err!(guard.verify_opaque(&mut output, &mut input)),
                  &mut expected);
 }

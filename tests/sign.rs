@@ -37,16 +37,16 @@ fn test_sign() {
 
     let mut input = fail_if_err!(Data::from_buffer(b"Hallo Leute\n"));
     let mut output = fail_if_err!(Data::new());
-    check_result(fail_if_err!(guard.sign(ops::SignMode::Normal, &mut input, &mut output)),
+    check_result(fail_if_err!(guard.sign_normal(&mut input, &mut output)),
                  ops::SignMode::Normal);
 
     input.seek(io::SeekFrom::Start(0)).unwrap();
     output = fail_if_err!(Data::new());
-    check_result(fail_if_err!(guard.sign(ops::SignMode::Detach, &mut input, &mut output)),
+    check_result(fail_if_err!(guard.sign_detached(&mut input, &mut output)),
                  ops::SignMode::Detach);
 
     input.seek(io::SeekFrom::Start(0)).unwrap();
     output = fail_if_err!(Data::new());
-    check_result(fail_if_err!(guard.sign(ops::SignMode::Clear, &mut input, &mut output)),
+    check_result(fail_if_err!(guard.sign_clear(&mut input, &mut output)),
                  ops::SignMode::Clear);
 }

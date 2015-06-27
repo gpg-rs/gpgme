@@ -17,9 +17,10 @@ use gpgme_sys as sys;
 
 pub use self::error::{Result, Error, ErrorCode};
 pub use self::engine::{EngineInfo, EngineInfoGuard};
-pub use self::context::{Context, Keys, PassphraseCallback, ProgressCallback};
-pub use self::data::{DataEncoding, DataType, Data};
+pub use self::context::{Context, Keys, TrustItems, PassphraseCallback, ProgressCallback};
+pub use self::data::{DataEncoding, DataType, Data, WrappedError};
 pub use self::keys::{Validity, KeyAlgorithm, HashAlgorithm, Key, KeySignature, SubKey, UserId};
+pub use self::trust::TrustItem;
 pub use self::notation::{SignatureNotationFlags, SignatureNotation, NOTATION_HUMAN_READABLE,
     NOTATION_CRITICAL};
 
@@ -30,6 +31,7 @@ mod engine;
 mod context;
 mod data;
 mod keys;
+mod trust;
 mod notation;
 pub mod ops;
 
