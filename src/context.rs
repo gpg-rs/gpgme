@@ -349,6 +349,14 @@ impl Context {
         Ok(())
     }
 
+    // Only works with GPG >= 2.0.15
+    pub fn change_key_passphrase(&mut self, key: &Key) -> Result<()> {
+        unsafe {
+            return_err!(sys::gpgme_op_passwd(self.raw, key.as_raw(), 0));
+        }
+        Ok(())
+    }
+
     pub fn delete_key(&mut self, key: &Key) -> Result<()> {
         unsafe {
             return_err!(sys::gpgme_op_delete(self.raw, key.as_raw(), 0));
