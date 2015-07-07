@@ -18,6 +18,7 @@ pub struct SignatureNotation<'a, T: 'a> {
 
 impl<'a, T> SignatureNotation<'a, T> {
     pub unsafe fn from_raw<'b>(raw: ffi::gpgme_sig_notation_t) -> SignatureNotation<'b, T> {
+        debug_assert!(!raw.is_null());
         SignatureNotation { raw: raw, phantom: PhantomData }
     }
 

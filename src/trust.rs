@@ -28,6 +28,7 @@ unsafe impl Wrapper for TrustItem {
     type Raw = ffi::gpgme_trust_item_t;
 
     unsafe fn from_raw(raw: ffi::gpgme_trust_item_t) -> TrustItem {
+        debug_assert!(!raw.is_null());
         TrustItem { raw: raw }
     }
 

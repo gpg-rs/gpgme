@@ -97,6 +97,7 @@ unsafe impl Wrapper for Key {
     type Raw = ffi::gpgme_key_t;
 
     unsafe fn from_raw(raw: ffi::gpgme_key_t) -> Key {
+        debug_assert!(!raw.is_null());
         Key { raw: raw }
     }
 
@@ -215,6 +216,7 @@ pub struct SubKey<'a> {
 
 impl<'a> SubKey<'a> {
     pub unsafe fn from_raw<'b>(raw: ffi::gpgme_subkey_t) -> SubKey<'b> {
+        debug_assert!(!raw.is_null());
         SubKey { raw: raw, phantom: PhantomData }
     }
 
@@ -349,6 +351,7 @@ pub struct UserId<'a> {
 
 impl<'a> UserId<'a> {
     pub unsafe fn from_raw<'b>(raw: ffi::gpgme_user_id_t) -> UserId<'b> {
+        debug_assert!(!raw.is_null());
         UserId { raw: raw, phantom: PhantomData }
     }
 
@@ -431,6 +434,7 @@ pub struct KeySignature<'a> {
 
 impl<'a> KeySignature<'a> {
     pub unsafe fn from_raw<'b>(raw: ffi::gpgme_key_sig_t) -> KeySignature<'b> {
+        debug_assert!(!raw.is_null());
         KeySignature { raw: raw, phantom: PhantomData }
     }
 

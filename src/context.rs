@@ -24,7 +24,7 @@ pub trait PassphraseCallback: 'static + Send {
 }
 
 impl<T: 'static + Send> PassphraseCallback for T
-        where T: FnMut(Option<&str>, Option<&str>, bool, &mut io::Write) -> Result<()> {
+where T: FnMut(Option<&str>, Option<&str>, bool, &mut io::Write) -> Result<()> {
     fn read(&mut self, uid_hint: Option<&str>, info: Option<&str>,
             prev_was_bad: bool, out: &mut io::Write) -> Result<()> {
         (*self)(uid_hint, info, prev_was_bad, out)
@@ -57,8 +57,9 @@ impl Drop for Context {
 unsafe impl Wrapper for Context {
     type Raw = ffi::gpgme_ctx_t;
 
-    unsafe fn from_raw(ctx: ffi::gpgme_ctx_t) -> Context {
-        Context { raw: ctx }
+    unsafe fn from_raw(raw: ffi::gpgme_ctx_t) -> Context {
+        debug_assert!(!raw.is_null());
+        Context { raw: raw }
     }
 
     fn as_raw(&self) -> ffi::gpgme_ctx_t {
@@ -144,7 +145,7 @@ impl Context {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_progress_cb(self.raw, &mut old.0, &mut old.1);
             ffi::gpgme_set_progress_cb(self.raw, Some(progress_callback::<C>),
-                                         mem::transmute(&*cb));
+                                       mem::transmute(&*cb));
             ProgressCallbackGuard {
                 ctx: self,
                 old: old,
@@ -215,7 +216,7 @@ impl Context {
         let fingerprint = try!(CString::new(fingerprint.into()));
         unsafe {
             return_err!(ffi::gpgme_get_key(self.raw, fingerprint.as_ptr(),
-                &mut key, false as libc::c_int));
+                                           &mut key, 0));
             Ok(Key::from_raw(key))
         }
     }
@@ -227,7 +228,7 @@ impl Context {
         let fingerprint = try!(CString::new(fingerprint.into()));
         unsafe {
             return_err!(ffi::gpgme_get_key(self.raw, fingerprint.as_ptr(),
-                &mut key, true as libc::c_int));
+                                           &mut key, 1));
             Ok(Key::from_raw(key))
         }
     }
@@ -235,14 +236,14 @@ impl Context {
     /// Returns an iterator for a list of all public keys matching one or more of the
     /// specified patterns.
     pub fn find_keys<I>(&mut self, patterns: I) -> Result<Keys>
-            where I: IntoIterator, I::Item: Into<String> {
+    where I: IntoIterator, I::Item: Into<String> {
         Keys::new(self, patterns, false)
     }
 
     /// Returns an iterator for a list of all secret keys matching one or more of the
     /// specified patterns.
     pub fn find_secret_keys<I>(&mut self, patterns: I) -> Result<Keys>
-            where I: IntoIterator, I::Item: Into<String> {
+    where I: IntoIterator, I::Item: Into<String> {
         Keys::new(self, patterns, true)
     }
 
@@ -251,7 +252,8 @@ impl Context {
     }
 
     pub fn generate_key<S: Into<String>>(&mut self, params: S, public: Option<&mut Data>,
-                        secret: Option<&mut Data>) -> Result<ops::KeyGenerateResult> {
+                                         secret: Option<&mut Data>)
+            -> Result<ops::KeyGenerateResult> {
         let params = try!(CString::new(params.into()));
         let public = public.map(|d| d.as_raw()).unwrap_or(ptr::null_mut());
         let secret = secret.map(|d| d.as_raw()).unwrap_or(ptr::null_mut());
@@ -273,7 +275,7 @@ impl Context {
     }
 
     pub fn import_keys<'k, I>(&mut self, keys: I) -> Result<ops::ImportResult>
-            where I: IntoIterator<Item=&'k Key> {
+    where I: IntoIterator<Item=&'k Key> {
         let mut ptrs: Vec<_> = keys.into_iter().map(|k| k.as_raw()).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
@@ -296,8 +298,8 @@ impl Context {
     }
 
     pub fn export<I>(&mut self, patterns: I, mode: ops::ExportMode,
-                           data: Option<&mut Data>) -> Result<()>
-            where I: IntoIterator, I::Item: Into<String> {
+                     data: Option<&mut Data>) -> Result<()>
+    where I: IntoIterator, I::Item: Into<String> {
         let mut strings = Vec::new();
         for pattern in patterns.into_iter() {
             strings.push(try!(CString::new(pattern.into())));
@@ -319,8 +321,8 @@ impl Context {
     }
 
     pub fn export_keys<'k, I>(&mut self, keys: I, mode: ops::ExportMode,
-                       data: Option<&mut Data>) -> Result<()>
-            where I: IntoIterator<Item=&'k Key> {
+                              data: Option<&mut Data>) -> Result<()>
+    where I: IntoIterator<Item=&'k Key> {
         let data = data.map_or(ptr::null_mut(), |d| d.as_raw());
         let mut ptrs: Vec<_> = keys.into_iter().map(|k| k.as_raw()).collect();
         let keys = if !ptrs.is_empty() {
@@ -388,7 +390,7 @@ impl Context {
 
     pub fn add_notation<S1, S2>(&mut self, name: S1, value: S2,
                                 flags: notation::Flags) -> Result<()>
-            where S1: Into<String>, S2: Into<String> {
+    where S1: Into<String>, S2: Into<String> {
         let name = try!(CString::new(name.into()));
         let value = try!(CString::new(value.into()));
         unsafe {
@@ -484,7 +486,7 @@ impl Context {
     /// ```
     pub fn encrypt<'k, I>(&mut self, recp: I, flags: ops::EncryptFlags,
                           plain: &mut Data, cipher: &mut Data) -> Result<ops::EncryptResult>
-            where I: IntoIterator<Item=&'k Key> {
+    where I: IntoIterator<Item=&'k Key> {
         let mut ptrs: Vec<_> = recp.into_iter().map(|k| k.as_raw()).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
@@ -603,8 +605,7 @@ pub struct Keys<'a> {
 }
 
 impl<'a> Keys<'a> {
-    fn new<'b, I>(ctx: &'b mut Context, patterns: I,
-                  secret_only: bool) -> Result<Keys<'b>>
+    fn new<'b, I>(ctx: &'b mut Context, patterns: I, secret_only: bool) -> Result<Keys<'b>>
     where I: IntoIterator, I::Item: Into<String> {
         let mut strings = Vec::new();
         for pattern in patterns.into_iter() {

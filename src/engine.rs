@@ -16,6 +16,7 @@ pub struct EngineInfo<'a, T: 'a> {
 
 impl<'a, T> EngineInfo<'a, T> {
     pub unsafe fn from_raw<'b>(raw: ffi::gpgme_engine_info_t) -> EngineInfo<'b, T> {
+        debug_assert!(!raw.is_null());
         EngineInfo { raw: raw, phantom: PhantomData }
     }
 

@@ -42,6 +42,7 @@ macro_rules! impl_result {
             type Raw = $T;
 
             unsafe fn from_raw(raw: $T) -> $Name {
+                debug_assert!(!raw.is_null());
                 $Name { raw: raw }
             }
 

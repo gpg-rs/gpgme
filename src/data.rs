@@ -93,8 +93,9 @@ impl<'a> Drop for Data<'a> {
 unsafe impl<'a> Wrapper for Data<'a> {
     type Raw = ffi::gpgme_data_t;
 
-    unsafe fn from_raw<'b>(data: ffi::gpgme_data_t) -> Data<'b> {
-        Data { raw: data, phantom: PhantomData }
+    unsafe fn from_raw<'b>(raw: ffi::gpgme_data_t) -> Data<'b> {
+        debug_assert!(!raw.is_null());
+        Data { raw: raw, phantom: PhantomData }
     }
 
     fn as_raw(&self) -> ffi::gpgme_data_t {
@@ -120,8 +121,8 @@ impl<'a> Data<'a> {
         let mut data: ffi::gpgme_data_t = ptr::null_mut();
         unsafe {
             return_err!(ffi::gpgme_data_new(&mut data));
+            Ok(Data::from_raw(data))
         }
-        Ok(Data { raw: data, phantom: PhantomData })
     }
 
     /// Constructs a data object and fills it with the contents of the file
@@ -132,8 +133,8 @@ impl<'a> Data<'a> {
             .ok_or(Error::from_source(ffi::GPG_ERR_SOURCE_USER_1, error::GPG_ERR_INV_VALUE)));
         unsafe {
             return_err!(ffi::gpgme_data_new_from_file(&mut data, filename.as_ptr(), 1));
+            Ok(Data::from_raw(data))
         }
-        Ok(Data { raw: data, phantom: PhantomData })
     }
 
     /// Constructs a data object and fills it with a copy of `bytes`.
@@ -143,8 +144,8 @@ impl<'a> Data<'a> {
         unsafe {
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, bytes.as_ptr() as *const _,
                                                      bytes.len() as u64, 1));
+            Ok(Data::from_raw(data))
         }
-        Ok(Data { raw: data, phantom: PhantomData })
     }
 
     /// Constructs a data object which copies from `buf` as needed.
@@ -154,8 +155,8 @@ impl<'a> Data<'a> {
         unsafe {
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf.as_ptr() as *const _,
                                                      buf.len() as u64, 0));
+            Ok(Data::from_raw(data))
         }
-        Ok(Data { raw: data, phantom: PhantomData })
     }
 
     #[cfg(unix)]
@@ -163,14 +164,14 @@ impl<'a> Data<'a> {
         let mut data: ffi::gpgme_data_t = ptr::null_mut();
         unsafe {
             return_err!(ffi::gpgme_data_new_from_fd(&mut data, file.as_raw_fd()));
+            Ok(Data::from_raw(data))
         }
-        Ok(Data { raw: data, phantom: PhantomData })
     }
 
     pub unsafe fn from_raw_file<'b>(file: *mut libc::FILE) -> Result<Data<'b>> {
         let mut data: ffi::gpgme_data_t = ptr::null_mut();
         return_err!(ffi::gpgme_data_new_from_stream(&mut data, file));
-        Ok(Data { raw: data, phantom: PhantomData })
+        Ok(Data::from_raw(data))
     }
 
     unsafe fn from_callbacks<S: Send + 'static>(cbs: ffi::gpgme_data_cbs, src: S)
@@ -184,7 +185,7 @@ impl<'a> Data<'a> {
         let ptr: *mut libc::c_void = mem::transmute(src);
         let result = ffi::gpgme_data_new_from_cbs(&mut data, cbs, ptr);
         if result == 0 {
-            Ok(Data { raw: data, phantom: PhantomData })
+            Ok(Data::from_raw(data))
         } else {
             let error = Error::new(result);
             let inner = mem::transmute::<_, Box<CallbackWrapper<S>>>(ptr).inner;
