@@ -1,7 +1,7 @@
 extern crate tempdir;
 extern crate gpgme;
 
-use gpgme::{Protocol, Key, KeyAlgorithm, Validity};
+use gpgme::keys::{self, Key};
 
 use self::support::setup;
 
@@ -315,7 +315,7 @@ fn check_whisky(_info: &KeyInfo, key: &Key) {
 fn test_keylist() {
     let _gpghome = setup();
     let mut ctx = fail_if_err!(gpgme::create_context());
-    fail_if_err!(ctx.set_protocol(Protocol::OpenPgp));
+    fail_if_err!(ctx.set_protocol(gpgme::PROTOCOL_OPENPGP));
 
     let mut i = 0;
     let mut keys = fail_if_err!(ctx.keys());
@@ -329,11 +329,11 @@ fn test_keylist() {
         assert!(key.can_sign());
         assert!(key.can_certify());
         assert!(!key.is_secret());
-        assert_eq!(key.protocol(), Protocol::OpenPgp);
+        assert_eq!(key.protocol(), gpgme::PROTOCOL_OPENPGP);
         assert_eq!(key.issuer_serial(), None);
         assert_eq!(key.issuer_name(), None);
         assert_eq!(key.chain_id(), None);
-        assert_eq!(key.owner_trust(), Validity::Unknown);
+        assert_eq!(key.owner_trust(), gpgme::VALIDITY_UNKNOWN);
 
         let info = &KEY_INFOS[i];
         assert_eq!(key.subkeys().count() - 1, info.n_subkeys);
@@ -349,7 +349,7 @@ fn test_keylist() {
         assert!(!primary.is_secret());
         assert!(!primary.is_cardkey());
         assert_eq!(primary.card_number(), None);
-        assert_eq!(primary.algorithm(), KeyAlgorithm::Dsa);
+        assert_eq!(primary.algorithm(), keys::PK_DSA);
         assert_eq!(primary.length(), 1024);
         assert_eq!(primary.id(), Some(&info.fpr[24..]));
         assert_eq!(primary.fingerprint(), Some(info.fpr));
@@ -366,7 +366,7 @@ fn test_keylist() {
         assert!(!secondary.is_secret());
         assert!(!secondary.is_cardkey());
         assert_eq!(secondary.card_number(), None);
-        assert_eq!(secondary.algorithm(), KeyAlgorithm::ElGamalEncrypt);
+        assert_eq!(secondary.algorithm(), keys::PK_ELGAMAL_ENCRYPT);
         assert_eq!(secondary.length(), 1024);
         assert_eq!(secondary.id(), Some(info.sec_keyid));
         assert!(secondary.fingerprint().is_some());
@@ -376,7 +376,7 @@ fn test_keylist() {
         for (actual, expected) in key.user_ids().zip(info.uid.iter().filter_map(|u| u.as_ref())) {
             assert!(!actual.is_revoked());
             assert!(!actual.is_invalid());
-            assert_eq!(actual.validity(), Validity::Unknown);
+            assert_eq!(actual.validity(), gpgme::VALIDITY_UNKNOWN);
             assert!(actual.signatures().next().is_none());
             assert_eq!(actual.name().unwrap_or(""), expected.name);
             assert_eq!(actual.email().unwrap_or(""), expected.email);

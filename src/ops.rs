@@ -1,24 +1,16 @@
 use std::marker::PhantomData;
 
 use libc;
+use ffi;
 
-use enum_primitive::FromPrimitive;
-
-use gpgme_sys as sys;
-
-use error::Error;
+use {Validity, Wrapper};
+use error::{self, Error, Result};
 use context::Context;
-use keys::{KeyAlgorithm, HashAlgorithm, Validity};
+use keys::{KeyAlgorithm, HashAlgorithm};
 use notation::SignatureNotationIter;
 use utils;
 
-pub unsafe trait Result: Clone {
-    type Raw: Copy;
-
-    unsafe fn from_raw(raw: Self::Raw) -> Self;
-
-    fn as_raw(&self) -> Self::Raw;
-
+pub unsafe trait OpResult: Clone + Wrapper {
     fn from_context(ctx: &Context) -> Option<Self>;
 }
 
@@ -32,7 +24,7 @@ macro_rules! impl_result {
         impl Drop for $Name {
             fn drop(&mut self) {
                 unsafe {
-                    sys::gpgme_result_unref(self.raw as *mut libc::c_void);
+                    ffi::gpgme_result_unref(self.raw as *mut libc::c_void);
                 }
             }
         }
@@ -40,13 +32,13 @@ macro_rules! impl_result {
         impl Clone for $Name {
             fn clone(&self) -> $Name {
                 unsafe {
-                    sys::gpgme_result_ref(self.raw as *mut libc::c_void);
+                    ffi::gpgme_result_ref(self.raw as *mut libc::c_void);
                     $Name { raw: self.raw }
                 }
             }
         }
 
-        unsafe impl Result for $Name {
+        unsafe impl Wrapper for $Name {
             type Raw = $T;
 
             unsafe fn from_raw(raw: $T) -> $Name {
@@ -56,12 +48,14 @@ macro_rules! impl_result {
             fn as_raw(&self) -> $T {
                 self.raw
             }
+        }
 
+        unsafe impl OpResult for $Name {
             fn from_context(ctx: &Context) -> Option<$Name> {
                 unsafe {
                     let result = $Constructor(ctx.as_raw());
                     if !result.is_null() {
-                        sys::gpgme_result_ref(result as *mut libc::c_void);
+                        ffi::gpgme_result_ref(result as *mut libc::c_void);
                         Some($Name::from_raw(result))
                     } else {
                         None
@@ -85,7 +79,7 @@ macro_rules! impl_subresult {
                 $Name { raw: raw, phantom: PhantomData }
             }
 
-            pub fn as_raw(&self) -> $T {
+            pub fn raw(&self) -> $T {
                 self.raw
             }
         }
@@ -111,15 +105,15 @@ macro_rules! impl_subresult {
 #[derive(Debug, Copy, Clone)]
 pub struct InvalidKey<'a, T: 'a> {
     owner: &'a T,
-    raw: sys::gpgme_invalid_key_t,
+    raw: ffi::gpgme_invalid_key_t,
 }
 
 impl<'a, T> InvalidKey<'a, T> {
-    pub unsafe fn from_raw<'b>(owner: &'b T, raw: sys::gpgme_invalid_key_t) -> InvalidKey<'b, T> {
+    pub unsafe fn from_raw<'b>(owner: &'b T, raw: ffi::gpgme_invalid_key_t) -> InvalidKey<'b, T> {
         InvalidKey { owner: owner, raw: raw }
     }
 
-    pub unsafe fn raw(&self) -> sys::gpgme_invalid_key_t {
+    pub unsafe fn raw(&self) -> ffi::gpgme_invalid_key_t {
         self.raw
     }
 
@@ -129,19 +123,26 @@ impl<'a, T> InvalidKey<'a, T> {
         }
     }
 
-    pub fn reason(&self) -> Error {
-        unsafe { Error::new((*self.raw).reason) }
+    pub fn reason(&self) -> Option<Error> {
+        unsafe {
+            let reason = (*self.raw).reason;
+            if reason != error::GPG_ERR_NO_ERROR {
+                Some(Error::new(reason))
+            } else {
+                None
+            }
+        }
     }
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct InvalidKeyIter<'a, T: 'a> {
     owner: &'a T,
-    current: sys::gpgme_invalid_key_t,
+    current: ffi::gpgme_invalid_key_t,
 }
 
 impl<'a, T> InvalidKeyIter<'a, T> {
-    pub unsafe fn from_list<'b>(owner: &'b T, first: sys::gpgme_invalid_key_t) -> InvalidKeyIter<'b, T> {
+    pub unsafe fn from_list<'b>(owner: &'b T, first: ffi::gpgme_invalid_key_t) -> InvalidKeyIter<'b, T> {
         InvalidKeyIter { owner: owner, current: first }
     }
 }
@@ -163,24 +164,24 @@ impl<'a, T> Iterator for InvalidKeyIter<'a, T> {
 }
 
 bitflags! {
-    flags KeyListMode: sys::gpgme_keylist_mode_t {
-        const KEY_LIST_MODE_LOCAL = sys::GPGME_KEYLIST_MODE_LOCAL,
-        const KEY_LIST_MODE_EXTERN = sys::GPGME_KEYLIST_MODE_EXTERN,
-        const KEY_LIST_MODE_SIGS = sys::GPGME_KEYLIST_MODE_SIGS,
-        const KEY_LIST_MODE_SIG_NOTATIONS = sys::GPGME_KEYLIST_MODE_SIG_NOTATIONS,
-        const KEY_LIST_MODE_EPHEMERAL = sys::GPGME_KEYLIST_MODE_EPHEMERAL,
-        const KEY_LIST_MODE_VALIDATE = sys::GPGME_KEYLIST_MODE_VALIDATE,
+    flags KeyListMode: ffi::gpgme_keylist_mode_t {
+        const KEY_LIST_MODE_LOCAL = ffi::GPGME_KEYLIST_MODE_LOCAL,
+        const KEY_LIST_MODE_EXTERN = ffi::GPGME_KEYLIST_MODE_EXTERN,
+        const KEY_LIST_MODE_SIGS = ffi::GPGME_KEYLIST_MODE_SIGS,
+        const KEY_LIST_MODE_SIG_NOTATIONS = ffi::GPGME_KEYLIST_MODE_SIG_NOTATIONS,
+        const KEY_LIST_MODE_EPHEMERAL = ffi::GPGME_KEYLIST_MODE_EPHEMERAL,
+        const KEY_LIST_MODE_VALIDATE = ffi::GPGME_KEYLIST_MODE_VALIDATE,
     }
 }
 
-impl_result!(KeyListResult: sys::gpgme_keylist_result_t = sys::gpgme_op_keylist_result);
+impl_result!(KeyListResult: ffi::gpgme_keylist_result_t = ffi::gpgme_op_keylist_result);
 impl KeyListResult {
     pub fn truncated(&self) -> bool {
         unsafe { (*self.raw).truncated() }
     }
 }
 
-impl_result!(KeyGenerateResult: sys::gpgme_genkey_result_t = sys::gpgme_op_genkey_result);
+impl_result!(KeyGenerateResult: ffi::gpgme_genkey_result_t = ffi::gpgme_op_genkey_result);
 impl KeyGenerateResult {
     pub fn has_primary_key(&self) -> bool {
         unsafe { (*self.raw).primary() }
@@ -197,7 +198,7 @@ impl KeyGenerateResult {
     }
 }
 
-impl_result!(ImportResult: sys::gpgme_import_result_t = sys::gpgme_op_import_result);
+impl_result!(ImportResult: ffi::gpgme_import_result_t = ffi::gpgme_op_import_result);
 impl ImportResult {
     pub fn considered(&self) -> u32 {
         unsafe { (*self.raw).considered as u32 }
@@ -260,15 +261,15 @@ impl ImportResult {
 
 bitflags! {
     flags ImportFlags: libc::c_uint {
-        const IMPORT_NEW = sys::GPGME_IMPORT_NEW,
-        const IMPORT_UID = sys::GPGME_IMPORT_UID,
-        const IMPORT_SIG = sys::GPGME_IMPORT_SIG,
-        const IMPORT_SUBKEY = sys::GPGME_IMPORT_SUBKEY,
-        const IMPORT_SECRET = sys::GPGME_IMPORT_SECRET,
+        const IMPORT_NEW = ffi::GPGME_IMPORT_NEW,
+        const IMPORT_UID = ffi::GPGME_IMPORT_UID,
+        const IMPORT_SIG = ffi::GPGME_IMPORT_SIG,
+        const IMPORT_SUBKEY = ffi::GPGME_IMPORT_SUBKEY,
+        const IMPORT_SECRET = ffi::GPGME_IMPORT_SECRET,
     }
 }
 
-impl_subresult!(ImportStatus: sys::gpgme_import_status_t, ImportStatusIter, ImportResult);
+impl_subresult!(ImportStatus: ffi::gpgme_import_status_t, ImportStatusIter, ImportResult);
 impl<'a> ImportStatus<'a> {
     pub fn fingerprint(&self) -> Option<&'a str> {
         unsafe {
@@ -276,8 +277,11 @@ impl<'a> ImportStatus<'a> {
         }
     }
 
-    pub fn result(&self) -> Error {
-        unsafe { Error::new((*self.raw).result) }
+    pub fn result(&self) -> Result<()> {
+        unsafe {
+            return_err!((*self.raw).result);
+            Ok(())
+        }
     }
 
     pub fn status(&self) -> ImportFlags {
@@ -288,22 +292,22 @@ impl<'a> ImportStatus<'a> {
 }
 
 bitflags! {
-    flags ExportMode: sys::gpgme_export_mode_t {
-        const EXPORT_EXTERN = sys::GPGME_EXPORT_MODE_EXTERN,
-        const EXPORT_MINIMAL = sys::GPGME_EXPORT_MODE_MINIMAL,
+    flags ExportMode: ffi::gpgme_export_mode_t {
+        const EXPORT_EXTERN = ffi::GPGME_EXPORT_MODE_EXTERN,
+        const EXPORT_MINIMAL = ffi::GPGME_EXPORT_MODE_MINIMAL,
     }
 }
 
 bitflags! {
-    flags EncryptFlags: sys::gpgme_encrypt_flags_t {
-        const ENCRYPT_ALWAYS_TRUST = sys::GPGME_ENCRYPT_ALWAYS_TRUST,
-        const ENCRYPT_NO_ENCRYPT_TO = sys::GPGME_ENCRYPT_NO_ENCRYPT_TO,
-        const ENCRYPT_PREPARE = sys::GPGME_ENCRYPT_PREPARE,
-        const ENCRYPT_EXPECT_SIGN = sys::GPGME_ENCRYPT_EXPECT_SIGN,
+    flags EncryptFlags: ffi::gpgme_encrypt_flags_t {
+        const ENCRYPT_ALWAYS_TRUST = ffi::GPGME_ENCRYPT_ALWAYS_TRUST,
+        const ENCRYPT_NO_ENCRYPT_TO = ffi::GPGME_ENCRYPT_NO_ENCRYPT_TO,
+        const ENCRYPT_PREPARE = ffi::GPGME_ENCRYPT_PREPARE,
+        const ENCRYPT_EXPECT_SIGN = ffi::GPGME_ENCRYPT_EXPECT_SIGN,
     }
 }
 
-impl_result!(EncryptResult: sys::gpgme_encrypt_result_t = sys::gpgme_op_encrypt_result);
+impl_result!(EncryptResult: ffi::gpgme_encrypt_result_t = ffi::gpgme_op_encrypt_result);
 impl EncryptResult {
     pub fn invalid_recipients(&self) -> InvalidKeyIter<EncryptResult> {
         unsafe {
@@ -312,7 +316,7 @@ impl EncryptResult {
     }
 }
 
-impl_result!(DecryptResult: sys::gpgme_decrypt_result_t = sys::gpgme_op_decrypt_result);
+impl_result!(DecryptResult: ffi::gpgme_decrypt_result_t = ffi::gpgme_op_decrypt_result);
 impl DecryptResult {
     pub fn filename(&self) -> Option<&str> {
         unsafe {
@@ -337,7 +341,7 @@ impl DecryptResult {
     }
 }
 
-impl_subresult!(Recipient: sys::gpgme_recipient_t, RecipientIter, DecryptResult);
+impl_subresult!(Recipient: ffi::gpgme_recipient_t, RecipientIter, DecryptResult);
 impl<'a> Recipient<'a> {
     pub fn key_id(&self) -> Option<&'a str> {
         unsafe {
@@ -347,28 +351,27 @@ impl<'a> Recipient<'a> {
 
     pub fn algorithm(&self) -> KeyAlgorithm {
         unsafe {
-            KeyAlgorithm::from_u64((*self.raw).pubkey_algo as u64).unwrap_or(KeyAlgorithm::Unknown)
+            KeyAlgorithm::from_raw((*self.raw).pubkey_algo)
         }
     }
 
-    pub fn status(&self) -> Error {
+    pub fn status(&self) -> Result<()> {
         unsafe {
-            Error::new((*self.raw).status)
+            return_err!((*self.raw).status);
+            Ok(())
         }
     }
 }
 
-enum_from_primitive! {
-    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-    pub enum SignMode {
-        Unknown = -1,
-        Normal = 0,
-        Detach = 1,
-        Clear = 2,
+enum_wrapper! {
+    pub enum SignMode: ffi::gpgme_sig_mode_t {
+        SIGN_MODE_NORMAL = ffi::GPGME_SIG_MODE_NORMAL,
+        SIGN_MODE_DETACH = ffi::GPGME_SIG_MODE_DETACH,
+        SIGN_MODE_CLEAR = ffi::GPGME_SIG_MODE_CLEAR,
     }
 }
 
-impl_result!(SignResult: sys::gpgme_sign_result_t = sys::gpgme_op_sign_result);
+impl_result!(SignResult: ffi::gpgme_sign_result_t = ffi::gpgme_op_sign_result);
 impl SignResult {
     pub fn invalid_signers(&self) -> InvalidKeyIter<SignResult> {
         unsafe {
@@ -383,7 +386,7 @@ impl SignResult {
     }
 }
 
-impl_subresult!(NewSignature: sys::gpgme_new_signature_t, NewSignatureIter, SignResult);
+impl_subresult!(NewSignature: ffi::gpgme_new_signature_t, NewSignatureIter, SignResult);
 impl<'a> NewSignature<'a> {
     pub fn fingerprint(&self) -> Option<&'a str> {
         unsafe {
@@ -393,7 +396,7 @@ impl<'a> NewSignature<'a> {
 
     pub fn kind(&self) -> SignMode {
         unsafe {
-            SignMode::from_u64((*self.raw).sig_type as u64).unwrap_or(SignMode::Unknown)
+            SignMode::from_raw((*self.raw).sig_type)
         }
     }
 
@@ -407,18 +410,18 @@ impl<'a> NewSignature<'a> {
 
     pub fn key_algorithm(&self) -> KeyAlgorithm {
         unsafe {
-            KeyAlgorithm::from_u64((*self.raw).pubkey_algo as u64).unwrap_or(KeyAlgorithm::Unknown)
+            KeyAlgorithm::from_raw((*self.raw).pubkey_algo)
         }
     }
 
     pub fn hash_algorithm(&self) -> HashAlgorithm {
         unsafe {
-            HashAlgorithm::from_u64((*self.raw).hash_algo as u64).unwrap_or(HashAlgorithm::Unknown)
+            HashAlgorithm::from_raw((*self.raw).hash_algo)
         }
     }
 }
 
-impl_result!(VerifyResult: sys::gpgme_verify_result_t = sys::gpgme_op_verify_result);
+impl_result!(VerifyResult: ffi::gpgme_verify_result_t = ffi::gpgme_op_verify_result);
 impl VerifyResult {
     pub fn filename(&self) -> Option<&str> {
         unsafe {
@@ -434,33 +437,30 @@ impl VerifyResult {
 }
 
 bitflags! {
-    flags SignatureSummary: sys::gpgme_sigsum_t {
-        const SIGNATURE_VALID = sys::GPGME_SIGSUM_VALID,
-        const SIGNATURE_GREEN = sys::GPGME_SIGSUM_GREEN,
-        const SIGNATURE_RED = sys::GPGME_SIGSUM_RED,
-        const SIGNATURE_KEY_REVOKED = sys::GPGME_SIGSUM_KEY_REVOKED,
-        const SIGNATURE_KEY_EXPIRED = sys::GPGME_SIGSUM_KEY_EXPIRED,
-        const SIGNATURE_SIG_EXPIRED = sys::GPGME_SIGSUM_SIG_EXPIRED,
-        const SIGNATURE_KEY_MISSING = sys::GPGME_SIGSUM_KEY_MISSING,
-        const SIGNATURE_CRL_MISSING = sys::GPGME_SIGSUM_CRL_MISSING,
-        const SIGNATURE_CRL_TOO_OLD = sys::GPGME_SIGSUM_CRL_TOO_OLD,
-        const SIGNATURE_BAD_POLICY = sys::GPGME_SIGSUM_BAD_POLICY,
-        const SIGNATURE_SYS_ERROR = sys::GPGME_SIGSUM_SYS_ERROR,
+    flags SignatureSummary: ffi::gpgme_sigsum_t {
+        const SIGNATURE_VALID = ffi::GPGME_SIGSUM_VALID,
+        const SIGNATURE_GREEN = ffi::GPGME_SIGSUM_GREEN,
+        const SIGNATURE_RED = ffi::GPGME_SIGSUM_RED,
+        const SIGNATURE_KEY_REVOKED = ffi::GPGME_SIGSUM_KEY_REVOKED,
+        const SIGNATURE_KEY_EXPIRED = ffi::GPGME_SIGSUM_KEY_EXPIRED,
+        const SIGNATURE_SIG_EXPIRED = ffi::GPGME_SIGSUM_SIG_EXPIRED,
+        const SIGNATURE_KEY_MISSING = ffi::GPGME_SIGSUM_KEY_MISSING,
+        const SIGNATURE_CRL_MISSING = ffi::GPGME_SIGSUM_CRL_MISSING,
+        const SIGNATURE_CRL_TOO_OLD = ffi::GPGME_SIGSUM_CRL_TOO_OLD,
+        const SIGNATURE_BAD_POLICY = ffi::GPGME_SIGSUM_BAD_POLICY,
+        const SIGNATURE_SYS_ERROR = ffi::GPGME_SIGSUM_SYS_ERROR,
     }
 }
 
-enum_from_primitive! {
-    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-    pub enum PkaTrust {
-        Unknown = -1,
-        NoInfo = 0,
-        Bad = 1,
-        Okay = 2,
-        Reserved = 3,
+enum_wrapper! {
+    pub enum PkaTrust: libc::c_uint {
+        PKA_TRUST_NO_INFO = 0,
+        PKA_TRUST_BAD = 1,
+        PKA_TRUST_OKAY = 2,
     }
 }
 
-impl_subresult!(Signature: sys::gpgme_signature_t, SignatureIter, VerifyResult);
+impl_subresult!(Signature: ffi::gpgme_signature_t, SignatureIter, VerifyResult);
 impl<'a> Signature<'a> {
     pub fn fingerprint(&self) -> Option<&'a str> {
         unsafe {
@@ -474,7 +474,7 @@ impl<'a> Signature<'a> {
 
     pub fn pka_trust(&self) -> PkaTrust {
         unsafe {
-            PkaTrust::from_u64((*self.raw).pka_trust() as u64).unwrap_or(PkaTrust::Unknown)
+            PkaTrust::from_raw((*self.raw).pka_trust())
         }
     }
 
@@ -484,12 +484,19 @@ impl<'a> Signature<'a> {
 
     pub fn validity(&self) -> Validity {
         unsafe {
-            Validity::from_u64((*self.raw).validity as u64).unwrap_or(Validity::Unknown)
+            Validity::from_raw((*self.raw).validity)
         }
     }
 
-    pub fn validity_reason(&self) -> Error {
-        unsafe { Error::new((*self.raw).validity_reason) }
+    pub fn validity_reason(&self) -> Option<Error> {
+        unsafe {
+            let reason = (*self.raw).validity_reason;
+            if reason != error::GPG_ERR_NO_ERROR {
+                Some(Error::new(reason))
+            } else {
+                None
+            }
+        }
     }
 
     pub fn timestamp(&self) -> i64 {
@@ -509,18 +516,21 @@ impl<'a> Signature<'a> {
 
     pub fn key_algorithm(&self) -> KeyAlgorithm {
         unsafe {
-            KeyAlgorithm::from_u64((*self.raw).pubkey_algo as u64).unwrap_or(KeyAlgorithm::Unknown)
+            KeyAlgorithm::from_raw((*self.raw).pubkey_algo)
         }
     }
 
     pub fn hash_algorithm(&self) -> HashAlgorithm {
         unsafe {
-            HashAlgorithm::from_u64((*self.raw).hash_algo as u64).unwrap_or(HashAlgorithm::Unknown)
+            HashAlgorithm::from_raw((*self.raw).hash_algo)
         }
     }
 
-    pub fn status(&self) -> Error {
-        unsafe { Error::new((*self.raw).status) }
+    pub fn status(&self) -> Result<()> {
+        unsafe {
+            return_err!((*self.raw).status);
+            Ok(())
+        }
     }
 
     pub fn summary(&self) -> SignatureSummary {

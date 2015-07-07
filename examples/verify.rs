@@ -10,7 +10,7 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Data, Protocol};
+use gpgme::Data;
 use gpgme::ops;
 
 fn print_usage(program: &str, opts: &Options) {
@@ -58,7 +58,7 @@ fn print_result(result: &ops::VerifyResult) {
     println!("Original file name: {}", result.filename().unwrap_or("[none]"));
     for (i, sig) in result.signatures().enumerate() {
         println!("Signature {}", i);
-        println!("  status ....: {}", sig.status());
+        println!("  status ....: {:?}", sig.status());
         print!  ("  summary ...:");
         print_summary(sig.summary());
         println!("");
@@ -66,7 +66,7 @@ fn print_result(result: &ops::VerifyResult) {
         println!("  created ...: {}", sig.timestamp());
         println!("  expires ...: {}", sig.expires().unwrap_or(0));
         println!("  validity ..: {:?}", sig.validity());
-        println!("  val.reason : {}", sig.validity_reason());
+        println!("  val.reason : {:?}", sig.validity_reason());
         println!("  pubkey algo: {}", sig.key_algorithm());
         println!("  digest algo: {}", sig.hash_algorithm());
         println!("  pka address: {}", sig.pka_address().unwrap_or("[none]"));
@@ -106,9 +106,9 @@ fn main() {
     }
 
     let proto = if matches.opt_present("cms") {
-        Protocol::Cms
+        gpgme::PROTOCOL_CMS
     } else {
-        Protocol::OpenPgp
+        gpgme::PROTOCOL_OPENPGP
     };
 
     let mut ctx = gpgme::create_context().unwrap();

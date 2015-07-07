@@ -2,12 +2,10 @@ extern crate libc;
 #[macro_use]
 extern crate bitflags;
 #[macro_use]
-extern crate enum_primitive;
-#[macro_use]
 extern crate lazy_static;
-extern crate gpgme_sys;
 #[macro_use]
 extern crate gpg_error;
+extern crate gpgme_sys as ffi;
 
 use std::ffi::CString;
 use std::fmt;
@@ -15,26 +13,21 @@ use std::mem;
 use std::ptr;
 use std::sync::{Arc, RwLock};
 
-use gpgme_sys as sys;
+use self::engine::EngineInfoGuard;
 
 pub use gpg_error as error;
-pub use self::error::{Result, Error, ErrorCode};
-pub use self::engine::{EngineInfo, EngineInfoGuard};
-pub use self::context::{Context, Keys, TrustItems, PassphraseCallback, ProgressCallback};
-pub use self::data::{DataEncoding, DataType, Data, WrappedError};
-pub use self::keys::{Validity, KeyAlgorithm, HashAlgorithm, Key, KeySignature, SubKey, UserId};
-pub use self::trust::TrustItem;
-pub use self::notation::{SignatureNotationFlags, SignatureNotation, NOTATION_HUMAN_READABLE,
-    NOTATION_CRITICAL};
+pub use self::error::{Error, Result};
+pub use self::context::Context;
+pub use self::data::Data;
 
 #[macro_use]
 mod utils;
-mod engine;
-mod context;
-mod data;
-mod keys;
-mod trust;
-mod notation;
+pub mod engine;
+pub mod context;
+pub mod data;
+pub mod keys;
+pub mod trust;
+pub mod notation;
 pub mod ops;
 
 /// Constants for use with `Token::get_dir_info`.
@@ -48,31 +41,66 @@ pub mod info {
     pub const G13_NAME: &'static str = "g13-name";
 }
 
-enum_from_primitive! {
-    /// A list of cryptographic protocols that may be supported by the library.
-    ///
-    /// Each protocol is implemented by an engine that the library communicates with
-    /// to perform various operations.
-    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-    pub enum Protocol {
-        OpenPgp = sys::GPGME_PROTOCOL_OpenPGP as isize,
-        Cms = sys::GPGME_PROTOCOL_CMS as isize,
-        GpgConf = sys::GPGME_PROTOCOL_GPGCONF as isize,
-        Assuan = sys::GPGME_PROTOCOL_ASSUAN as isize,
-        G13 = sys::GPGME_PROTOCOL_G13 as isize,
-        UiServer = sys::GPGME_PROTOCOL_UISERVER as isize,
-        Spawn = sys::GPGME_PROTOCOL_SPAWN as isize,
-        Default  = sys::GPGME_PROTOCOL_DEFAULT as isize,
-        Unknown = sys::GPGME_PROTOCOL_UNKNOWN as isize,
+pub const PROTOCOL_OPENPGP: Protocol = Protocol(ffi::GPGME_PROTOCOL_OpenPGP);
+pub const PROTOCOL_CMS: Protocol = Protocol(ffi::GPGME_PROTOCOL_CMS);
+pub const PROTOCOL_GPGCONF: Protocol = Protocol(ffi::GPGME_PROTOCOL_GPGCONF);
+pub const PROTOCOL_ASSUAN: Protocol = Protocol(ffi::GPGME_PROTOCOL_ASSUAN);
+pub const PROTOCOL_G13: Protocol = Protocol(ffi::GPGME_PROTOCOL_G13);
+pub const PROTOCOL_UISERVER: Protocol = Protocol(ffi::GPGME_PROTOCOL_UISERVER);
+pub const PROTOCOL_SPAWN: Protocol = Protocol(ffi::GPGME_PROTOCOL_SPAWN);
+pub const PROTOCOL_DEFAULT: Protocol = Protocol(ffi::GPGME_PROTOCOL_DEFAULT);
+pub const PROTOCOL_UNKNOWN: Protocol = Protocol(ffi::GPGME_PROTOCOL_UNKNOWN);
+
+/// A list of cryptographic protocols that may be supported by the library.
+///
+/// Each protocol is implemented by an engine that the library communicates with
+/// to perform various operations.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct Protocol(ffi::gpgme_protocol_t);
+
+impl Protocol {
+    pub unsafe fn from_raw(raw: ffi::gpgme_protocol_t) -> Protocol {
+        Protocol(raw)
+    }
+
+    pub fn raw(&self) -> ffi::gpgme_protocol_t {
+        self.0
+    }
+
+    pub fn name(&self) -> Option<&'static str> {
+        unsafe {
+            utils::from_cstr(ffi::gpgme_get_protocol_name(self.0))
+        }
     }
 }
 
 impl fmt::Display for Protocol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let name = unsafe {
-            utils::from_cstr(sys::gpgme_get_protocol_name(*self as sys::gpgme_protocol_t))
-        };
-        write!(f, "{}", name.unwrap_or("Unknown"))
+        write!(f, "{}", self.name().unwrap_or("Unknown"))
+    }
+}
+
+enum_wrapper! {
+    pub enum Validity: ffi::gpgme_validity_t {
+        VALIDITY_UNKNOWN = ffi::GPGME_VALIDITY_UNKNOWN,
+        VALIDITY_UNDEFINED = ffi::GPGME_VALIDITY_UNDEFINED,
+        VALIDITY_NEVER = ffi::GPGME_VALIDITY_NEVER,
+        VALIDITY_MARGINAL = ffi::GPGME_VALIDITY_MARGINAL,
+        VALIDITY_FULL = ffi::GPGME_VALIDITY_FULL,
+        VALIDITY_ULTIMATE = ffi::GPGME_VALIDITY_ULTIMATE,
+    }
+}
+
+impl fmt::Display for Validity {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            VALIDITY_UNDEFINED => write!(f, "q"),
+            VALIDITY_NEVER => write!(f, "n"),
+            VALIDITY_MARGINAL => write!(f, "m"),
+            VALIDITY_FULL => write!(f, "f"),
+            VALIDITY_ULTIMATE => write!(f, "u"),
+            _ => write!(f, "?"),
+        }
     }
 }
 
@@ -90,10 +118,10 @@ impl fmt::Debug for TokenImp {
 lazy_static! {
     static ref TOKEN: Token = {
         let version = unsafe {
-            let base: sys::_gpgme_signature = mem::zeroed();
+            let base: ffi::_gpgme_signature = mem::zeroed();
             let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
 
-            let result = sys::gpgme_check_version_internal(ptr::null(), offset as libc::size_t);
+            let result = ffi::gpgme_check_version_internal(ptr::null(), offset as libc::size_t);
             utils::from_cstr(result).unwrap()
         };
         Token(Arc::new(TokenImp { version: version, engine_info: RwLock::new(()) }))
@@ -120,7 +148,13 @@ pub fn init() -> Token {
 /// let mut ctx = gpgme::create_context().unwrap();
 /// ```
 pub fn create_context() -> Result<Context> {
-    Context::new(init())
+    init();
+
+    let mut ctx: ffi::gpgme_ctx_t = ptr::null_mut();
+    unsafe {
+        return_err!(ffi::gpgme_new(&mut ctx));
+        Ok(Context::from_raw(ctx))
+    }
 }
 
 /// A type for managing global resources within the library.
@@ -142,10 +176,10 @@ impl Token {
     pub fn check_version<S: Into<String>>(&self, version: S) -> bool {
         let version = match CString::new(version.into()) {
             Ok(v) => v,
-            Err(_) => return false,
+            Err(..) => return false,
         };
         unsafe {
-            !sys::gpgme_check_version(version.as_ptr()).is_null()
+            !ffi::gpgme_check_version(version.as_ptr()).is_null()
         }
     }
 
@@ -162,7 +196,7 @@ impl Token {
     pub fn get_dir_info<S: Into<String>>(&self, what: S) -> Option<&'static str> {
         let what = try_opt!(CString::new(what.into()).ok());
         unsafe {
-            utils::from_cstr(sys::gpgme_get_dirinfo(what.as_ptr()))
+            utils::from_cstr(ffi::gpgme_get_dirinfo(what.as_ptr()))
         }
     }
 
@@ -170,7 +204,7 @@ impl Token {
     /// the library.
     pub fn check_engine_version(&self, proto: Protocol) -> Result<()> {
         unsafe {
-            return_err!(sys::gpgme_engine_check_version(proto as sys::gpgme_protocol_t));
+            return_err!(ffi::gpgme_engine_check_version(proto.raw()));
         }
         Ok(())
     }
@@ -187,9 +221,20 @@ impl Token {
             let filename = filename.map_or(ptr::null(), |s| s.as_ptr());
             let home_dir = home_dir.map_or(ptr::null(), |s| s.as_ptr());
             let _lock = self.0.engine_info.write().unwrap();
-            return_err!(sys::gpgme_set_engine_info(proto as sys::gpgme_protocol_t,
-                                                  filename, home_dir));
+            return_err!(ffi::gpgme_set_engine_info(proto.raw(), filename, home_dir));
         }
         Ok(())
+    }
+}
+
+pub unsafe trait Wrapper: Drop {
+    type Raw: Copy;
+
+    unsafe fn from_raw(raw: Self::Raw) -> Self;
+    fn as_raw(&self) -> Self::Raw;
+    fn into_raw(self) -> Self::Raw where Self: Sized {
+        let result = self.as_raw();
+        mem::forget(self);
+        result
     }
 }

@@ -9,14 +9,15 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Protocol, DataEncoding, Data};
+use gpgme::Data;
+use gpgme::data;
 use gpgme::ops;
 
 fn print_import_result(result: ops::ImportResult) {
     for import in result.imports() {
-        print!("  fpr: {} err: {} status:",
+        print!("  fpr: {} err: {:?} status:",
                import.fingerprint().unwrap_or("[none]"),
-               import.result());
+               import.result().err());
         let status = import.status();
         if status.contains(ops::IMPORT_NEW) {
             print!(" new");
@@ -86,16 +87,16 @@ fn main() {
 
     let mode = if matches.opt_present("url") {
         if matches.opt_present("0") {
-            Some(DataEncoding::Url0)
+            Some(data::ENCODING_URL0)
         } else {
-            Some(DataEncoding::Url)
+            Some(data::ENCODING_URL)
         }
     } else {
         None
     };
 
     let mut ctx = gpgme::create_context().unwrap();
-    ctx.set_protocol(Protocol::OpenPgp).unwrap();
+    ctx.set_protocol(gpgme::PROTOCOL_OPENPGP).unwrap();
 
     for file in matches.free {
         println!("reading file `{}'", &file);

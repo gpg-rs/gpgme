@@ -9,7 +9,7 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Data, Protocol};
+use gpgme::Data;
 use gpgme::ops;
 
 fn print_usage(program: &str, opts: &Options) {
@@ -61,19 +61,19 @@ fn main() {
     }
 
     let proto = if matches.opt_present("cms") {
-        Protocol::Cms
+        gpgme::PROTOCOL_CMS
     } else if matches.opt_present("uiserver") {
-        Protocol::UiServer
+        gpgme::PROTOCOL_UISERVER
     } else {
-        Protocol::OpenPgp
+        gpgme::PROTOCOL_OPENPGP
     };
 
     let mode = if matches.opt_present("detach") {
-        ops::SignMode::Detach
+        ops::SIGN_MODE_DETACH
     } else if matches.opt_present("clear") {
-        ops::SignMode::Clear
+        ops::SIGN_MODE_CLEAR
     } else {
-        ops::SignMode::Normal
+        ops::SIGN_MODE_NORMAL
     };
 
     let mut ctx = gpgme::create_context().unwrap();
@@ -82,7 +82,7 @@ fn main() {
 
     match matches.opt_str("key") {
         Some(key) => {
-            if proto != Protocol::UiServer {
+            if proto != gpgme::PROTOCOL_UISERVER {
                 let key = ctx.find_secret_key(key).unwrap();
                 ctx.add_signer(&key).unwrap();
             } else {

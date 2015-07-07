@@ -1,7 +1,7 @@
 extern crate tempdir;
 extern crate gpgme;
 
-use gpgme::{Protocol, Data};
+use gpgme::Data;
 
 use self::support::{setup, passphrase_cb, check_data};
 
@@ -14,7 +14,7 @@ const CIPHER_1: &'static [u8] = include_bytes!("./data/cipher-1.asc");
 fn test_decrypt() {
     let _gpghome = setup();
     let mut ctx = fail_if_err!(gpgme::create_context());
-    ctx.set_protocol(Protocol::OpenPgp).unwrap();
+    ctx.set_protocol(gpgme::PROTOCOL_OPENPGP).unwrap();
     let mut guard = ctx.with_passphrase_cb(passphrase_cb);
 
     let mut input = fail_if_err!(Data::from_buffer(CIPHER_1));

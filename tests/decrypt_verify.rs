@@ -1,7 +1,8 @@
 extern crate tempdir;
 extern crate gpgme;
 
-use gpgme::{ErrorCode, Protocol, Validity, Data};
+use gpgme::Data;
+use gpgme::error::ErrorCode;
 use gpgme::ops;
 
 use self::support::{setup, passphrase_cb, check_data};
@@ -18,18 +19,18 @@ fn check_result(result: ops::VerifyResult, fpr: &str, summary: ops::SignatureSum
     let signature = result.signatures().next().unwrap();
     assert_eq!(signature.summary(), summary);
     assert_eq!(signature.fingerprint(), Some(fpr));
-    assert_eq!(signature.status().code(), status);
+    assert_eq!(signature.status().err().map_or(0, |e| e.code()), status);
     assert_eq!(signature.notations().count(), 0);
     assert!(!signature.wrong_key_usage());
-    assert_eq!(signature.validity(), Validity::Unknown);
-    assert_eq!(signature.validity_reason().code(), 0);
+    assert_eq!(signature.validity(), gpgme::VALIDITY_UNKNOWN);
+    assert_eq!(signature.validity_reason(), None);
 }
 
 #[test]
 fn test_decrypt_verify() {
     let _gpghome = setup();
     let mut ctx = fail_if_err!(gpgme::create_context());
-    fail_if_err!(ctx.set_protocol(Protocol::OpenPgp));
+    fail_if_err!(ctx.set_protocol(gpgme::PROTOCOL_OPENPGP));
     let mut guard = ctx.with_passphrase_cb(passphrase_cb);
 
     let mut input = fail_if_err!(Data::from_buffer(CIPHER_2));

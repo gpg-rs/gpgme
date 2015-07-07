@@ -9,7 +9,6 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::Protocol;
 use gpgme::ops;
 
 fn print_usage(program: &str, opts: &Options) {
@@ -47,9 +46,9 @@ fn main() {
     }
 
     let proto = if matches.opt_present("cms") {
-        Protocol::Cms
+        gpgme::PROTOCOL_CMS
     } else {
-        Protocol::OpenPgp
+        gpgme::PROTOCOL_OPENPGP
     };
 
     let mut mode = ops::KeyListMode::empty();
