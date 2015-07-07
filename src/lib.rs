@@ -6,6 +6,8 @@ extern crate enum_primitive;
 #[macro_use]
 extern crate lazy_static;
 extern crate gpgme_sys;
+#[macro_use]
+extern crate gpg_error;
 
 use std::ffi::CString;
 use std::fmt;
@@ -15,6 +17,7 @@ use std::sync::{Arc, RwLock};
 
 use gpgme_sys as sys;
 
+pub use gpg_error as error;
 pub use self::error::{Result, Error, ErrorCode};
 pub use self::engine::{EngineInfo, EngineInfoGuard};
 pub use self::context::{Context, Keys, TrustItems, PassphraseCallback, ProgressCallback};
@@ -26,7 +29,6 @@ pub use self::notation::{SignatureNotationFlags, SignatureNotation, NOTATION_HUM
 
 #[macro_use]
 mod utils;
-pub mod error;
 mod engine;
 mod context;
 mod data;

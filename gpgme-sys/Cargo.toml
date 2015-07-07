@@ -15,7 +15,4 @@ path = "lib.rs"
 
 [dependencies]
 libc = "0.1"
-
-[dependencies.libgpg-error-sys]
-path = "../libgpg-error-sys"
-version = "0.1.1"
+libgpg-error-sys = "0.1"
