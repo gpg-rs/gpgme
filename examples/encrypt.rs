@@ -76,7 +76,7 @@ fn main() {
 
     let mut output = Data::new().unwrap();
     match ctx.encrypt(&keys, ops::EncryptFlags::empty(), &mut input, &mut output) {
-        Ok(_) => (),
+        Ok(..) => (),
         Err(err) => {
             writeln!(io::stderr(), "{}: encrypting failed: {}", &program, err);
             exit(1);

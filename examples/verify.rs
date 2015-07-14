@@ -125,7 +125,7 @@ fn main() {
         };
         match Data::from_seekable_reader(file) {
             Ok(data) => data,
-            Err(_) => {
+            Err(..) => {
                 writeln!(io::stderr(),
                          "{}: error allocating data object",
                          &program);
@@ -145,7 +145,7 @@ fn main() {
         };
         match Data::from_seekable_reader(file) {
             Ok(data) => Some(data),
-            Err(_) => {
+            Err(..) => {
                 writeln!(io::stderr(),
                          "{}: error allocating data object",
                          &program);

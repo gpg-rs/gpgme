@@ -127,10 +127,10 @@ impl<'a> Data<'a> {
 
     /// Constructs a data object and fills it with the contents of the file
     /// referenced by `path`.
-    pub fn load<P: AsRef<Path>>(path: &P) -> Result<Data<'static>> {
+    pub fn load<P: AsRef<Path> + ?Sized>(path: &P) -> Result<Data<'static>> {
         let mut data: ffi::gpgme_data_t = ptr::null_mut();
         let filename = try!(path.as_ref().to_str().and_then(|s| CString::new(s.as_bytes()).ok())
-            .ok_or(Error::from_source(ffi::GPG_ERR_SOURCE_USER_1, error::GPG_ERR_INV_VALUE)));
+            .ok_or(Error::from_code(error::GPG_ERR_INV_VALUE)));
         unsafe {
             return_err!(ffi::gpgme_data_new_from_file(&mut data, filename.as_ptr(), 1));
             Ok(Data::from_raw(data))
@@ -138,12 +138,12 @@ impl<'a> Data<'a> {
     }
 
     /// Constructs a data object and fills it with a copy of `bytes`.
-    pub fn from_bytes<B: AsRef<[u8]>>(bytes: B) -> Result<Data<'static>> {
+    pub fn from_bytes<B: AsRef<[u8]> + ?Sized>(bytes: &B) -> Result<Data<'static>> {
         let mut data: ffi::gpgme_data_t = ptr::null_mut();
         let bytes = bytes.as_ref();
         unsafe {
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, bytes.as_ptr() as *const _,
-                                                     bytes.len() as u64, 1));
+                                                     bytes.len() as libc::size_t, 1));
             Ok(Data::from_raw(data))
         }
     }
@@ -154,7 +154,7 @@ impl<'a> Data<'a> {
         let buf = buf.as_ref();
         unsafe {
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf.as_ptr() as *const _,
-                                                     buf.len() as u64, 0));
+                                                     buf.len() as libc::size_t, 0));
             Ok(Data::from_raw(data))
         }
     }
@@ -259,20 +259,20 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, s) }
     }
 
-    pub fn file_name(&self) -> Option<&str> {
+    pub fn filename(&self) -> Option<&str> {
         unsafe {
             utils::from_cstr(ffi::gpgme_data_get_file_name(self.raw))
         }
     }
 
-    pub fn clear_file_name(&mut self) -> Result<()> {
+    pub fn clear_filename(&mut self) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_data_set_file_name(self.raw, ptr::null()));
         }
         Ok(())
     }
 
-    pub fn set_file_name<S: Into<String>>(&mut self, name: S) -> Result<()> {
+    pub fn set_filename<S: Into<String>>(&mut self, name: S) -> Result<()> {
         let name = try!(CString::new(name.into()));
         unsafe {
             return_err!(ffi::gpgme_data_set_file_name(self.raw, name.as_ptr()));
@@ -307,19 +307,15 @@ impl<'a> Data<'a> {
             mem::forget(self);
 
             if !buf.is_null() {
-                let mut dst = Vec::with_capacity(size as usize);
-                ptr::copy_nonoverlapping(buf as *const _, dst.as_mut_ptr(), size as usize);
-                ffi::gpgme_free(buf as *mut _);
-                dst.set_len(size as usize);
-                Some(dst)
+                Some(slice::from_raw_parts(buf as *const _, size as usize).to_vec())
             } else {
                 None
             }
         }
     }
 
-    pub fn into_string(self) -> result::Result<Option<String>, FromUtf8Error> {
-        self.into_bytes().map_or(Ok(None), |x| String::from_utf8(x).map(Some))
+    pub fn into_string(self) -> result::Result<String, Option<FromUtf8Error>> {
+        self.into_bytes().map_or(Err(None), |x| String::from_utf8(x).map_err(Some))
     }
 }
 

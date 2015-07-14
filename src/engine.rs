@@ -31,7 +31,7 @@ impl<'a, T> EngineInfo<'a, T> {
         }
     }
 
-    pub fn file_name(&self) -> Option<&'a str> {
+    pub fn filename(&self) -> Option<&'a str> {
         unsafe {
             utils::from_cstr((*self.raw).file_name)
         }

@@ -19,24 +19,24 @@ use utils::{self, FdWriter};
 use ops;
 
 pub trait PassphraseCallback: 'static + Send {
-    fn read(&mut self, uid_hint: Option<&str>, info: Option<&str>,
+    fn call(&mut self, uid_hint: Option<&str>, info: Option<&str>,
             prev_was_bad: bool, out: &mut io::Write) -> Result<()>;
 }
 
 impl<T: 'static + Send> PassphraseCallback for T
 where T: FnMut(Option<&str>, Option<&str>, bool, &mut io::Write) -> Result<()> {
-    fn read(&mut self, uid_hint: Option<&str>, info: Option<&str>,
+    fn call(&mut self, uid_hint: Option<&str>, info: Option<&str>,
             prev_was_bad: bool, out: &mut io::Write) -> Result<()> {
         (*self)(uid_hint, info, prev_was_bad, out)
     }
 }
 
 pub trait ProgressCallback: 'static + Send {
-    fn report(&mut self, what: Option<&str>, typ: isize, current: isize, total: isize);
+    fn call(&mut self, what: Option<&str>, typ: isize, current: isize, total: isize);
 }
 
 impl<T: 'static + Send> ProgressCallback for T where T: FnMut(Option<&str>, isize, isize, isize) {
-    fn report(&mut self, what: Option<&str>, typ: isize, current: isize, total: isize) {
+    fn call(&mut self, what: Option<&str>, typ: isize, current: isize, total: isize) {
         (*self)(what, typ, current, total);
     }
 }
@@ -117,7 +117,7 @@ impl Context {
     ///
     /// let mut ctx = gpgme::create_context().unwrap();
     /// let mut guard = ctx.with_passphrase_cb(|_: Option<&str>, _: Option<&str>, _, out: &mut Write| {
-    ///     try!(out.write_all(b"\n"));
+    ///     try!(out.write_all(b"some passphrase"));
     ///     Ok(())
     /// });
     /// // Do something with guard requiring a passphrase e.g. decryption
@@ -803,7 +803,9 @@ extern fn passphrase_callback<C: PassphraseCallback>(hook: *mut libc::c_void,
         let uid_hint = utils::from_cstr(uid_hint);
         let info = utils::from_cstr(info);
         let mut writer = FdWriter::new(fd);
-        (*cb).read(uid_hint, info, was_bad != 0, &mut writer).err().map_or(0, |err| err.raw())
+        (*cb).call(uid_hint, info, was_bad != 0, &mut writer).and_then(|_| {
+            writer.write_all(b"\n").map_err(Error::from)
+        }).err().map_or(0, |err| err.raw())
     }
 }
 
@@ -815,6 +817,6 @@ extern fn progress_callback<C: ProgressCallback>(hook: *mut libc::c_void,
     let cb = hook as *mut C;
     unsafe {
         let what = utils::from_cstr(what);
-        (*cb).report(what, typ as isize, current as isize, total as isize);
+        (*cb).call(what, typ as isize, current as isize, total as isize);
     }
 }
