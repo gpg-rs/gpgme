@@ -1,8 +1,10 @@
 language: rust
 rust: stable
-before_install:
-- sudo apt-get update -qq
-- sudo apt-get install -y libgpgme11-dev
+sudo: false
+addons:
+  apt:
+    packages:
+    - libgpgme11-dev
 script:
 - cargo build --verbose
 - cargo test --verbose
