@@ -10,12 +10,13 @@
 
 ## Requirements
 
-Version 1.20 or greater of GPGme is required to use this library. Some features may require a more recent version.
+Version 1.2.0 or greater of GPGme is required to use this library.
+Some features may require a more recent version.
 
-The gpgme-sys and libgpg-error-sys crates require the commands gpg-error-config and gpgme-config to be executable 
-in order to build the crates. The paths to these commands can be set using the environment variables GPG_ERROR_CONFIG and GPGME_CONFIG.
+The gpgme-sys crate requires the gpgme-config binary to be executable in order to
+build the crate. The paths to this binary can be set using the environment variable GPGME_CONFIG.
 
-The appropriate dependencies can be installed by running:
+The required libraries and binaries can be installed by running:
 #### Debian / Ubuntu
 ```shell
 $ sudo apt-get install libgpgme11-dev

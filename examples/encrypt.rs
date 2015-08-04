@@ -9,7 +9,7 @@ use std::process::exit;
 
 use getopts::{Options, HasArg, Occur};
 
-use gpgme::{Protocol, Data};
+use gpgme::Data;
 use gpgme::ops;
 
 fn print_usage(program: &str, opts: &Options) {
@@ -47,9 +47,9 @@ fn main() {
     }
 
     let proto = if matches.opt_present("cms") {
-        Protocol::Cms
+        gpgme::PROTOCOL_CMS
     } else {
-        Protocol::OpenPgp
+        gpgme::PROTOCOL_OPENPGP
     };
 
     let mut ctx = gpgme::create_context().unwrap();
@@ -76,7 +76,7 @@ fn main() {
 
     let mut output = Data::new().unwrap();
     match ctx.encrypt(&keys, ops::EncryptFlags::empty(), &mut input, &mut output) {
-        Ok(_) => (),
+        Ok(..) => (),
         Err(err) => {
             writeln!(io::stderr(), "{}: encrypting failed: {}", &program, err);
             exit(1);

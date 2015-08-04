@@ -357,7 +357,7 @@ impl _gpgme_signature {
         (self.bitfield & 0x1) == 0x1
     }
 
-    pub fn pka_trust(&self) -> u32 {
+    pub fn pka_trust(&self) -> c_uint {
         (self.bitfield & 0x6) >> 1
     }
 

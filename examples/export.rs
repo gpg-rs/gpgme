@@ -9,7 +9,7 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Protocol, Data};
+use gpgme::Data;
 use gpgme::ops;
 
 fn print_usage(program: &str, opts: &Options) {
@@ -51,10 +51,10 @@ fn main() {
     };
 
     let mut ctx = gpgme::create_context().unwrap();
-    ctx.set_protocol(Protocol::OpenPgp).unwrap();
+    ctx.set_protocol(gpgme::PROTOCOL_OPENPGP).unwrap();
     ctx.set_armor(true);
 
-    let keys: Vec<_> = ctx.find_keys(matches.free).unwrap().map(|r| r.unwrap()).collect();
+    let keys: Vec<_> = ctx.find_keys(matches.free).unwrap().map(Result::unwrap).collect();
     for key in keys.iter() {
         println!("keyid: {}  (fpr: {})", key.id().unwrap_or("?"),
                  key.fingerprint().unwrap_or("?"));

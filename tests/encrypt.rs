@@ -1,7 +1,7 @@
 extern crate tempdir;
 extern crate gpgme;
 
-use gpgme::{Protocol, Data};
+use gpgme::Data;
 use gpgme::ops;
 
 use self::support::setup;
@@ -13,7 +13,7 @@ mod support;
 fn test_encrypt() {
     let _gpghome = setup();
     let mut ctx = fail_if_err!(gpgme::create_context());
-    fail_if_err!(ctx.set_protocol(Protocol::OpenPgp));
+    fail_if_err!(ctx.set_protocol(gpgme::PROTOCOL_OPENPGP));
 
     let mut input = fail_if_err!(Data::from_buffer(b"Hallo Leute\n"));
     let mut output = fail_if_err!(Data::new());

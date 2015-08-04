@@ -2,9 +2,7 @@ use std::marker::PhantomData;
 use std::ptr;
 use std::sync::RwLockReadGuard;
 
-use enum_primitive::FromPrimitive;
-
-use gpgme_sys as sys;
+use ffi;
 
 use {Protocol, Token, TOKEN};
 use error::Result;
@@ -12,27 +10,28 @@ use utils;
 
 #[derive(Debug, Copy, Clone)]
 pub struct EngineInfo<'a, T: 'a> {
-    raw: sys::gpgme_engine_info_t,
+    raw: ffi::gpgme_engine_info_t,
     phantom: PhantomData<&'a T>,
 }
 
 impl<'a, T> EngineInfo<'a, T> {
-    pub unsafe fn from_raw<'b>(raw: sys::gpgme_engine_info_t) -> EngineInfo<'b, T> {
+    pub unsafe fn from_raw<'b>(raw: ffi::gpgme_engine_info_t) -> EngineInfo<'b, T> {
+        debug_assert!(!raw.is_null());
         EngineInfo { raw: raw, phantom: PhantomData }
     }
 
-    pub fn as_raw(&self) -> sys::gpgme_engine_info_t {
+    pub fn raw(&self) -> ffi::gpgme_engine_info_t {
         self.raw
     }
 
     /// Returns the `Protocol` implemented by the engine.
     pub fn protocol(&self) -> Protocol {
         unsafe {
-            Protocol::from_u64((*self.raw).protocol as u64).unwrap_or(Protocol::Unknown)
+            Protocol::from_raw((*self.raw).protocol)
         }
     }
 
-    pub fn file_name(&self) -> Option<&'a str> {
+    pub fn filename(&self) -> Option<&'a str> {
         unsafe {
             utils::from_cstr((*self.raw).file_name)
         }
@@ -59,12 +58,12 @@ impl<'a, T> EngineInfo<'a, T> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct EngineInfoIter<'a, T: 'a> {
-    current: sys::gpgme_engine_info_t,
+    current: ffi::gpgme_engine_info_t,
     phantom: PhantomData<&'a T>,
 }
 
 impl<'a, T> EngineInfoIter<'a, T> {
-    pub unsafe fn from_list<'b>(raw: sys::gpgme_engine_info_t) -> EngineInfoIter<'b, T> {
+    pub unsafe fn from_list<'b>(raw: ffi::gpgme_engine_info_t) -> EngineInfoIter<'b, T> {
         EngineInfoIter { current: raw, phantom: PhantomData }
     }
 }
@@ -79,8 +78,8 @@ impl EngineInfoGuard {
     pub fn new(_token: &Token) -> Result<EngineInfoGuard> {
         let lock = TOKEN.0.engine_info.read().unwrap();
         unsafe {
-            let mut info: sys::gpgme_engine_info_t = ptr::null_mut();
-            return_err!(sys::gpgme_get_engine_info(&mut info));
+            let mut info: ffi::gpgme_engine_info_t = ptr::null_mut();
+            return_err!(ffi::gpgme_get_engine_info(&mut info));
         }
         Ok(EngineInfoGuard(lock))
     }
@@ -91,8 +90,8 @@ impl EngineInfoGuard {
 
     pub fn iter(&self) -> EngineInfoIter<()> {
         unsafe {
-            let mut first: sys::gpgme_engine_info_t = ptr::null_mut();
-            assert_eq!(sys::gpgme_get_engine_info(&mut first), 0);
+            let mut first: ffi::gpgme_engine_info_t = ptr::null_mut();
+            assert_eq!(ffi::gpgme_get_engine_info(&mut first), 0);
             EngineInfoIter::from_list(first)
         }
     }

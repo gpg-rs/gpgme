@@ -1,111 +1,112 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use enum_primitive::FromPrimitive;
+use ffi;
 
-use gpgme_sys as sys;
-
-use Protocol;
+use {Protocol, Validity, Wrapper};
 use error::Error;
 use ops::KeyListMode;
 use notation::SignatureNotationIter;
 use utils;
 
-enum_from_primitive! {
-    #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-    pub enum Validity {
-        Unknown = sys::GPGME_VALIDITY_UNKNOWN as isize,
-        Undefined = sys::GPGME_VALIDITY_UNDEFINED as isize,
-        Never = sys::GPGME_VALIDITY_NEVER as isize,
-        Marginal = sys::GPGME_VALIDITY_MARGINAL as isize,
-        Full = sys::GPGME_VALIDITY_FULL as isize,
-        Ultimate = sys::GPGME_VALIDITY_ULTIMATE as isize,
+ffi_enum_wrapper! {
+    pub enum KeyAlgorithm: ffi::gpgme_pubkey_algo_t {
+        PK_RSA = ffi::GPGME_PK_RSA,
+        PK_RSA_ENCRYPT = ffi::GPGME_PK_RSA_E,
+        PK_RSA_SIGN = ffi::GPGME_PK_RSA_S,
+        PK_ELGAMAL_ENCRYPT = ffi::GPGME_PK_ELG_E,
+        PK_DSA = ffi::GPGME_PK_DSA,
+        PK_ECC = ffi::GPGME_PK_ECC,
+        PK_ELGAMAL = ffi::GPGME_PK_ELG,
+        PK_ECDSA = ffi::GPGME_PK_ECDSA,
+        PK_ECDH = ffi::GPGME_PK_ECDH,
     }
 }
 
-impl fmt::Display for Validity {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Validity::Unknown => write!(f, "?"),
-            Validity::Undefined => write!(f, "q"),
-            Validity::Never => write!(f, "n"),
-            Validity::Marginal => write!(f, "m"),
-            Validity::Full => write!(f, "f"),
-            Validity::Ultimate => write!(f, "u"),
+impl KeyAlgorithm {
+    pub fn name(&self) -> Option<&str> {
+        unsafe {
+            utils::from_cstr(ffi::gpgme_pubkey_algo_name(self.0))
         }
-    }
-}
-
-enum_from_primitive! {
-    #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-    pub enum KeyAlgorithm {
-        Unknown         = -1,
-        Rsa             = sys::GPGME_PK_RSA as isize,
-        RsaEncrypt      = sys::GPGME_PK_RSA_E as isize,
-        RsaSign         = sys::GPGME_PK_RSA_S as isize,
-        ElGamalEncrypt  = sys::GPGME_PK_ELG_E as isize,
-        Dsa             = sys::GPGME_PK_DSA as isize,
-        Ecc             = sys::GPGME_PK_ECC as isize,
-        ElGamal         = sys::GPGME_PK_ELG as isize,
-        Ecdsa           = sys::GPGME_PK_ECDSA as isize,
-        Ecdh            = sys::GPGME_PK_ECDH as isize,
     }
 }
 
 impl fmt::Display for KeyAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let name = unsafe {
-            utils::from_cstr(sys::gpgme_pubkey_algo_name(*self as sys::gpgme_pubkey_algo_t))
-        };
-        write!(f, "{}", name.unwrap_or("Unknown"))
+        write!(f, "{}", self.name().unwrap_or("Unknown"))
     }
 }
 
-enum_from_primitive! {
-    #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-    pub enum HashAlgorithm {
-        Unknown       = -1,
-        None          = sys::GPGME_MD_NONE as isize,
-        Md2           = sys::GPGME_MD_MD2 as isize,
-        Md4           = sys::GPGME_MD_MD4 as isize,
-        Md5           = sys::GPGME_MD_MD5 as isize,
-        Sha1          = sys::GPGME_MD_SHA1 as isize,
-        Sha256        = sys::GPGME_MD_SHA256 as isize,
-        Sha384        = sys::GPGME_MD_SHA384 as isize,
-        Sha512        = sys::GPGME_MD_SHA512 as isize,
-        Sha224        = sys::GPGME_MD_SHA224 as isize,
-        Rmd160        = sys::GPGME_MD_RMD160 as isize,
-        Tiger         = sys::GPGME_MD_TIGER as isize,
-        Haval         = sys::GPGME_MD_HAVAL as isize,
-        Crc32         = sys::GPGME_MD_CRC32 as isize,
-        Crc32Rfc1510  = sys::GPGME_MD_CRC32_RFC1510 as isize,
-        Crc24Rfc2440  = sys::GPGME_MD_CRC24_RFC2440 as isize,
+ffi_enum_wrapper! {
+    pub enum HashAlgorithm: ffi::gpgme_hash_algo_t {
+        HASH_NONE = ffi::GPGME_MD_NONE,
+        HASH_MD2 = ffi::GPGME_MD_MD2,
+        HASH_MD4 = ffi::GPGME_MD_MD4,
+        HASH_MD5 = ffi::GPGME_MD_MD5,
+        HASH_SHA1 = ffi::GPGME_MD_SHA1,
+        HASH_SHA256 = ffi::GPGME_MD_SHA256,
+        HASH_SHA384 = ffi::GPGME_MD_SHA384,
+        HASH_SHA512 = ffi::GPGME_MD_SHA512,
+        HASH_SHA224 = ffi::GPGME_MD_SHA224,
+        HASH_RMD160 = ffi::GPGME_MD_RMD160,
+        HASH_TIGER = ffi::GPGME_MD_TIGER,
+        HASH_HAVAL = ffi::GPGME_MD_HAVAL,
+        HASH_CRC32 = ffi::GPGME_MD_CRC32,
+        HASH_CRC32_RFC1510 = ffi::GPGME_MD_CRC32_RFC1510,
+        HASH_CRC24_RFC2440 = ffi::GPGME_MD_CRC24_RFC2440,
+    }
+}
+
+impl HashAlgorithm {
+    pub fn name(&self) -> Option<&str> {
+        unsafe {
+            utils::from_cstr(ffi::gpgme_hash_algo_name(self.0))
+        }
     }
 }
 
 impl fmt::Display for HashAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let name = unsafe {
-            utils::from_cstr(sys::gpgme_hash_algo_name(*self as sys::gpgme_pubkey_algo_t))
-        };
-        write!(f, "{}", name.unwrap_or("Unknown"))
+        write!(f, "{}", self.name().unwrap_or("Unknown"))
     }
 }
 
 #[derive(Debug)]
 pub struct Key {
-    raw: sys::gpgme_key_t,
+    raw: ffi::gpgme_key_t,
 }
 
-impl Key {
-    pub unsafe fn from_raw(raw: sys::gpgme_key_t) -> Key {
+impl Drop for Key {
+    fn drop(&mut self) {
+        unsafe {
+            ffi::gpgme_key_unref(self.raw);
+        }
+    }
+}
+
+impl Clone for Key {
+    fn clone(&self) -> Key {
+        unsafe {
+            ffi::gpgme_key_ref(self.raw);
+            Key { raw: self.raw }
+        }
+    }
+}
+
+unsafe impl Wrapper for Key {
+    type Raw = ffi::gpgme_key_t;
+
+    unsafe fn from_raw(raw: ffi::gpgme_key_t) -> Key {
+        debug_assert!(!raw.is_null());
         Key { raw: raw }
     }
 
-    pub fn as_raw(&self) -> sys::gpgme_key_t {
+    fn as_raw(&self) -> ffi::gpgme_key_t {
         self.raw
     }
+}
 
+impl Key {
     pub fn is_secret(&self) -> bool {
         unsafe { (*self.raw).secret() }
     }
@@ -162,13 +163,13 @@ impl Key {
 
     pub fn protocol(&self) -> Protocol {
         unsafe {
-            Protocol::from_u64((*self.raw).protocol as u64).unwrap_or(Protocol::Unknown)
+            Protocol::from_raw((*self.raw).protocol)
         }
     }
 
     pub fn owner_trust(&self) -> Validity {
         unsafe {
-            Validity::from_u64((*self.raw).owner_trust as u64).unwrap_or(Validity::Unknown)
+            Validity::from_raw((*self.raw).owner_trust)
         }
     }
 
@@ -207,35 +208,19 @@ impl Key {
     }
 }
 
-impl Drop for Key {
-    fn drop(&mut self) {
-        unsafe {
-            sys::gpgme_key_unref(self.raw);
-        }
-    }
-}
-
-impl Clone for Key {
-    fn clone(&self) -> Self {
-        unsafe {
-            sys::gpgme_key_ref(self.raw);
-            Key { raw: self.raw }
-        }
-    }
-}
-
 #[derive(Debug, Copy, Clone)]
 pub struct SubKey<'a> {
-    raw: sys::gpgme_subkey_t,
+    raw: ffi::gpgme_subkey_t,
     phantom: PhantomData<&'a Key>,
 }
 
 impl<'a> SubKey<'a> {
-    pub unsafe fn from_raw<'b>(raw: sys::gpgme_subkey_t) -> SubKey<'b> {
+    pub unsafe fn from_raw<'b>(raw: ffi::gpgme_subkey_t) -> SubKey<'b> {
+        debug_assert!(!raw.is_null());
         SubKey { raw: raw, phantom: PhantomData }
     }
 
-    pub fn as_raw(&self) -> sys::gpgme_subkey_t {
+    pub fn raw(&self) -> ffi::gpgme_subkey_t {
         self.raw
     }
 
@@ -297,7 +282,7 @@ impl<'a> SubKey<'a> {
 
     pub fn algorithm(&self) -> KeyAlgorithm {
         unsafe {
-            KeyAlgorithm::from_u64((*self.raw).pubkey_algo as u64).unwrap_or(KeyAlgorithm::Unknown)
+            KeyAlgorithm::from_raw((*self.raw).pubkey_algo)
         }
     }
 
@@ -344,12 +329,12 @@ impl<'a> SubKey<'a> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct SubKeyIter<'a> {
-    current: sys::gpgme_subkey_t,
+    current: ffi::gpgme_subkey_t,
     phantom: PhantomData<&'a Key>,
 }
 
 impl<'a> SubKeyIter<'a> {
-    pub unsafe fn from_list<'b>(raw: sys::gpgme_subkey_t) -> SubKeyIter<'b> {
+    pub unsafe fn from_list<'b>(raw: ffi::gpgme_subkey_t) -> SubKeyIter<'b> {
         SubKeyIter { current: raw, phantom: PhantomData }
     }
 }
@@ -360,16 +345,17 @@ impl<'a> Iterator for SubKeyIter<'a> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct UserId<'a> {
-    raw: sys::gpgme_user_id_t,
+    raw: ffi::gpgme_user_id_t,
     phantom: PhantomData<&'a Key>,
 }
 
 impl<'a> UserId<'a> {
-    pub unsafe fn from_raw<'b>(raw: sys::gpgme_user_id_t) -> UserId<'b> {
+    pub unsafe fn from_raw<'b>(raw: ffi::gpgme_user_id_t) -> UserId<'b> {
+        debug_assert!(!raw.is_null());
         UserId { raw: raw, phantom: PhantomData }
     }
 
-    pub fn as_raw(&self) -> sys::gpgme_user_id_t {
+    pub fn raw(&self) -> ffi::gpgme_user_id_t {
         self.raw
     }
 
@@ -407,7 +393,7 @@ impl<'a> UserId<'a> {
 
     pub fn validity(&self) -> Validity {
         unsafe {
-            Validity::from_u64((*self.raw).validity as u64).unwrap_or(Validity::Unknown)
+            Validity::from_raw((*self.raw).validity)
         }
     }
 
@@ -426,12 +412,12 @@ impl<'a> fmt::Display for UserId<'a> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct UserIdIter<'a> {
-    current: sys::gpgme_user_id_t,
+    current: ffi::gpgme_user_id_t,
     phantom: PhantomData<&'a Key>,
 }
 
 impl<'a> UserIdIter<'a> {
-    pub unsafe fn from_list<'b>(raw: sys::gpgme_user_id_t) -> UserIdIter<'b> {
+    pub unsafe fn from_list<'b>(raw: ffi::gpgme_user_id_t) -> UserIdIter<'b> {
         UserIdIter { current: raw, phantom: PhantomData }
     }
 }
@@ -442,16 +428,17 @@ impl<'a> Iterator for UserIdIter<'a> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct KeySignature<'a> {
-    raw: sys::gpgme_key_sig_t,
+    raw: ffi::gpgme_key_sig_t,
     phantom: PhantomData<&'a Key>,
 }
 
 impl<'a> KeySignature<'a> {
-    pub unsafe fn from_raw<'b>(raw: sys::gpgme_key_sig_t) -> KeySignature<'b> {
+    pub unsafe fn from_raw<'b>(raw: ffi::gpgme_key_sig_t) -> KeySignature<'b> {
+        debug_assert!(!raw.is_null());
         KeySignature { raw: raw, phantom: PhantomData }
     }
 
-    pub fn as_raw(&self) -> sys::gpgme_key_sig_t {
+    pub fn raw(&self) -> ffi::gpgme_key_sig_t {
         self.raw
     }
 
@@ -525,7 +512,7 @@ impl<'a> KeySignature<'a> {
 
     pub fn key_algorithm(&self) -> KeyAlgorithm {
         unsafe {
-            KeyAlgorithm::from_u64((*self.raw).pubkey_algo as u64).unwrap_or(KeyAlgorithm::Unknown)
+            KeyAlgorithm::from_raw((*self.raw).pubkey_algo)
         }
     }
 
@@ -546,12 +533,12 @@ impl<'a> KeySignature<'a> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct KeySignatureIter<'a> {
-    current: sys::gpgme_key_sig_t,
+    current: ffi::gpgme_key_sig_t,
     phantom: PhantomData<&'a Key>,
 }
 
 impl<'a> KeySignatureIter<'a> {
-    pub unsafe fn from_list<'b>(raw: sys::gpgme_key_sig_t) -> KeySignatureIter<'b> {
+    pub unsafe fn from_list<'b>(raw: ffi::gpgme_key_sig_t) -> KeySignatureIter<'b> {
         KeySignatureIter { current: raw, phantom: PhantomData }
     }
 }

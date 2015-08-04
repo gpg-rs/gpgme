@@ -3,16 +3,16 @@ name = "gpgme"
 description = "GPGme bindings for Rust"
 repository = "https://github.com/johnschug/rust-gpgme"
 documentation = "https://johnschug.github.io/rust-gpgme"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 
 [dependencies]
 libc = "0.1"
-bitflags = "0.2"
-enum_primitive = "*"
+bitflags = "0.3"
 lazy_static = "0.1"
+gpg-error = "0.1"
 
 [dependencies.gpgme-sys]
 path = "gpgme-sys"

@@ -3,10 +3,9 @@ extern crate gpgme;
 
 use std::io::prelude::*;
 
-use gpgme::{Error, Result};
-use gpgme::{Protocol, StatusCode, EditorState, Editor, EditorWrapper, Data};
+use gpgme::{Data, Error, Result};
 use gpgme::error;
-use gpgme::edit::{self, KeyWord};
+use gpgme::edit::{self, KeyWord, StatusCode, EditorState, Editor, EditorWrapper};
 
 use self::support::{setup, passphrase_cb};
 
@@ -51,58 +50,58 @@ impl Editor for TestEditor {
         let err_general = Err(Error::from_code(error::GPG_ERR_GENERAL));
         match wrapper.state() {
             TestEditorState::Start => {
-                if (status == StatusCode::GetLine) && (args == KeyWord::Prompt) {
+                if (status == edit::STATUS_GET_LINE) && (args == KeyWord::Prompt) {
                     Ok(TestEditorState::Fingerprint)
-                } else if status == StatusCode::ImportOk {
+                } else if status == edit::STATUS_IMPORT_OK {
                     Ok(TestEditorState::Start)
                 } else {
                     err_general
                 }
             },
             TestEditorState::Fingerprint => {
-                if (status == StatusCode::GetLine) && (args == KeyWord::Prompt) {
+                if (status == edit::STATUS_GET_LINE) && (args == KeyWord::Prompt) {
                     Ok(TestEditorState::Expire)
                 } else {
                     err_general
                 }
             },
             TestEditorState::Expire => {
-                if (status == StatusCode::GetLine) && (args == KeyWord::KeyValid) {
+                if (status == edit::STATUS_GET_LINE) && (args == KeyWord::KeyValid) {
                     Ok(TestEditorState::Valid)
                 } else {
                     err_general
                 }
             },
             TestEditorState::Valid => {
-                if (status == StatusCode::GetLine) && (args == KeyWord::Prompt) {
+                if (status == edit::STATUS_GET_LINE) && (args == KeyWord::Prompt) {
                     Ok(TestEditorState::Uid)
                 } else {
                     err_general
                 }
             },
             TestEditorState::Uid => {
-                if (status == StatusCode::GetLine) && (args == KeyWord::Prompt) {
+                if (status == edit::STATUS_GET_LINE) && (args == KeyWord::Prompt) {
                     Ok(TestEditorState::Primary)
                 } else {
                     err_general
                 }
             },
             TestEditorState::Primary => {
-                if (status == StatusCode::GetLine) && (args == KeyWord::Prompt) {
+                if (status == edit::STATUS_GET_LINE) && (args == KeyWord::Prompt) {
                     Ok(TestEditorState::Quit)
                 } else {
                     err_general
                 }
             },
             TestEditorState::Quit => {
-                if (status == StatusCode::GetBool) && (args == KeyWord::ConfirmSave) {
+                if (status == edit::STATUS_GET_BOOL) && (args == KeyWord::ConfirmSave) {
                     Ok(TestEditorState::Save)
                 } else {
                     err_general
                 }
             },
             TestEditorState::Error => {
-                if (status == StatusCode::GetLine) && (args == KeyWord::Prompt) {
+                if (status == edit::STATUS_GET_LINE) && (args == KeyWord::Prompt) {
                     Ok(TestEditorState::Quit)
                 } else {
                     Err(wrapper.last_error())
@@ -131,7 +130,7 @@ impl Editor for TestEditor {
 fn test_edit() {
     let _gpghome = setup();
     let mut ctx = fail_if_err!(gpgme::create_context());
-    fail_if_err!(ctx.set_protocol(Protocol::OpenPgp));
+    fail_if_err!(ctx.set_protocol(gpgme::PROTOCOL_OPENPGP));
     let mut guard = ctx.with_passphrase_cb(passphrase_cb);
 
     let key = fail_if_err!(guard.find_keys(Some("Alpha"))).next().unwrap().unwrap();
