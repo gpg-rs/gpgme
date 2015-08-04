@@ -19,7 +19,7 @@ use Wrapper;
 use error::{self, Error, Result};
 use utils;
 
-enum_wrapper! {
+ffi_enum_wrapper! {
     pub enum Encoding: ffi::gpgme_data_encoding_t {
         ENCODING_NONE = ffi::GPGME_DATA_ENCODING_NONE,
         ENCODING_BINARY = ffi::GPGME_DATA_ENCODING_BINARY,
@@ -31,7 +31,7 @@ enum_wrapper! {
     }
 }
 
-enum_wrapper! {
+ffi_enum_wrapper! {
     pub enum Type: ffi::gpgme_data_type_t {
         TYPE_UNKNOWN = ffi::GPGME_DATA_TYPE_UNKNOWN,
         TYPE_INVALID = ffi::GPGME_DATA_TYPE_INVALID,

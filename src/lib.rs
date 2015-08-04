@@ -41,32 +41,25 @@ pub mod info {
     pub const G13_NAME: &'static str = "g13-name";
 }
 
-pub const PROTOCOL_OPENPGP: Protocol = Protocol(ffi::GPGME_PROTOCOL_OpenPGP);
-pub const PROTOCOL_CMS: Protocol = Protocol(ffi::GPGME_PROTOCOL_CMS);
-pub const PROTOCOL_GPGCONF: Protocol = Protocol(ffi::GPGME_PROTOCOL_GPGCONF);
-pub const PROTOCOL_ASSUAN: Protocol = Protocol(ffi::GPGME_PROTOCOL_ASSUAN);
-pub const PROTOCOL_G13: Protocol = Protocol(ffi::GPGME_PROTOCOL_G13);
-pub const PROTOCOL_UISERVER: Protocol = Protocol(ffi::GPGME_PROTOCOL_UISERVER);
-pub const PROTOCOL_SPAWN: Protocol = Protocol(ffi::GPGME_PROTOCOL_SPAWN);
-pub const PROTOCOL_DEFAULT: Protocol = Protocol(ffi::GPGME_PROTOCOL_DEFAULT);
-pub const PROTOCOL_UNKNOWN: Protocol = Protocol(ffi::GPGME_PROTOCOL_UNKNOWN);
-
-/// A list of cryptographic protocols that may be supported by the library.
-///
-/// Each protocol is implemented by an engine that the library communicates with
-/// to perform various operations.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub struct Protocol(ffi::gpgme_protocol_t);
+ffi_enum_wrapper! {
+    #[doc="A cryptographic protocol that may be supported by the library."]
+    #[doc=""]
+    #[doc="Each protocol is implemented by an engine that the library communicates with"]
+    #[doc="to perform various operations."]
+    pub enum Protocol: ffi::gpgme_protocol_t {
+        PROTOCOL_OPENPGP = ffi::GPGME_PROTOCOL_OpenPGP,
+        PROTOCOL_CMS = ffi::GPGME_PROTOCOL_CMS,
+        PROTOCOL_GPGCONF = ffi::GPGME_PROTOCOL_GPGCONF,
+        PROTOCOL_ASSUAN = ffi::GPGME_PROTOCOL_ASSUAN,
+        PROTOCOL_G13 = ffi::GPGME_PROTOCOL_G13,
+        PROTOCOL_UISERVER = ffi::GPGME_PROTOCOL_UISERVER,
+        PROTOCOL_SPAWN = ffi::GPGME_PROTOCOL_SPAWN,
+        PROTOCOL_DEFAULT = ffi::GPGME_PROTOCOL_DEFAULT,
+        PROTOCOL_UNKNOWN = ffi::GPGME_PROTOCOL_UNKNOWN,
+    }
+}
 
 impl Protocol {
-    pub unsafe fn from_raw(raw: ffi::gpgme_protocol_t) -> Protocol {
-        Protocol(raw)
-    }
-
-    pub fn raw(&self) -> ffi::gpgme_protocol_t {
-        self.0
-    }
-
     pub fn name(&self) -> Option<&'static str> {
         unsafe {
             utils::from_cstr(ffi::gpgme_get_protocol_name(self.0))
@@ -80,7 +73,7 @@ impl fmt::Display for Protocol {
     }
 }
 
-enum_wrapper! {
+ffi_enum_wrapper! {
     pub enum Validity: ffi::gpgme_validity_t {
         VALIDITY_UNKNOWN = ffi::GPGME_VALIDITY_UNKNOWN,
         VALIDITY_UNDEFINED = ffi::GPGME_VALIDITY_UNDEFINED,

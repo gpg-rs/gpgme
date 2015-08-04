@@ -9,7 +9,7 @@ use ops::KeyListMode;
 use notation::SignatureNotationIter;
 use utils;
 
-enum_wrapper! {
+ffi_enum_wrapper! {
     pub enum KeyAlgorithm: ffi::gpgme_pubkey_algo_t {
         PK_RSA = ffi::GPGME_PK_RSA,
         PK_RSA_ENCRYPT = ffi::GPGME_PK_RSA_E,
@@ -37,7 +37,7 @@ impl fmt::Display for KeyAlgorithm {
     }
 }
 
-enum_wrapper! {
+ffi_enum_wrapper! {
     pub enum HashAlgorithm: ffi::gpgme_hash_algo_t {
         HASH_NONE = ffi::GPGME_MD_NONE,
         HASH_MD2 = ffi::GPGME_MD_MD2,

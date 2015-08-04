@@ -31,7 +31,7 @@ macro_rules! list_iterator {
     ($item:ty) => (list_iterator!($item, $item::from_raw));
 }
 
-macro_rules! enum_wrapper {
+macro_rules! ffi_enum_wrapper {
     ($(#[$Attr:meta])* pub enum $Name:ident: $T:ty {
         $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr),+
     }) => {
@@ -54,7 +54,7 @@ macro_rules! enum_wrapper {
     ($(#[$Attr:meta])* pub enum $Name:ident: $T:ty {
         $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr,)+
     }) => {
-        enum_wrapper! {
+        ffi_enum_wrapper! {
             $(#[$Attr])*
             pub enum $Name: $T {
                 $($(#[$ItemAttr])* $Item = $Value),+

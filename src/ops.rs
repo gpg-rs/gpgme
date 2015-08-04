@@ -364,7 +364,7 @@ impl<'a> Recipient<'a> {
     }
 }
 
-enum_wrapper! {
+ffi_enum_wrapper! {
     pub enum SignMode: ffi::gpgme_sig_mode_t {
         SIGN_MODE_NORMAL = ffi::GPGME_SIG_MODE_NORMAL,
         SIGN_MODE_DETACH = ffi::GPGME_SIG_MODE_DETACH,
@@ -453,7 +453,7 @@ bitflags! {
     }
 }
 
-enum_wrapper! {
+ffi_enum_wrapper! {
     pub enum PkaTrust: libc::c_uint {
         PKA_TRUST_NO_INFO = 0,
         PKA_TRUST_BAD = 1,
