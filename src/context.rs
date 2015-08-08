@@ -15,7 +15,7 @@ use data::Data;
 use keys::Key;
 use trust::TrustItem;
 use notation::{self, SignatureNotationIter};
-use edit::{self, Editor, EditorWrapper};
+use edit;
 use utils::{self, FdWriter};
 use ops;
 
@@ -39,6 +39,19 @@ pub trait ProgressCallback: 'static + Send {
 impl<T: 'static + Send> ProgressCallback for T where T: FnMut(Option<&str>, isize, isize, isize) {
     fn call(&mut self, what: Option<&str>, typ: isize, current: isize, total: isize) {
         (*self)(what, typ, current, total);
+    }
+}
+
+pub trait EditCallback: 'static + Send {
+    fn call(&mut self, status: edit::StatusCode, args: Option<&str>,
+            output: &mut io::Write) -> Result<()>;
+}
+
+impl<T: 'static + Send> EditCallback for T
+where T: FnMut(edit::StatusCode, Option<&str>, &mut io::Write) -> Result<()> {
+    fn call(&mut self, status: edit::StatusCode, args: Option<&str>,
+            output: &mut io::Write) -> Result<()> {
+        (*self)(status, args, output)
     }
 }
 
@@ -346,12 +359,11 @@ impl Context {
         Ok(())
     }
 
-    pub fn edit_key<E: Editor>(&mut self, key: &Key, editor: E,
-                               data: &mut Data) -> Result<()> {
-        let mut wrapper = EditorWrapper::new(editor);
+    pub fn edit_key<E: EditCallback>(&mut self, key: &Key, mut editor: E,
+                                     data: &mut Data) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_op_edit(self.raw, key.as_raw(), Some(edit_callback::<E>),
-                                           mem::transmute(&&mut wrapper), data.as_raw()));
+                                           mem::transmute(&mut editor), data.as_raw()));
         }
         Ok(())
     }
@@ -832,15 +844,19 @@ extern fn progress_callback<C: ProgressCallback>(hook: *mut libc::c_void,
     }
 }
 
-extern fn edit_callback<E: Editor>(handle: *mut libc::c_void,
-                                   status: ffi::gpgme_status_code_t,
-                                   args: *const libc::c_char,
-                                   fd: libc::c_int) -> ffi::gpgme_error_t {
-    let wrapper = handle as *const *mut EditorWrapper<E>;
-    let status = unsafe { edit::StatusCode::from_raw(status) };
-    let args = unsafe { utils::from_cstr(args) };
+extern fn edit_callback<E: EditCallback>(handle: *mut libc::c_void,
+                                         status: ffi::gpgme_status_code_t,
+                                         args: *const libc::c_char,
+                                         fd: libc::c_int) -> ffi::gpgme_error_t {
+    let cb = handle as *mut E;
     let result = unsafe {
-        (**wrapper).callback(status, args, &mut FdWriter::new(fd))
+        let status = edit::StatusCode::from_raw(status);
+        let args = utils::from_cstr(args);
+        if fd < 0 {
+            (*cb).call(status, args, &mut io::sink())
+        } else {
+            (*cb).call(status, args, &mut FdWriter::new(fd))
+        }
     };
     result.err().map(|err| err.raw()).unwrap_or(0)
 }
