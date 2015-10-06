@@ -22,7 +22,12 @@ The required libraries and binaries can be installed by running:
 $ sudo apt-get install libgpgme11-dev
 ```
 
-#### RHEL / CentOS / Fedora
+#### Fedora 22+
+```shell
+$ sudo dnf install gpgme-devel
+```
+
+#### RHEL / CentOS / Fedora 21 and lower
 ```shell
 $ sudo yum install gpgme-devel
 ```
