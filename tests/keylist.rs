@@ -389,6 +389,6 @@ fn test_keylist() {
         }
         i += 1;
     }
-    assert!(!fail_if_err!(keys.result()).truncated());
+    assert!(!fail_if_err!(keys.finish()).truncated());
     assert_eq!(i, KEY_INFOS.len());
 }

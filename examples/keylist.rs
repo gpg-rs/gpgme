@@ -98,7 +98,7 @@ fn main() {
         println!("");
     }
 
-    if keys.result().unwrap().truncated() {
+    if keys.finish().unwrap().truncated() {
         writeln!(io::stderr(), "{}: key listing unexpectedly truncated",
                program);
     }

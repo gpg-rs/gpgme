@@ -627,12 +627,12 @@ impl<'a> Keys<'a> {
         Ok(Keys { ctx: ctx })
     }
 
-    pub fn result(self) -> Result<ops::KeyListResult> {
+    pub fn finish(self) -> Result<ops::KeyListResult> {
         let ctx = self.ctx as *mut Context;
         mem::forget(self);
         unsafe {
             return_err!(ffi::gpgme_op_keylist_end((*ctx).as_raw()));
-            Ok((*ctx).key_list_result().unwrap())
+            Ok((*ctx).get_result().unwrap())
         }
     }
 }
@@ -670,7 +670,7 @@ pub struct TrustItems<'a> {
 }
 
 impl<'a> TrustItems<'a> {
-    pub fn result(self) -> Result<()> {
+    pub fn finish(self) -> Result<()> {
         let ctx = self.ctx as *mut Context;
         mem::forget(self);
         unsafe {
