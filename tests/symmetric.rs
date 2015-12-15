@@ -27,7 +27,8 @@ fn test_symmetric() {
     let _gpghome = setup();
     let mut ctx = fail_if_err!(gpgme::create_context());
     ctx.set_protocol(gpgme::PROTOCOL_OPENPGP).unwrap();
-    let mut guard = ctx.with_passphrase_cb(passphrase_cb);
+    let cb = &mut passphrase_cb;
+    let mut guard = ctx.with_passphrase_cb(cb);
 
     let mut plain = fail_if_err!(Data::from_buffer(TEXT));
     let mut cipher = fail_if_err!(Data::new());

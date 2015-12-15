@@ -41,7 +41,8 @@ fn test_notations() {
     let _gpghome = setup();
     let mut ctx = fail_if_err!(gpgme::create_context());
     fail_if_err!(ctx.set_protocol(gpgme::PROTOCOL_OPENPGP));
-    let mut guard = ctx.with_passphrase_cb(passphrase_cb);
+    let cb = &mut passphrase_cb;
+    let mut guard = ctx.with_passphrase_cb(cb);
 
     guard.set_armor(true);
     guard.set_text_mode(true);
@@ -52,7 +53,7 @@ fn test_notations() {
                         ("", "http://www.gnu.org/policy/",
                          notation::Flags::empty(), 0)];
     guard.clear_notations();
-    for notation in expected.iter() {
+    for notation in &expected {
         if !notation.0.is_empty() {
             fail_if_err!(guard.add_notation(notation.0, notation.1, notation.2));
         } else {

@@ -31,7 +31,8 @@ fn test_decrypt_verify() {
     let _gpghome = setup();
     let mut ctx = fail_if_err!(gpgme::create_context());
     fail_if_err!(ctx.set_protocol(gpgme::PROTOCOL_OPENPGP));
-    let mut guard = ctx.with_passphrase_cb(passphrase_cb);
+    let cb = &mut passphrase_cb;
+    let mut guard = ctx.with_passphrase_cb(cb);
 
     let mut input = fail_if_err!(Data::from_buffer(CIPHER_2));
     let mut output = fail_if_err!(Data::new());

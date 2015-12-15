@@ -1,6 +1,7 @@
 use std::ffi::CString;
 use std::fmt;
 use std::io;
+use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::ptr;
@@ -74,40 +75,42 @@ impl Context {
     /// use std::io::prelude::*;
     ///
     /// let mut ctx = gpgme::create_context().unwrap();
-    /// let mut guard = ctx.with_passphrase_cb(|_: Option<&str>, _: Option<&str>, _, out: &mut Write| {
+    /// let cb = &mut |_: Option<&str>, _: Option<&str>, _, out: &mut Write| {
     ///     try!(out.write_all(b"some passphrase"));
     ///     Ok(())
-    /// });
+    /// };
+    /// let mut guard = ctx.with_passphrase_cb(cb);
     /// // Do something with guard requiring a passphrase e.g. decryption
     /// ```
-    pub fn with_passphrase_cb<C: PassphraseCallback>(&mut self, cb: C)
-        -> PassphraseCallbackGuard<C> {
-        let cb = Box::new(cb);
+    pub fn with_passphrase_cb<'s, 'a, C>(&'s mut self, cb: &'a mut C)
+        -> PassphraseCallbackGuard<'s, 'a>
+    where C: PassphraseCallback {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_passphrase_cb(self.raw, &mut old.0, &mut old.1);
-            ffi::gpgme_set_passphrase_cb(self.raw, Some(passphrase_callback::<C>),
-                                         mem::transmute(&*cb));
+            ffi::gpgme_set_passphrase_cb(self.raw,
+                                         Some(passphrase_callback::<C>),
+                                         (cb as *mut _) as *mut _);
             PassphraseCallbackGuard {
                 ctx: self,
                 old: old,
-                _cb: cb,
+                _cb: PhantomData,
             }
         }
     }
 
-    pub fn with_progress_cb<C: ProgressCallback>(&mut self, cb: C)
-        -> ProgressCallbackGuard<C> {
-        let cb = Box::new(cb);
+    pub fn with_progress_cb<'s, 'a, C>(&'s mut self, cb: &'a mut C) -> ProgressCallbackGuard<'s, 'a>
+    where C: ProgressCallback {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_progress_cb(self.raw, &mut old.0, &mut old.1);
-            ffi::gpgme_set_progress_cb(self.raw, Some(progress_callback::<C>),
-                                       mem::transmute(&*cb));
+            ffi::gpgme_set_progress_cb(self.raw,
+                                       Some(progress_callback::<C>),
+                                       (cb as *mut _) as *mut _);
             ProgressCallbackGuard {
                 ctx: self,
                 old: old,
-                _cb: cb,
+                _cb: PhantomData,
             }
         }
     }
@@ -711,13 +714,13 @@ where T: FnMut(Option<&str>, Option<&str>, bool, &mut io::Write) -> Result<()> {
     }
 }
 
-pub struct PassphraseCallbackGuard<'a, C> {
+pub struct PassphraseCallbackGuard<'a, 'b> {
+    _cb: PhantomData<&'b mut PassphraseCallback>,
     ctx: &'a mut Context,
     old: (ffi::gpgme_passphrase_cb_t, *mut libc::c_void),
-    _cb: Box<C>,
 }
 
-impl<'a, C> Drop for PassphraseCallbackGuard<'a, C> {
+impl<'a, 'b> Drop for PassphraseCallbackGuard<'a, 'b> {
     fn drop(&mut self) {
         unsafe {
             ffi::gpgme_set_passphrase_cb(self.ctx.as_raw(), self.old.0, self.old.1);
@@ -725,7 +728,7 @@ impl<'a, C> Drop for PassphraseCallbackGuard<'a, C> {
     }
 }
 
-impl<'a, C> Deref for PassphraseCallbackGuard<'a, C> {
+impl<'a, 'b> Deref for PassphraseCallbackGuard<'a, 'b> {
     type Target = Context;
 
     fn deref(&self) -> &Context {
@@ -733,7 +736,7 @@ impl<'a, C> Deref for PassphraseCallbackGuard<'a, C> {
     }
 }
 
-impl<'a, C> DerefMut for PassphraseCallbackGuard<'a, C> {
+impl<'a, 'b> DerefMut for PassphraseCallbackGuard<'a, 'b> {
     fn deref_mut(&mut self) -> &mut Context {
         self.ctx
     }
@@ -749,13 +752,13 @@ impl<T: 'static + Send> ProgressCallback for T where T: FnMut(Option<&str>, isiz
     }
 }
 
-pub struct ProgressCallbackGuard<'a, C> {
+pub struct ProgressCallbackGuard<'a, 'b> {
+    _cb: PhantomData<&'b mut ProgressCallback>,
     ctx: &'a mut Context,
     old: (ffi::gpgme_progress_cb_t, *mut libc::c_void),
-    _cb: Box<C>,
 }
 
-impl<'a, C> Drop for ProgressCallbackGuard<'a, C> {
+impl<'a, 'b> Drop for ProgressCallbackGuard<'a, 'b> {
     fn drop(&mut self) {
         unsafe {
             ffi::gpgme_set_progress_cb(self.ctx.as_raw(), self.old.0, self.old.1);
@@ -763,7 +766,7 @@ impl<'a, C> Drop for ProgressCallbackGuard<'a, C> {
     }
 }
 
-impl<'a, C> Deref for ProgressCallbackGuard<'a, C> {
+impl<'a, 'b> Deref for ProgressCallbackGuard<'a, 'b> {
     type Target = Context;
 
     fn deref(&self) -> &Context {
@@ -771,7 +774,7 @@ impl<'a, C> Deref for ProgressCallbackGuard<'a, C> {
     }
 }
 
-impl<'a, C> DerefMut for ProgressCallbackGuard<'a, C> {
+impl<'a, 'b> DerefMut for ProgressCallbackGuard<'a, 'b> {
     fn deref_mut(&mut self) -> &mut Context {
         self.ctx
     }
