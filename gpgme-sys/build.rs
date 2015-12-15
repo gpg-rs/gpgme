@@ -6,7 +6,7 @@ fn parse_config_output(output: &str) {
     let parts: Vec<_> = output.split(' ').filter(|p| p.len() > 2)
         .map(|p| (&p[0..2], &p[2..])).collect();
 
-    for &(flag, val) in parts.iter() {
+    for (flag, val) in parts {
         match flag {
             "-L" => {
                 println!("cargo:rustc-link-search=native={}", val);
@@ -43,6 +43,6 @@ fn main() {
         fail(format!("`{:?}` did not exit successfully: {}", command, output.status));
     }
 
-    parse_config_output(&str::from_utf8(&output.stdout).unwrap());
+    parse_config_output(str::from_utf8(&output.stdout).unwrap());
 }
 

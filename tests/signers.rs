@@ -42,7 +42,7 @@ fn test_signers() {
     guard.clear_signers();
     let keys: Vec<_> = guard.find_keys(KEYS.iter().cloned()).unwrap()
         .filter_map(Result::ok).collect();
-    for key in keys.iter() {
+    for key in &keys {
         guard.add_signer(key).unwrap();
     }
 

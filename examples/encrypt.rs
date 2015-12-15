@@ -7,7 +7,7 @@ use std::io;
 use std::io::prelude::*;
 use std::process::exit;
 
-use getopts::{Options, HasArg, Occur};
+use getopts::{HasArg, Occur, Options};
 
 use gpgme::Data;
 use gpgme::ops;
@@ -19,7 +19,7 @@ fn print_usage(program: &str, opts: &Options) {
 
 fn main() {
     let args: Vec<_> = env::args().collect();
-    let program = args[0].clone();
+    let program = &args[0];
 
     let mut opts = Options::new();
     opts.optflag("h", "help", "display this help message");
@@ -30,19 +30,19 @@ fn main() {
     let matches = match opts.parse(&args[1..]) {
         Ok(matches) => matches,
         Err(fail) => {
-            print_usage(&program, &opts);
+            print_usage(program, &opts);
             writeln!(io::stderr(), "{}", fail);
             exit(1);
         }
     };
 
     if matches.opt_present("h") {
-        print_usage(&program, &opts);
+        print_usage(program, &opts);
         return;
     }
 
     if matches.free.len() != 1 {
-        print_usage(&program, &opts);
+        print_usage(program, &opts);
         exit(1);
     }
 
@@ -58,9 +58,11 @@ fn main() {
 
     let recipients = matches.opt_strs("r");
     let keys = if !recipients.is_empty() {
-        ctx.find_keys(recipients).unwrap().filter_map(Result::ok).filter(|k| {
-            k.can_encrypt()
-        }).collect()
+        ctx.find_keys(recipients)
+           .unwrap()
+           .filter_map(Result::ok)
+           .filter(|k| k.can_encrypt())
+           .collect()
     } else {
         Vec::new()
     };
@@ -68,8 +70,11 @@ fn main() {
     let mut input = match Data::load(&matches.free[0]) {
         Ok(input) => input,
         Err(err) => {
-            writeln!(io::stderr(), "{}: error reading '{}': {}",
-                     &program, &matches.free[0], err);
+            writeln!(io::stderr(),
+                     "{}: error reading '{}': {}",
+                     program,
+                     &matches.free[0],
+                     err);
             exit(1);
         }
     };
@@ -78,7 +83,7 @@ fn main() {
     match ctx.encrypt(&keys, ops::EncryptFlags::empty(), &mut input, &mut output) {
         Ok(..) => (),
         Err(err) => {
-            writeln!(io::stderr(), "{}: encrypting failed: {}", &program, err);
+            writeln!(io::stderr(), "{}: encrypting failed: {}", program, err);
             exit(1);
         }
     }

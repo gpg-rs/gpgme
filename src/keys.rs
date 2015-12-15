@@ -24,10 +24,8 @@ ffi_enum_wrapper! {
 }
 
 impl KeyAlgorithm {
-    pub fn name(&self) -> Option<&str> {
-        unsafe {
-            utils::from_cstr(ffi::gpgme_pubkey_algo_name(self.0))
-        }
+    pub fn name(&self) -> Option<&'static str> {
+        unsafe { utils::from_cstr(ffi::gpgme_pubkey_algo_name(self.0)) }
     }
 }
 
@@ -58,10 +56,8 @@ ffi_enum_wrapper! {
 }
 
 impl HashAlgorithm {
-    pub fn name(&self) -> Option<&str> {
-        unsafe {
-            utils::from_cstr(ffi::gpgme_hash_algo_name(self.0))
-        }
+    pub fn name(&self) -> Option<&'static str> {
+        unsafe { utils::from_cstr(ffi::gpgme_hash_algo_name(self.0)) }
     }
 }
 
@@ -156,39 +152,27 @@ impl Key {
     }
 
     pub fn key_list_mode(&self) -> KeyListMode {
-        unsafe {
-            KeyListMode::from_bits_truncate((*self.raw).keylist_mode)
-        }
+        unsafe { KeyListMode::from_bits_truncate((*self.raw).keylist_mode) }
     }
 
     pub fn protocol(&self) -> Protocol {
-        unsafe {
-            Protocol::from_raw((*self.raw).protocol)
-        }
+        unsafe { Protocol::from_raw((*self.raw).protocol) }
     }
 
     pub fn owner_trust(&self) -> Validity {
-        unsafe {
-            Validity::from_raw((*self.raw).owner_trust)
-        }
+        unsafe { Validity::from_raw((*self.raw).owner_trust) }
     }
 
     pub fn issuer_serial(&self) -> Option<&str> {
-        unsafe {
-            utils::from_cstr((*self.raw).issuer_serial)
-        }
+        unsafe { utils::from_cstr((*self.raw).issuer_serial) }
     }
 
     pub fn issuer_name(&self) -> Option<&str> {
-        unsafe {
-            utils::from_cstr((*self.raw).issuer_name)
-        }
+        unsafe { utils::from_cstr((*self.raw).issuer_name) }
     }
 
     pub fn chain_id(&self) -> Option<&str> {
-        unsafe {
-            utils::from_cstr((*self.raw).chain_id)
-        }
+        unsafe { utils::from_cstr((*self.raw).chain_id) }
     }
 
     pub fn primary_key(&self) -> Option<SubKey> {
@@ -196,15 +180,11 @@ impl Key {
     }
 
     pub fn user_ids(&self) -> UserIdIter {
-        unsafe {
-            UserIdIter::from_list((*self.raw).uids)
-        }
+        unsafe { UserIdIter::from_list((*self.raw).uids) }
     }
 
     pub fn subkeys(&self) -> SubKeyIter {
-        unsafe {
-            SubKeyIter::from_list((*self.raw).subkeys)
-        }
+        unsafe { SubKeyIter::from_list((*self.raw).subkeys) }
     }
 }
 
@@ -217,7 +197,10 @@ pub struct SubKey<'a> {
 impl<'a> SubKey<'a> {
     pub unsafe fn from_raw<'b>(raw: ffi::gpgme_subkey_t) -> SubKey<'b> {
         debug_assert!(!raw.is_null());
-        SubKey { raw: raw, phantom: PhantomData }
+        SubKey {
+            raw: raw,
+            phantom: PhantomData,
+        }
     }
 
     pub fn raw(&self) -> ffi::gpgme_subkey_t {
@@ -269,33 +252,23 @@ impl<'a> SubKey<'a> {
     }
 
     pub fn id(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).keyid)
-        }
+        unsafe { utils::from_cstr((*self.raw).keyid) }
     }
 
     pub fn fingerprint(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).fpr)
-        }
+        unsafe { utils::from_cstr((*self.raw).fpr) }
     }
 
     pub fn algorithm(&self) -> KeyAlgorithm {
-        unsafe {
-            KeyAlgorithm::from_raw((*self.raw).pubkey_algo)
-        }
+        unsafe { KeyAlgorithm::from_raw((*self.raw).pubkey_algo) }
     }
 
     pub fn length(&self) -> usize {
-        unsafe {
-            (*self.raw).length as usize
-        }
+        unsafe { (*self.raw).length as usize }
     }
 
     pub fn timestamp(&self) -> Option<i64> {
-        let timestamp = unsafe {
-            (*self.raw).timestamp
-        };
+        let timestamp = unsafe { (*self.raw).timestamp };
         if timestamp > 0 {
             Some(timestamp)
         } else {
@@ -304,9 +277,7 @@ impl<'a> SubKey<'a> {
     }
 
     pub fn expires(&self) -> Option<i64> {
-        let expires = unsafe {
-            (*self.raw).expires
-        };
+        let expires = unsafe { (*self.raw).expires };
         if expires > 0 {
             Some(expires)
         } else {
@@ -315,15 +286,11 @@ impl<'a> SubKey<'a> {
     }
 
     pub fn card_number(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).card_number)
-        }
+        unsafe { utils::from_cstr((*self.raw).card_number) }
     }
 
     pub fn curve(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).curve)
-        }
+        unsafe { utils::from_cstr((*self.raw).curve) }
     }
 }
 
@@ -335,7 +302,10 @@ pub struct SubKeyIter<'a> {
 
 impl<'a> SubKeyIter<'a> {
     pub unsafe fn from_list<'b>(raw: ffi::gpgme_subkey_t) -> SubKeyIter<'b> {
-        SubKeyIter { current: raw, phantom: PhantomData }
+        SubKeyIter {
+            current: raw,
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -352,7 +322,10 @@ pub struct UserId<'a> {
 impl<'a> UserId<'a> {
     pub unsafe fn from_raw<'b>(raw: ffi::gpgme_user_id_t) -> UserId<'b> {
         debug_assert!(!raw.is_null());
-        UserId { raw: raw, phantom: PhantomData }
+        UserId {
+            raw: raw,
+            phantom: PhantomData,
+        }
     }
 
     pub fn raw(&self) -> ffi::gpgme_user_id_t {
@@ -368,39 +341,27 @@ impl<'a> UserId<'a> {
     }
 
     pub fn uid(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).uid)
-        }
+        unsafe { utils::from_cstr((*self.raw).uid) }
     }
 
     pub fn name(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).name)
-        }
+        unsafe { utils::from_cstr((*self.raw).name) }
     }
 
     pub fn email(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).email)
-        }
+        unsafe { utils::from_cstr((*self.raw).email) }
     }
 
     pub fn comment(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).comment)
-        }
+        unsafe { utils::from_cstr((*self.raw).comment) }
     }
 
     pub fn validity(&self) -> Validity {
-        unsafe {
-            Validity::from_raw((*self.raw).validity)
-        }
+        unsafe { Validity::from_raw((*self.raw).validity) }
     }
 
     pub fn signatures(&self) -> KeySignatureIter {
-        unsafe {
-            KeySignatureIter::from_list((*self.raw).signatures)
-        }
+        unsafe { KeySignatureIter::from_list((*self.raw).signatures) }
     }
 }
 
@@ -418,7 +379,10 @@ pub struct UserIdIter<'a> {
 
 impl<'a> UserIdIter<'a> {
     pub unsafe fn from_list<'b>(raw: ffi::gpgme_user_id_t) -> UserIdIter<'b> {
-        UserIdIter { current: raw, phantom: PhantomData }
+        UserIdIter {
+            current: raw,
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -435,7 +399,10 @@ pub struct KeySignature<'a> {
 impl<'a> KeySignature<'a> {
     pub unsafe fn from_raw<'b>(raw: ffi::gpgme_key_sig_t) -> KeySignature<'b> {
         debug_assert!(!raw.is_null());
-        KeySignature { raw: raw, phantom: PhantomData }
+        KeySignature {
+            raw: raw,
+            phantom: PhantomData,
+        }
     }
 
     pub fn raw(&self) -> ffi::gpgme_key_sig_t {
@@ -459,39 +426,27 @@ impl<'a> KeySignature<'a> {
     }
 
     pub fn key_id(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).keyid)
-        }
+        unsafe { utils::from_cstr((*self.raw).keyid) }
     }
 
     pub fn uid(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).uid)
-        }
+        unsafe { utils::from_cstr((*self.raw).uid) }
     }
 
     pub fn name(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).name)
-        }
+        unsafe { utils::from_cstr((*self.raw).name) }
     }
 
     pub fn email(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).email)
-        }
+        unsafe { utils::from_cstr((*self.raw).email) }
     }
 
     pub fn comment(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).comment)
-        }
+        unsafe { utils::from_cstr((*self.raw).comment) }
     }
 
     pub fn timestamp(&self) -> Option<i64> {
-        let timestamp = unsafe {
-            (*self.raw).timestamp
-        };
+        let timestamp = unsafe { (*self.raw).timestamp };
         if timestamp > 0 {
             Some(timestamp)
         } else {
@@ -500,9 +455,7 @@ impl<'a> KeySignature<'a> {
     }
 
     pub fn expires(&self) -> Option<i64> {
-        let expires = unsafe {
-            (*self.raw).expires
-        };
+        let expires = unsafe { (*self.raw).expires };
         if expires > 0 {
             Some(expires)
         } else {
@@ -511,9 +464,7 @@ impl<'a> KeySignature<'a> {
     }
 
     pub fn key_algorithm(&self) -> KeyAlgorithm {
-        unsafe {
-            KeyAlgorithm::from_raw((*self.raw).pubkey_algo)
-        }
+        unsafe { KeyAlgorithm::from_raw((*self.raw).pubkey_algo) }
     }
 
     pub fn class(&self) -> u32 {
@@ -525,9 +476,7 @@ impl<'a> KeySignature<'a> {
     }
 
     pub fn notations(&self) -> SignatureNotationIter<'a, Key> {
-        unsafe {
-            SignatureNotationIter::from_list((*self.raw).notations)
-        }
+        unsafe { SignatureNotationIter::from_list((*self.raw).notations) }
     }
 }
 
@@ -539,7 +488,10 @@ pub struct KeySignatureIter<'a> {
 
 impl<'a> KeySignatureIter<'a> {
     pub unsafe fn from_list<'b>(raw: ffi::gpgme_key_sig_t) -> KeySignatureIter<'b> {
-        KeySignatureIter { current: raw, phantom: PhantomData }
+        KeySignatureIter {
+            current: raw,
+            phantom: PhantomData,
+        }
     }
 }
 

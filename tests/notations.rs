@@ -31,7 +31,7 @@ fn check_result(result: ops::VerifyResult, expected: &mut [(&str, &str, notation
             }
         }
     }
-    for notation in expected.iter() {
+    for notation in expected {
         assert_eq!(notation.3, 1);
     }
 }

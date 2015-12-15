@@ -55,7 +55,8 @@ fn print_summary(summary: ops::SignatureSummary) {
 }
 
 fn print_result(result: &ops::VerifyResult) {
-    println!("Original file name: {}", result.filename().unwrap_or("[none]"));
+    println!("Original file name: {}",
+             result.filename().unwrap_or("[none]"));
     for (i, sig) in result.signatures().enumerate() {
         println!("Signature {}", i);
         println!("  status ....: {:?}", sig.status());
@@ -79,7 +80,7 @@ fn print_result(result: &ops::VerifyResult) {
 
 fn main() {
     let args: Vec<_> = env::args().collect();
-    let program = args[0].clone();
+    let program = &args[0];
 
     let mut opts = Options::new();
     opts.optflag("h", "help", "display this help message");
@@ -89,19 +90,19 @@ fn main() {
     let matches = match opts.parse(&args[1..]) {
         Ok(matches) => matches,
         Err(fail) => {
-            print_usage(&program, &opts);
+            print_usage(program, &opts);
             writeln!(io::stderr(), "{}", fail);
             exit(1);
         }
     };
 
     if matches.opt_present("h") {
-        print_usage(&program, &opts);
+        print_usage(program, &opts);
         return;
     }
 
     if matches.free.len() < 1 {
-        print_usage(&program, &opts);
+        print_usage(program, &opts);
         exit(1);
     }
 
@@ -119,7 +120,7 @@ fn main() {
             Ok(file) => file,
             Err(err) => {
                 writeln!(io::stderr(), "{}: can't open '{}': {}",
-                         &program, &matches.free[0], err);
+                         program, &matches.free[0], err);
                 exit(1);
             }
         };
@@ -128,7 +129,7 @@ fn main() {
             Err(..) => {
                 writeln!(io::stderr(),
                          "{}: error allocating data object",
-                         &program);
+                         program);
                 exit(1);
             }
         }
@@ -139,16 +140,14 @@ fn main() {
             Ok(file) => file,
             Err(err) => {
                 writeln!(io::stderr(), "{}: can't open '{}': {}",
-                         &program, &matches.free[1], err);
+                         program, &matches.free[1], err);
                 exit(1);
             }
         };
         match Data::from_seekable_reader(file) {
             Ok(data) => Some(data),
             Err(..) => {
-                writeln!(io::stderr(),
-                         "{}: error allocating data object",
-                         &program);
+                writeln!(io::stderr(), "{}: error allocating data object", program);
                 exit(1);
             }
         }
@@ -165,8 +164,8 @@ fn main() {
     match ctx.verify(&mut signature, signed.as_mut(), plain.as_mut()) {
         Ok(result) => print_result(&result),
         Err(err) => {
-            writeln!(io::stderr(), "{}: verification failed: {}", &program, err);
+            writeln!(io::stderr(), "{}: verification failed: {}", program, err);
             exit(1);
-        },
+        }
     }
 }

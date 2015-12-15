@@ -34,7 +34,7 @@ const KEYS: [(&'static str, &'static [u8]); 5] = [
 fn create_keys(dir: &Path) {
     let keydir = dir.join("private-keys-v1.d");
     fs::create_dir(&keydir).unwrap();
-    for &(fpr, key) in KEYS.iter() {
+    for &(fpr, key) in &KEYS {
         let mut filename = keydir.join(fpr);
         filename.set_extension("key");
         File::create(filename).unwrap().write_all(key).unwrap();

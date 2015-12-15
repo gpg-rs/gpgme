@@ -70,7 +70,7 @@ fn check_result(result: ops::VerifyResult, fpr: &str, summary: ops::SignatureSum
                 }
             }
         }
-        for notation in expected.iter() {
+        for notation in &expected {
             assert_eq!(notation.2, 1);
         }
     }

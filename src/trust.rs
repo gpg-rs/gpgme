@@ -9,9 +9,7 @@ pub struct TrustItem {
 
 impl Drop for TrustItem {
     fn drop(&mut self) {
-        unsafe {
-            ffi::gpgme_trust_item_unref(self.raw)
-        }
+        unsafe { ffi::gpgme_trust_item_unref(self.raw) }
     }
 }
 
@@ -39,32 +37,22 @@ unsafe impl Wrapper for TrustItem {
 
 impl TrustItem {
     pub fn level(&self) -> isize {
-        unsafe {
-            (*self.raw).level as isize
-        }
+        unsafe { (*self.raw).level as isize }
     }
 
     pub fn key_id(&self) -> Option<&str> {
-        unsafe {
-            utils::from_cstr((*self.raw).keyid)
-        }
+        unsafe { utils::from_cstr((*self.raw).keyid) }
     }
 
     pub fn owner_trust(&self) -> Option<&str> {
-        unsafe {
-            utils::from_cstr((*self.raw).owner_trust)
-        }
+        unsafe { utils::from_cstr((*self.raw).owner_trust) }
     }
 
     pub fn name(&self) -> Option<&str> {
-        unsafe {
-            utils::from_cstr((*self.raw).name)
-        }
+        unsafe { utils::from_cstr((*self.raw).name) }
     }
 
     pub fn validity(&self) -> Option<&str> {
-        unsafe {
-            utils::from_cstr((*self.raw).validity)
-        }
+        unsafe { utils::from_cstr((*self.raw).validity) }
     }
 }

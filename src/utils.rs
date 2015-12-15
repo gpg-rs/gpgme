@@ -84,8 +84,7 @@ impl FdWriter {
 impl Write for FdWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let result = unsafe {
-            ffi::gpgme_io_write(self.fd, buf.as_ptr() as *const _,
-                                buf.len() as libc::size_t)
+            ffi::gpgme_io_write(self.fd, buf.as_ptr() as *const _, buf.len() as libc::size_t)
         };
         if result >= 0 {
             Ok(result as usize)
