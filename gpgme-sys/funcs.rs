@@ -120,7 +120,7 @@ extern {
     pub fn gpgme_data_identify(dh: gpgme_data_t, _reserved: c_int) -> gpgme_data_type_t;
 
     pub fn gpgme_data_new_from_file(r_dh: *mut gpgme_data_t, fname: *const c_char, copy: c_int) -> gpgme_error_t;
-    pub fn gpgme_data_new_from_filepart(r_dh: *mut gpgme_data_t, fname: *const char, fp: *mut libc::FILE, offset: libc::off_t, length: size_t) -> gpgme_error_t;
+    pub fn gpgme_data_new_from_filepart(r_dh: *mut gpgme_data_t, fname: *const c_char, fp: *mut libc::FILE, offset: libc::off_t, length: size_t) -> gpgme_error_t;
 
     pub fn gpgme_get_key(ctx: gpgme_ctx_t, fpr: *const c_char, r_key: *mut gpgme_key_t, secret: c_int) -> gpgme_error_t;
     pub fn gpgme_key_ref(key: gpgme_key_t);

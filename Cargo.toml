@@ -9,7 +9,7 @@ license = "LGPL-2.1"
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 
 [dependencies]
-libc = "0.1"
+libc = "0.2"
 bitflags = "0.3"
 lazy_static = "0.1"
 gpg-error = "0.1"

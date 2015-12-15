@@ -14,5 +14,5 @@ name = "gpgme_sys"
 path = "lib.rs"
 
 [dependencies]
-libc = "0.1"
+libc = "0.2"
 libgpg-error-sys = "0.1"
