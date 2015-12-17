@@ -272,9 +272,7 @@ impl<'a> Data<'a> {
     pub fn into_bytes(self) -> Option<Vec<u8>> {
         unsafe {
             let mut len = 0;
-            let buf = ffi::gpgme_data_release_and_get_mem(self.raw, &mut len);
-            mem::forget(self);
-
+            let buf = ffi::gpgme_data_release_and_get_mem(self.into_raw(), &mut len);
             if !buf.is_null() {
                 Some(slice::from_raw_parts(buf as *const _, len as usize).to_vec())
             } else {

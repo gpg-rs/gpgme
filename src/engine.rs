@@ -72,9 +72,9 @@ pub struct EngineInfoGuard(RwLockReadGuard<'static, ()>);
 
 impl EngineInfoGuard {
     pub fn new(_token: &Token) -> Result<EngineInfoGuard> {
-        let lock = TOKEN.0.engine_info.read().unwrap();
+        let lock = TOKEN.0.engine_info.read().expect("Engine info lock could not be acquired");
         unsafe {
-            let mut info: ffi::gpgme_engine_info_t = ptr::null_mut();
+            let mut info = ptr::null_mut();
             return_err!(ffi::gpgme_get_engine_info(&mut info));
         }
         Ok(EngineInfoGuard(lock))
@@ -86,7 +86,7 @@ impl EngineInfoGuard {
 
     pub fn iter(&self) -> EngineInfoIter<()> {
         unsafe {
-            let mut first: ffi::gpgme_engine_info_t = ptr::null_mut();
+            let mut first = ptr::null_mut();
             assert_eq!(ffi::gpgme_get_engine_info(&mut first), 0);
             EngineInfoIter::from_list(first)
         }

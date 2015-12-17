@@ -136,13 +136,13 @@ impl Context {
         Ok(())
     }
 
-    pub fn find_trust_items<S: Into<String>>(&mut self, pattern: S, max_level: isize)
+    pub fn find_trust_items<S: Into<String>>(&mut self, pattern: S, max_level: i32)
         -> Result<TrustItems> {
         let pattern = try!(CString::new(pattern.into()));
         unsafe {
             return_err!(ffi::gpgme_op_trustlist_start(self.raw,
                                                       pattern.as_ptr(),
-                                                      max_level as libc::c_int));
+                                                      max_level.into()));
         }
         Ok(TrustItems { ctx: self })
     }
@@ -172,9 +172,9 @@ impl Context {
     /// Returns the public key with the specified fingerprint, if such a key can
     /// be found. Otherwise, an error is returned.
     pub fn find_key<S: Into<String>>(&self, fingerprint: S) -> Result<Key> {
-        let mut key: ffi::gpgme_key_t = ptr::null_mut();
         let fingerprint = try!(CString::new(fingerprint.into()));
         unsafe {
+            let mut key = ptr::null_mut();
             return_err!(ffi::gpgme_get_key(self.raw, fingerprint.as_ptr(), &mut key, 0));
             Ok(Key::from_raw(key))
         }
@@ -183,9 +183,9 @@ impl Context {
     /// Returns the secret key with the specified fingerprint, if such a key can
     /// be found. Otherwise, an error is returned.
     pub fn find_secret_key<S: Into<String>>(&self, fingerprint: S) -> Result<Key> {
-        let mut key: ffi::gpgme_key_t = ptr::null_mut();
         let fingerprint = try!(CString::new(fingerprint.into()));
         unsafe {
+            let mut key = ptr::null_mut();
             return_err!(ffi::gpgme_get_key(self.raw, fingerprint.as_ptr(), &mut key, 1));
             Ok(Key::from_raw(key))
         }
@@ -318,14 +318,14 @@ impl Context {
         Ok(())
     }
 
-    pub fn signers_count(&self) -> usize {
-        unsafe { ffi::gpgme_signers_count(self.raw) as usize }
+    pub fn signers_count(&self) -> u32 {
+        unsafe { ffi::gpgme_signers_count(self.raw).into() }
     }
 
     pub fn signers(&self) -> SignersIter {
         SignersIter {
             ctx: self,
-            current: 0,
+            current: Some(0),
         }
     }
 
@@ -656,8 +656,8 @@ impl<'a> Iterator for TrustItems<'a> {
     type Item = Result<TrustItem>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut trust_item: ffi::gpgme_trust_item_t = ptr::null_mut();
         unsafe {
+            let mut trust_item = ptr::null_mut();
             let result = ffi::gpgme_op_trustlist_next(self.ctx.as_raw(), &mut trust_item);
             if ffi::gpgme_err_code(result) != error::GPG_ERR_EOF {
                 if result == 0 {
@@ -675,7 +675,7 @@ impl<'a> Iterator for TrustItems<'a> {
 #[derive(Debug, Copy, Clone)]
 pub struct SignersIter<'a> {
     ctx: &'a Context,
-    current: usize,
+    current: Option<libc::c_int>,
 }
 
 impl<'a> Iterator for SignersIter<'a> {
@@ -683,18 +683,27 @@ impl<'a> Iterator for SignersIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
-            let key = ffi::gpgme_signers_enum(self.ctx.as_raw(), self.current as libc::c_int);
-            if !key.is_null() {
-                self.current += 1;
-                Some(Key::from_raw(key))
-            } else {
-                None
-            }
+            self.current.and_then(|x| {
+                let key = ffi::gpgme_signers_enum(self.ctx.as_raw(), x);
+                if !key.is_null() {
+                    self.current = x.checked_add(1);
+                    Some(Key::from_raw(key))
+                } else {
+                    self.current = None;
+                    None
+                }
+            })
         }
     }
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.current += n;
+        self.current = self.current.and_then(|x| {
+            if (n as i64) <= (libc::c_int::max_value() as i64) {
+                x.checked_add(n as libc::c_int)
+            } else {
+                None
+            }
+        });
         self.next()
     }
 }

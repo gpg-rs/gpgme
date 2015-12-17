@@ -36,8 +36,8 @@ unsafe impl Wrapper for TrustItem {
 }
 
 impl TrustItem {
-    pub fn level(&self) -> isize {
-        unsafe { (*self.raw).level as isize }
+    pub fn level(&self) -> i32 {
+        unsafe { (*self.raw).level.into() }
     }
 
     pub fn key_id(&self) -> Option<&str> {

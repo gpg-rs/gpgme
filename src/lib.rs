@@ -113,7 +113,8 @@ lazy_static! {
             let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
 
             let result = ffi::gpgme_check_version_internal(ptr::null(), offset as libc::size_t);
-            utils::from_cstr(result).unwrap()
+            assert!(!result.is_null(), "gpgme library could not be initialized");
+            CStr::from_ptr(result).to_str().expect("gpgme version string is not valid utf-8")
         };
         Token(Arc::new(TokenImp { version: version, engine_info: RwLock::new(()) }))
     };
