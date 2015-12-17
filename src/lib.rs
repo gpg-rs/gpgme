@@ -7,7 +7,7 @@ extern crate lazy_static;
 extern crate gpg_error;
 extern crate gpgme_sys as ffi;
 
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::fmt;
 use std::mem;
 use std::ptr;
@@ -19,6 +19,7 @@ pub use gpg_error as error;
 pub use self::error::{Error, Result};
 pub use self::context::Context;
 pub use self::data::Data;
+pub use self::utils::{StrError, StrResult};
 
 #[macro_use]
 mod utils;
@@ -60,7 +61,7 @@ ffi_enum_wrapper! {
 }
 
 impl Protocol {
-    pub fn name(&self) -> Option<&'static str> {
+    pub fn name(&self) -> StrResult<'static> {
         unsafe { utils::from_cstr(ffi::gpgme_get_protocol_name(self.0)) }
     }
 }
@@ -159,8 +160,8 @@ impl Token {
     /// let gpgme = gpgme::init();
     /// assert!(gpgme.check_version("1.4.0"));
     /// ```
-    pub fn check_version<S: Into<String>>(&self, version: S) -> bool {
-        let version = match CString::new(version.into()) {
+    pub fn check_version<S: Into<Vec<u8>>>(&self, version: S) -> bool {
+        let version = match CString::new(version) {
             Ok(v) => v,
             Err(..) => return false,
         };
@@ -177,8 +178,8 @@ impl Token {
     /// Commonly supported values for `what` are specified in [`info`](info/).
     ///
     /// This function requires a version of GPGme >= 1.5.0.
-    pub fn get_dir_info<S: Into<String>>(&self, what: S) -> Option<&'static str> {
-        let what = try_opt!(CString::new(what.into()).ok());
+    pub fn get_dir_info<S: Into<Vec<u8>>>(&self, what: S) -> utils::StrResult<'static> {
+        let what = try!(CString::new(what).or(Err(StrError::NotPresent)));
         unsafe { utils::from_cstr(ffi::gpgme_get_dirinfo(what.as_ptr())) }
     }
 
@@ -194,13 +195,33 @@ impl Token {
         EngineInfoGuard::new(&TOKEN)
     }
 
-    pub fn set_engine_info(&self, proto: Protocol, filename: Option<String>,
-        home_dir: Option<String>) -> Result<()> {
-        let filename = try!(filename.map_or(Ok(None), |s| CString::new(s).map(Some)));
-        let home_dir = try!(home_dir.map_or(Ok(None), |s| CString::new(s).map(Some)));
+    pub fn set_engine_filename<S>(&self, proto: Protocol, filename: S) -> Result<()>
+    where S: Into<Vec<u8>> {
+        let filename = try!(CString::new(filename));
         unsafe {
-            let filename = filename.map_or(ptr::null(), |s| s.as_ptr());
-            let home_dir = home_dir.map_or(ptr::null(), |s| s.as_ptr());
+            let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
+            return_err!(ffi::gpgme_set_engine_info(proto.raw(), filename.as_ptr(), ptr::null()));
+        }
+        Ok(())
+    }
+
+    pub fn set_engine_home_dir<S>(&self, proto: Protocol, home_dir: S) -> Result<()>
+    where S: Into<Vec<u8>> {
+        let home_dir = try!(CString::new(home_dir));
+        unsafe {
+            let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
+            return_err!(ffi::gpgme_set_engine_info(proto.raw(), ptr::null(), home_dir.as_ptr()));
+        }
+        Ok(())
+    }
+
+    pub fn set_engine_info<S1, S2>(&self, proto: Protocol, filename: S1, home_dir: S2) -> Result<()>
+    where S1: Into<Vec<u8>>, S2: Into<Vec<u8>> {
+        let filename = try!(CString::new(filename));
+        let home_dir = try!(CString::new(home_dir));
+        unsafe {
+            let filename = filename.as_ptr();
+            let home_dir = home_dir.as_ptr();
             let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
             return_err!(ffi::gpgme_set_engine_info(proto.raw(), filename, home_dir));
         }

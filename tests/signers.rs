@@ -25,7 +25,7 @@ fn check_result(result: ops::SignResult, kind: ops::SignMode) {
         assert_eq!(signature.kind(), kind);
         assert_eq!(signature.key_algorithm(), keys::PK_DSA);
         assert_eq!(signature.hash_algorithm(), keys::HASH_SHA1);
-        assert!(KEYS.iter().any(|fpr| signature.fingerprint() == Some(fpr)));
+        assert!(KEYS.iter().any(|fpr| signature.fingerprint() == Ok(fpr)));
     }
 }
 

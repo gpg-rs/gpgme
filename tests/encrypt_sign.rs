@@ -22,7 +22,7 @@ fn check_result(result: ops::SignResult, kind: ops::SignMode) {
         assert_eq!(signature.hash_algorithm(), keys::HASH_RMD160);
     }
     assert_eq!(signature.class(), 0);
-    assert_eq!(signature.fingerprint(), Some("A0FF4590BB6122EDEF6E3C542D727CC768697734"));
+    assert_eq!(signature.fingerprint(), Ok("A0FF4590BB6122EDEF6E3C542D727CC768697734"));
 }
 
 #[test]

@@ -1,7 +1,7 @@
 extern crate tempdir;
 extern crate gpgme;
 
-use gpgme::Data;
+use gpgme::{Data, StrError};
 use gpgme::error::ErrorCode;
 use gpgme::ops;
 
@@ -18,7 +18,7 @@ fn check_result(result: ops::VerifyResult, fpr: &str, summary: ops::SignatureSum
 
     let signature = result.signatures().next().unwrap();
     assert_eq!(signature.summary(), summary);
-    assert_eq!(signature.fingerprint(), Some(fpr));
+    assert_eq!(signature.fingerprint(), Ok(fpr));
     assert_eq!(signature.status().err().map_or(0, |e| e.code()), status);
     assert_eq!(signature.notations().count(), 0);
     assert!(!signature.wrong_key_usage());
@@ -38,8 +38,10 @@ fn test_decrypt_verify() {
     let mut output = fail_if_err!(Data::new());
 
     let result = fail_if_err!(guard.decrypt_and_verify(&mut input, &mut output));
-    if let Some(alg) = result.0.unsupported_algorithm() {
-        panic!("unsupported algorithm: {}", alg);
+    match result.0.unsupported_algorithm() {
+        Ok(ref alg) => panic!("unsupported algorithm: {}", alg),
+        Err(StrError::NotUtf8(ref alg, _)) => panic!("unsupported algorithm: {:?}", alg),
+        _ => {},
     }
     check_result(result.1, "A0FF4590BB6122EDEF6E3C542D727CC768697734",
                  ops::SignatureSummary::empty(), 0);

@@ -6,7 +6,7 @@ use ffi;
 
 use {Protocol, TOKEN, Token};
 use error::Result;
-use utils;
+use utils::{self, StrResult};
 
 #[derive(Debug, Copy, Clone)]
 pub struct EngineInfo<'a, T: 'a> {
@@ -32,19 +32,19 @@ impl<'a, T> EngineInfo<'a, T> {
         unsafe { Protocol::from_raw((*self.raw).protocol) }
     }
 
-    pub fn filename(&self) -> Option<&'a str> {
+    pub fn filename(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).file_name) }
     }
 
-    pub fn home_dir(&self) -> Option<&'a str> {
-        unsafe { utils::from_cstr((*self.raw).home_dir) }
+    pub fn home_dir(&self) -> StrResult<'a> {
+        unsafe { utils::from_cstr((*self.raw).file_name) }
     }
 
-    pub fn version(&self) -> Option<&'a str> {
+    pub fn version(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).version) }
     }
 
-    pub fn required_version(&self) -> Option<&'a str> {
+    pub fn required_version(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).req_version) }
     }
 }

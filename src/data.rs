@@ -3,10 +3,8 @@ use std::fmt;
 use std::io;
 use std::io::prelude::*;
 use std::marker::PhantomData;
-use std::mem;
 #[cfg(unix)]
 use std::os::unix::io::AsRawFd;
-use std::path::Path;
 use std::ptr;
 use std::result;
 use std::slice;
@@ -79,7 +77,7 @@ impl<S> fmt::Display for WrappedError<S> {
 #[derive(Debug)]
 pub struct Data<'a> {
     raw: ffi::gpgme_data_t,
-    phantom: PhantomData<&'a ffi::gpgme_data_t>,
+    phantom: PhantomData<&'a ()>,
 }
 
 impl<'a> Data<'a> {
@@ -97,7 +95,7 @@ impl<'a> Data<'a> {
 
     /// Constructs an empty data object.
     pub fn new() -> Result<Data<'static>> {
-        let mut data: ffi::gpgme_data_t = ptr::null_mut();
+        let mut data = ptr::null_mut();
         unsafe {
             return_err!(ffi::gpgme_data_new(&mut data));
             Ok(Data::from_raw(data))
@@ -106,9 +104,8 @@ impl<'a> Data<'a> {
 
     /// Constructs a data object and fills it with the contents of the file
     /// referenced by `path`.
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Data<'static>> {
-        let filename = try!(path.as_ref().to_str().and_then(|s| CString::new(s.as_bytes()).ok())
-            .ok_or(Error::from_code(error::GPG_ERR_INV_VALUE)));
+    pub fn load<P: Into<Vec<u8>>>(path: P) -> Result<Data<'static>> {
+        let filename = try!(CString::new(path).or(Err(Error::from_code(error::GPG_ERR_INV_VALUE))));
         unsafe {
             let mut data = ptr::null_mut();
             return_err!(ffi::gpgme_data_new_from_file(&mut data, filename.as_ptr(), 1));
@@ -236,7 +233,7 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, s) }
     }
 
-    pub fn filename(&self) -> Option<&str> {
+    pub fn filename(&self) -> utils::StrResult {
         unsafe { utils::from_cstr(ffi::gpgme_data_get_file_name(self.raw)) }
     }
 
@@ -247,7 +244,7 @@ impl<'a> Data<'a> {
         Ok(())
     }
 
-    pub fn set_filename<S: Into<String>>(&mut self, name: S) -> Result<()> {
+    pub fn set_filename<S: Into<Vec<u8>>>(&mut self, name: S) -> Result<()> {
         let name = try!(CString::new(name.into()));
         unsafe {
             return_err!(ffi::gpgme_data_set_file_name(self.raw, name.as_ptr()));
@@ -282,7 +279,7 @@ impl<'a> Data<'a> {
     }
 
     pub fn into_string(self) -> result::Result<String, Option<FromUtf8Error>> {
-        self.into_bytes().map_or(Err(None), |x| String::from_utf8(x).map_err(Some))
+        self.into_bytes().map_or(Err(None), |s| String::from_utf8(s).map_err(Some))
     }
 }
 

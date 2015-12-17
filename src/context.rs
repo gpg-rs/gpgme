@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::fmt;
 use std::io;
 use std::marker::PhantomData;
@@ -16,7 +16,7 @@ use data::Data;
 use keys::Key;
 use trust::TrustItem;
 use notation::{self, SignatureNotationIter};
-use utils::{self, FdWriter};
+use utils::FdWriter;
 use ops;
 
 /// A context for cryptographic operations
@@ -26,8 +26,8 @@ pub struct Context {
 
 impl Context {
     pub fn new(_: Token) -> Result<Self> {
-        let mut ctx = ptr::null_mut();
         unsafe {
+            let mut ctx = ptr::null_mut();
             return_err!(ffi::gpgme_new(&mut ctx));
             Ok(Context::from_raw(ctx))
         }
@@ -72,10 +72,11 @@ impl Context {
     /// # Examples
     ///
     /// ```no_run
+    /// use std::ffi::CStr;
     /// use std::io::prelude::*;
     ///
     /// let mut ctx = gpgme::create_context().unwrap();
-    /// let cb = &mut |_: Option<&str>, _: Option<&str>, _, out: &mut Write| {
+    /// let cb = &mut |_: Option<&CStr>, _: Option<&CStr>, _, out: &mut Write| {
     ///     try!(out.write_all(b"some passphrase"));
     ///     Ok(())
     /// };
@@ -123,20 +124,40 @@ impl Context {
         self.engine_info().find(|info| info.protocol() == proto)
     }
 
-    pub fn set_engine_info(&mut self, proto: Protocol, filename: Option<String>,
-        home_dir: Option<String>)
-        -> Result<()> {
-        let filename = try!(filename.map_or(Ok(None), |s| CString::new(s).map(Some)));
-        let home_dir = try!(home_dir.map_or(Ok(None), |s| CString::new(s).map(Some)));
+    pub fn set_engine_filename<S>(&self, proto: Protocol, filename: S) -> Result<()>
+    where S: Into<Vec<u8>> {
+        let filename = try!(CString::new(filename));
         unsafe {
-            let filename = filename.map_or(ptr::null(), |s| s.as_ptr());
-            let home_dir = home_dir.map_or(ptr::null(), |s| s.as_ptr());
+            return_err!(ffi::gpgme_ctx_set_engine_info(self.raw, proto.raw(),
+                        filename.as_ptr(), ptr::null()));
+        }
+        Ok(())
+    }
+
+    pub fn set_engine_home_dir<S>(&self, proto: Protocol, home_dir: S) -> Result<()>
+    where S: Into<Vec<u8>> {
+        let home_dir = try!(CString::new(home_dir));
+        unsafe {
+            return_err!(ffi::gpgme_ctx_set_engine_info(self.raw, proto.raw(),
+                        ptr::null(), home_dir.as_ptr()));
+        }
+        Ok(())
+    }
+
+    pub fn set_engine_info<S1, S2>(&mut self, proto: Protocol, filename: S1, home_dir: S2)
+        -> Result<()>
+    where S1: Into<Vec<u8>>, S2: Into<Vec<u8>> {
+        let filename = try!(CString::new(filename));
+        let home_dir = try!(CString::new(home_dir));
+        unsafe {
+            let filename = filename.as_ptr();
+            let home_dir = home_dir.as_ptr();
             return_err!(ffi::gpgme_ctx_set_engine_info(self.raw, proto.raw(), filename, home_dir));
         }
         Ok(())
     }
 
-    pub fn find_trust_items<S: Into<String>>(&mut self, pattern: S, max_level: i32)
+    pub fn find_trust_items<S: Into<Vec<u8>>>(&mut self, pattern: S, max_level: i32)
         -> Result<TrustItems> {
         let pattern = try!(CString::new(pattern.into()));
         unsafe {
@@ -171,8 +192,8 @@ impl Context {
 
     /// Returns the public key with the specified fingerprint, if such a key can
     /// be found. Otherwise, an error is returned.
-    pub fn find_key<S: Into<String>>(&self, fingerprint: S) -> Result<Key> {
-        let fingerprint = try!(CString::new(fingerprint.into()));
+    pub fn find_key<S: Into<Vec<u8>>>(&self, fingerprint: S) -> Result<Key> {
+        let fingerprint = try!(CString::new(fingerprint));
         unsafe {
             let mut key = ptr::null_mut();
             return_err!(ffi::gpgme_get_key(self.raw, fingerprint.as_ptr(), &mut key, 0));
@@ -182,8 +203,8 @@ impl Context {
 
     /// Returns the secret key with the specified fingerprint, if such a key can
     /// be found. Otherwise, an error is returned.
-    pub fn find_secret_key<S: Into<String>>(&self, fingerprint: S) -> Result<Key> {
-        let fingerprint = try!(CString::new(fingerprint.into()));
+    pub fn find_secret_key<S: Into<Vec<u8>>>(&self, fingerprint: S) -> Result<Key> {
+        let fingerprint = try!(CString::new(fingerprint));
         unsafe {
             let mut key = ptr::null_mut();
             return_err!(ffi::gpgme_get_key(self.raw, fingerprint.as_ptr(), &mut key, 1));
@@ -194,14 +215,14 @@ impl Context {
     /// Returns an iterator for a list of all public keys matching one or more of the
     /// specified patterns.
     pub fn find_keys<I>(&mut self, patterns: I) -> Result<Keys>
-    where I: IntoIterator, I::Item: Into<String> {
+    where I: IntoIterator, I::Item: Into<Vec<u8>> {
         Keys::new(self, patterns, false)
     }
 
     /// Returns an iterator for a list of all secret keys matching one or more of the
     /// specified patterns.
     pub fn find_secret_keys<I>(&mut self, patterns: I) -> Result<Keys>
-    where I: IntoIterator, I::Item: Into<String> {
+    where I: IntoIterator, I::Item: Into<Vec<u8>> {
         Keys::new(self, patterns, true)
     }
 
@@ -245,10 +266,10 @@ impl Context {
 
     pub fn export<I>(&mut self, patterns: I, mode: ops::ExportMode, data: Option<&mut Data>)
         -> Result<()>
-    where I: IntoIterator, I::Item: Into<String> {
+    where I: IntoIterator, I::Item: Into<Vec<u8>> {
         let mut strings = Vec::new();
         for pattern in patterns {
-            strings.push(try!(CString::new(pattern.into())));
+            strings.push(try!(CString::new(pattern)));
         }
         let data = data.map_or(ptr::null_mut(), |d| d.as_raw());
         match strings.len() {
@@ -335,7 +356,8 @@ impl Context {
         }
     }
 
-    pub fn add_notation<S1, S2>(&mut self, name: S1, value: S2, flags: notation::Flags) -> Result<()>
+    pub fn add_notation<S1, S2>(&mut self, name: S1, value: S2, flags: notation::Flags)
+        -> Result<()>
     where S1: Into<String>, S2: Into<String> {
         let name = try!(CString::new(name.into()));
         let value = try!(CString::new(value.into()));
@@ -499,7 +521,7 @@ impl Context {
     /// use gpgme::{self, Data, ops};
     ///
     /// let mut ctx = gpgme::create_context().unwrap();
-    /// let mut cipher = Data::load(&"some file").unwrap();
+    /// let mut cipher = Data::load("some file").unwrap();
     /// let mut plain = Data::new().unwrap();
     /// ctx.decrypt(&mut cipher, &mut plain).unwrap();
     /// ```
@@ -519,7 +541,7 @@ impl Context {
     /// use gpgme::{self, Data, ops};
     ///
     /// let mut ctx = gpgme::create_context().unwrap();
-    /// let mut cipher = Data::load(&"some file").unwrap();
+    /// let mut cipher = Data::load("some file").unwrap();
     /// let mut plain = Data::new().unwrap();
     /// ctx.decrypt_and_verify(&mut cipher, &mut plain).unwrap();
     /// ```
@@ -567,10 +589,10 @@ pub struct Keys<'a> {
 
 impl<'a> Keys<'a> {
     fn new<'b, I>(ctx: &'b mut Context, patterns: I, secret_only: bool) -> Result<Keys<'b>>
-    where I: IntoIterator, I::Item: Into<String> {
+    where I: IntoIterator, I::Item: Into<Vec<u8>> {
         let mut strings = Vec::new();
         for pattern in patterns {
-            strings.push(try!(CString::new(pattern.into())));
+            strings.push(try!(CString::new(pattern)));
         }
         match strings.len() {
             0 | 1 => unsafe {
@@ -613,8 +635,8 @@ impl<'a> Iterator for Keys<'a> {
     type Item = Result<Key>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut key: ffi::gpgme_key_t = ptr::null_mut();
         unsafe {
+            let mut key = ptr::null_mut();
             let result = ffi::gpgme_op_keylist_next(self.ctx.as_raw(), &mut key);
             if ffi::gpgme_err_code(result) != error::GPG_ERR_EOF {
                 if result == 0 {
@@ -709,14 +731,14 @@ impl<'a> Iterator for SignersIter<'a> {
 }
 
 pub trait PassphraseCallback: 'static + Send {
-    fn call(&mut self, uid_hint: Option<&str>, info: Option<&str>, prev_was_bad: bool,
+    fn call(&mut self, uid_hint: Option<&CStr>, info: Option<&CStr>, prev_was_bad: bool,
         out: &mut io::Write)
         -> Result<()>;
 }
 
 impl<T: 'static + Send> PassphraseCallback for T
-where T: FnMut(Option<&str>, Option<&str>, bool, &mut io::Write) -> Result<()> {
-    fn call(&mut self, uid_hint: Option<&str>, info: Option<&str>, prev_was_bad: bool,
+where T: FnMut(Option<&CStr>, Option<&CStr>, bool, &mut io::Write) -> Result<()> {
+    fn call(&mut self, uid_hint: Option<&CStr>, info: Option<&CStr>, prev_was_bad: bool,
         out: &mut io::Write)
         -> Result<()> {
         (*self)(uid_hint, info, prev_was_bad, out)
@@ -752,11 +774,11 @@ impl<'a, 'b> DerefMut for PassphraseCallbackGuard<'a, 'b> {
 }
 
 pub trait ProgressCallback: 'static + Send {
-    fn call(&mut self, what: Option<&str>, typ: isize, current: isize, total: isize);
+    fn call(&mut self, what: Option<&CStr>, typ: i64, current: i64, total: i64);
 }
 
-impl<T: 'static + Send> ProgressCallback for T where T: FnMut(Option<&str>, isize, isize, isize) {
-    fn call(&mut self, what: Option<&str>, typ: isize, current: isize, total: isize) {
+impl<T: 'static + Send> ProgressCallback for T where T: FnMut(Option<&CStr>, i64, i64, i64) {
+    fn call(&mut self, what: Option<&CStr>, typ: i64, current: i64, total: i64) {
         (*self)(what, typ, current, total);
     }
 }
@@ -798,8 +820,16 @@ extern "C" fn passphrase_callback<C: PassphraseCallback>(hook: *mut libc::c_void
 
     let cb = hook as *mut C;
     unsafe {
-        let uid_hint = utils::from_cstr(uid_hint);
-        let info = utils::from_cstr(info);
+        let uid_hint = if !uid_hint.is_null() {
+            Some(CStr::from_ptr(uid_hint))
+        } else {
+            None
+        };
+        let info = if !info.is_null() {
+            Some(CStr::from_ptr(info))
+        } else {
+            None
+        };
         let mut writer = FdWriter::new(fd);
         (*cb)
             .call(uid_hint, info, was_bad != 0, &mut writer)
@@ -814,7 +844,11 @@ extern "C" fn progress_callback<C: ProgressCallback>(hook: *mut libc::c_void,
     current: libc::c_int, total: libc::c_int) {
     let cb = hook as *mut C;
     unsafe {
-        let what = utils::from_cstr(what);
-        (*cb).call(what, typ as isize, current as isize, total as isize);
+        let what = if !what.is_null() {
+            Some(CStr::from_ptr(what))
+        } else {
+            None
+        };
+        (*cb).call(what, typ.into(), current.into(), total.into());
     }
 }

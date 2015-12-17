@@ -101,7 +101,7 @@ fn main() {
     for file in matches.free {
         println!("reading file `{}'", &file);
 
-        let mut data = Data::load(&file).unwrap();
+        let mut data = Data::load(file).unwrap();
         mode.map(|m| data.set_encoding(m));
         print_import_result(ctx.import(&mut data).unwrap());
     }

@@ -7,7 +7,7 @@ use {Protocol, Validity, Wrapper};
 use error::Error;
 use ops::KeyListMode;
 use notation::SignatureNotationIter;
-use utils;
+use utils::{self, StrError, StrResult};
 
 ffi_enum_wrapper! {
     pub enum KeyAlgorithm: ffi::gpgme_pubkey_algo_t {
@@ -24,7 +24,7 @@ ffi_enum_wrapper! {
 }
 
 impl KeyAlgorithm {
-    pub fn name(&self) -> Option<&'static str> {
+    pub fn name(&self) -> StrResult<'static> {
         unsafe { utils::from_cstr(ffi::gpgme_pubkey_algo_name(self.0)) }
     }
 }
@@ -56,7 +56,7 @@ ffi_enum_wrapper! {
 }
 
 impl HashAlgorithm {
-    pub fn name(&self) -> Option<&'static str> {
+    pub fn name(&self) -> StrResult<'static> {
         unsafe { utils::from_cstr(ffi::gpgme_hash_algo_name(self.0)) }
     }
 }
@@ -143,12 +143,12 @@ impl Key {
         unsafe { (*self.raw).can_authenticate() }
     }
 
-    pub fn id(&self) -> Option<&str> {
-        self.primary_key().and_then(|k| k.id())
+    pub fn id(&self) -> StrResult {
+        self.primary_key().map_or(Err(StrError::NotPresent), |k| k.id())
     }
 
-    pub fn fingerprint(&self) -> Option<&str> {
-        self.primary_key().and_then(|k| k.fingerprint())
+    pub fn fingerprint(&self) -> StrResult {
+        self.primary_key().map_or(Err(StrError::NotPresent), |k| k.fingerprint())
     }
 
     pub fn key_list_mode(&self) -> KeyListMode {
@@ -163,15 +163,15 @@ impl Key {
         unsafe { Validity::from_raw((*self.raw).owner_trust) }
     }
 
-    pub fn issuer_serial(&self) -> Option<&str> {
+    pub fn issuer_serial(&self) -> StrResult {
         unsafe { utils::from_cstr((*self.raw).issuer_serial) }
     }
 
-    pub fn issuer_name(&self) -> Option<&str> {
+    pub fn issuer_name(&self) -> StrResult {
         unsafe { utils::from_cstr((*self.raw).issuer_name) }
     }
 
-    pub fn chain_id(&self) -> Option<&str> {
+    pub fn chain_id(&self) -> StrResult {
         unsafe { utils::from_cstr((*self.raw).chain_id) }
     }
 
@@ -251,11 +251,11 @@ impl<'a> SubKey<'a> {
         unsafe { (*self.raw).can_authenticate() }
     }
 
-    pub fn id(&self) -> Option<&'a str> {
+    pub fn id(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).keyid) }
     }
 
-    pub fn fingerprint(&self) -> Option<&'a str> {
+    pub fn fingerprint(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).fpr) }
     }
 
@@ -285,11 +285,11 @@ impl<'a> SubKey<'a> {
         }
     }
 
-    pub fn card_number(&self) -> Option<&'a str> {
+    pub fn card_number(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).card_number) }
     }
 
-    pub fn curve(&self) -> Option<&'a str> {
+    pub fn curve(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).curve) }
     }
 }
@@ -340,19 +340,19 @@ impl<'a> UserId<'a> {
         unsafe { (*self.raw).invalid() }
     }
 
-    pub fn uid(&self) -> Option<&'a str> {
+    pub fn uid(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).uid) }
     }
 
-    pub fn name(&self) -> Option<&'a str> {
+    pub fn name(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).name) }
     }
 
-    pub fn email(&self) -> Option<&'a str> {
+    pub fn email(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).email) }
     }
 
-    pub fn comment(&self) -> Option<&'a str> {
+    pub fn comment(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).comment) }
     }
 
@@ -367,7 +367,12 @@ impl<'a> UserId<'a> {
 
 impl<'a> fmt::Display for UserId<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.uid().unwrap_or(""))
+        let uid = match self.uid() {
+            Ok(s) => s.into(),
+            Err(StrError::NotUtf8(s, _)) => s.to_string_lossy(),
+            _ => "".into(),
+        };
+        write!(f, "{}", uid)
     }
 }
 
@@ -425,23 +430,23 @@ impl<'a> KeySignature<'a> {
         unsafe { (*self.raw).exportable() }
     }
 
-    pub fn key_id(&self) -> Option<&'a str> {
+    pub fn key_id(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).keyid) }
     }
 
-    pub fn uid(&self) -> Option<&'a str> {
+    pub fn uid(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).uid) }
     }
 
-    pub fn name(&self) -> Option<&'a str> {
+    pub fn name(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).name) }
     }
 
-    pub fn email(&self) -> Option<&'a str> {
+    pub fn email(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).email) }
     }
 
-    pub fn comment(&self) -> Option<&'a str> {
+    pub fn comment(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).comment) }
     }
 

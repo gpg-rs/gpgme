@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use ffi;
 
-use utils;
+use utils::{self, StrResult};
 
 bitflags! {
     flags Flags: ffi::gpgme_sig_notation_flags_t {
@@ -41,11 +41,11 @@ impl<'a, T> SignatureNotation<'a, T> {
         unsafe { Flags::from_bits_truncate((*self.raw).flags) }
     }
 
-    pub fn name(&self) -> Option<&'a str> {
+    pub fn name(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).name) }
     }
 
-    pub fn value(&self) -> Option<&'a str> {
+    pub fn value(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).value) }
     }
 }

@@ -8,7 +8,7 @@ use error::{self, Error, Result};
 use context::Context;
 use keys::{HashAlgorithm, KeyAlgorithm};
 use notation::SignatureNotationIter;
-use utils;
+use utils::{self, StrResult};
 
 pub unsafe trait OpResult: Clone + Wrapper {
     fn from_context(ctx: &Context) -> Option<Self>;
@@ -105,15 +105,15 @@ macro_rules! impl_subresult {
 
 #[derive(Debug, Copy, Clone)]
 pub struct InvalidKey<'a, T: 'a> {
-    owner: &'a T,
     raw: ffi::gpgme_invalid_key_t,
+    owner: PhantomData<&'a T>,
 }
 
 impl<'a, T> InvalidKey<'a, T> {
-    pub unsafe fn from_raw<'b>(owner: &'b T, raw: ffi::gpgme_invalid_key_t) -> InvalidKey<'b, T> {
+    pub unsafe fn from_raw<'b>(raw: ffi::gpgme_invalid_key_t) -> InvalidKey<'b, T> {
         InvalidKey {
-            owner: owner,
             raw: raw,
+            owner: PhantomData,
         }
     }
 
@@ -121,7 +121,7 @@ impl<'a, T> InvalidKey<'a, T> {
         self.raw
     }
 
-    pub fn fingerprint(&self) -> Option<&'a str> {
+    pub fn fingerprint(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).fpr) }
     }
 
@@ -139,16 +139,16 @@ impl<'a, T> InvalidKey<'a, T> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct InvalidKeyIter<'a, T: 'a> {
-    owner: &'a T,
     current: ffi::gpgme_invalid_key_t,
+    owner: PhantomData<&'a T>,
 }
 
 impl<'a, T> InvalidKeyIter<'a, T> {
-    pub unsafe fn from_list<'b>(owner: &'b T, first: ffi::gpgme_invalid_key_t)
+    pub unsafe fn from_list<'b>(first: ffi::gpgme_invalid_key_t)
         -> InvalidKeyIter<'b, T> {
         InvalidKeyIter {
-            owner: owner,
             current: first,
+            owner: PhantomData,
         }
     }
 }
@@ -161,7 +161,7 @@ impl<'a, T> Iterator for InvalidKeyIter<'a, T> {
         if !current.is_null() {
             unsafe {
                 self.current = (*current).next;
-                Some(InvalidKey::from_raw(self.owner, current))
+                Some(InvalidKey::from_raw(current))
             }
         } else {
             None
@@ -197,7 +197,7 @@ impl KeyGenerateResult {
         unsafe { (*self.raw).sub() }
     }
 
-    pub fn fingerprint(&self) -> Option<&str> {
+    pub fn fingerprint(&self) -> StrResult {
         unsafe { utils::from_cstr((*self.raw).fpr) }
     }
 }
@@ -273,7 +273,7 @@ bitflags! {
 
 impl_subresult!(ImportStatus: ffi::gpgme_import_status_t, ImportStatusIter, ImportResult);
 impl<'a> ImportStatus<'a> {
-    pub fn fingerprint(&self) -> Option<&'a str> {
+    pub fn fingerprint(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).fpr) }
     }
 
@@ -308,17 +308,17 @@ bitflags! {
 impl_result!(EncryptResult: ffi::gpgme_encrypt_result_t = ffi::gpgme_op_encrypt_result);
 impl EncryptResult {
     pub fn invalid_recipients(&self) -> InvalidKeyIter<EncryptResult> {
-        unsafe { InvalidKeyIter::from_list(self, (*self.raw).invalid_recipients) }
+        unsafe { InvalidKeyIter::from_list((*self.raw).invalid_recipients) }
     }
 }
 
 impl_result!(DecryptResult: ffi::gpgme_decrypt_result_t = ffi::gpgme_op_decrypt_result);
 impl DecryptResult {
-    pub fn filename(&self) -> Option<&str> {
+    pub fn filename(&self) -> StrResult {
         unsafe { utils::from_cstr((*self.raw).file_name) }
     }
 
-    pub fn unsupported_algorithm(&self) -> Option<&str> {
+    pub fn unsupported_algorithm(&self) -> StrResult {
         unsafe { utils::from_cstr((*self.raw).unsupported_algorithm) }
     }
 
@@ -333,7 +333,7 @@ impl DecryptResult {
 
 impl_subresult!(Recipient: ffi::gpgme_recipient_t, RecipientIter, DecryptResult);
 impl<'a> Recipient<'a> {
-    pub fn key_id(&self) -> Option<&'a str> {
+    pub fn key_id(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).keyid) }
     }
 
@@ -360,7 +360,7 @@ ffi_enum_wrapper! {
 impl_result!(SignResult: ffi::gpgme_sign_result_t = ffi::gpgme_op_sign_result);
 impl SignResult {
     pub fn invalid_signers(&self) -> InvalidKeyIter<SignResult> {
-        unsafe { InvalidKeyIter::from_list(self, (*self.raw).invalid_signers) }
+        unsafe { InvalidKeyIter::from_list((*self.raw).invalid_signers) }
     }
 
     pub fn signatures(&self) -> NewSignatureIter {
@@ -370,7 +370,7 @@ impl SignResult {
 
 impl_subresult!(NewSignature: ffi::gpgme_new_signature_t, NewSignatureIter, SignResult);
 impl<'a> NewSignature<'a> {
-    pub fn fingerprint(&self) -> Option<&'a str> {
+    pub fn fingerprint(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).fpr) }
     }
 
@@ -397,7 +397,7 @@ impl<'a> NewSignature<'a> {
 
 impl_result!(VerifyResult: ffi::gpgme_verify_result_t = ffi::gpgme_op_verify_result);
 impl VerifyResult {
-    pub fn filename(&self) -> Option<&str> {
+    pub fn filename(&self) -> StrResult {
         unsafe { utils::from_cstr((*self.raw).file_name) }
     }
 
@@ -432,7 +432,7 @@ ffi_enum_wrapper! {
 
 impl_subresult!(Signature: ffi::gpgme_signature_t, SignatureIter, VerifyResult);
 impl<'a> Signature<'a> {
-    pub fn fingerprint(&self) -> Option<&'a str> {
+    pub fn fingerprint(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).fpr) }
     }
 
@@ -495,7 +495,7 @@ impl<'a> Signature<'a> {
         unsafe { SignatureSummary::from_bits_truncate((*self.raw).summary as u32) }
     }
 
-    pub fn pka_address(&self) -> Option<&'a str> {
+    pub fn pka_address(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).pka_address) }
     }
 

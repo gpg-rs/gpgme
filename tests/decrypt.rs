@@ -1,7 +1,7 @@
 extern crate tempdir;
 extern crate gpgme;
 
-use gpgme::Data;
+use gpgme::{Data, StrError};
 
 use self::support::{setup, passphrase_cb, check_data};
 
@@ -20,9 +20,11 @@ fn test_decrypt() {
 
     let mut input = fail_if_err!(Data::from_buffer(CIPHER_1));
     let mut output = fail_if_err!(Data::new());
-    if let Some(alg) = fail_if_err!(guard.decrypt(&mut input,
-                                    &mut output)).unsupported_algorithm() {
-        panic!("unsupported algorithm: {}", alg);
+    match fail_if_err!(guard.decrypt(&mut input,
+                &mut output)).unsupported_algorithm() {
+        Ok(ref alg) => panic!("unsupported algorithm: {}", alg),
+        Err(StrError::NotUtf8(ref alg, _)) => panic!("unsupported algorithm: {:?}", alg),
+        _ => {},
     }
     check_data(&mut output, b"Wenn Sie dies lesen k\xf6nnen, ist es wohl nicht\n\
                geheim genug.\n");

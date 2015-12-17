@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 use std::env;
+use std::ffi::CStr;
 use std::fs::{self, File};
 use std::io;
 use std::io::prelude::*;
@@ -74,7 +75,7 @@ pub fn setup() -> TempDir {
     dir
 }
 
-pub fn passphrase_cb(_hint: Option<&str>, _info: Option<&str>,
+pub fn passphrase_cb(_hint: Option<&CStr>, _info: Option<&CStr>,
                      _prev_was_bad: bool, out: &mut Write) -> gpgme::Result<()> {
     try!(out.write_all(b"abc\n"));
     Ok(())

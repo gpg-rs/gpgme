@@ -53,7 +53,7 @@ fn main() {
     let mut ctx = gpgme::create_context().unwrap();
     ctx.set_protocol(proto).unwrap();
 
-    let mut input = match Data::load(&matches.free[0]) {
+    let mut input = match Data::load(matches.free[0].clone()) {
         Ok(input) => input,
         Err(err) => {
             writeln!(io::stderr(),

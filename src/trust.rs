@@ -1,7 +1,7 @@
 use ffi;
 
 use Wrapper;
-use utils;
+use utils::{self, StrResult};
 
 pub struct TrustItem {
     raw: ffi::gpgme_trust_item_t,
@@ -40,19 +40,19 @@ impl TrustItem {
         unsafe { (*self.raw).level.into() }
     }
 
-    pub fn key_id(&self) -> Option<&str> {
+    pub fn key_id(&self) -> StrResult {
         unsafe { utils::from_cstr((*self.raw).keyid) }
     }
 
-    pub fn owner_trust(&self) -> Option<&str> {
+    pub fn owner_trust(&self) -> StrResult {
         unsafe { utils::from_cstr((*self.raw).owner_trust) }
     }
 
-    pub fn name(&self) -> Option<&str> {
+    pub fn name(&self) -> StrResult {
         unsafe { utils::from_cstr((*self.raw).name) }
     }
 
-    pub fn validity(&self) -> Option<&str> {
+    pub fn validity(&self) -> StrResult {
         unsafe { utils::from_cstr((*self.raw).validity) }
     }
 }
