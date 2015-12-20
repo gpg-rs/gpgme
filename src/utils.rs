@@ -107,7 +107,7 @@ pub struct FdWriter {
 }
 
 impl FdWriter {
-    pub fn new(fd: libc::c_int) -> FdWriter {
+    pub unsafe fn new(fd: libc::c_int) -> FdWriter {
         FdWriter { fd: fd }
     }
 }

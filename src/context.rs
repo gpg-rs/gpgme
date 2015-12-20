@@ -1,9 +1,7 @@
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::fmt;
 use std::io;
-use std::marker::PhantomData;
 use std::mem;
-use std::ops::{Deref, DerefMut};
 use std::ptr;
 
 use libc;
@@ -16,8 +14,8 @@ use data::Data;
 use keys::Key;
 use trust::TrustItem;
 use notation::{self, SignatureNotationIter};
-use utils::FdWriter;
 use ops;
+use utils::{self, FdWriter, StrResult};
 
 /// A context for cryptographic operations
 pub struct Context {
@@ -64,55 +62,53 @@ impl Context {
         Ok(())
     }
 
-    /// Sets the passphrase callback for the context and returns a guard for the context.
-    ///
-    /// When the guard is dropped the context's passphrase callback will be reset to its
-    /// previous value.
+    /// Uses the specified provider to handle passphrase requests for the duration of the
+    /// closure.
     ///
     /// # Examples
     ///
     /// ```no_run
-    /// use std::ffi::CStr;
     /// use std::io::prelude::*;
     ///
+    /// use gpgme::context::PassphraseRequest;
+    ///
     /// let mut ctx = gpgme::create_context().unwrap();
-    /// let cb = &mut |_: Option<&CStr>, _: Option<&CStr>, _, out: &mut Write| {
+    /// ctx.with_passphrase_provider(|_: PassphraseRequest, out: &mut Write| {
     ///     try!(out.write_all(b"some passphrase"));
     ///     Ok(())
-    /// };
-    /// let mut guard = ctx.with_passphrase_cb(cb);
-    /// // Do something with guard requiring a passphrase e.g. decryption
+    /// }, |mut ctx| {
+    ///     // Do something with ctx requiring a passphrase, for example decryption
+    /// });
     /// ```
-    pub fn with_passphrase_cb<'s, 'a, C>(&'s mut self, cb: &'a mut C)
-        -> PassphraseCallbackGuard<'s, 'a>
-    where C: PassphraseCallback {
+    pub fn with_passphrase_provider<P, F, R>(&mut self, mut provider: P, f: F) -> R
+    where P: PassphraseProvider, F: FnOnce(&mut Context) -> R {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_passphrase_cb(self.raw, &mut old.0, &mut old.1);
             ffi::gpgme_set_passphrase_cb(self.raw,
-                                         Some(passphrase_callback::<C>),
-                                         (cb as *mut _) as *mut _);
-            PassphraseCallbackGuard {
-                ctx: self,
+                                         Some(passphrase_callback::<P>),
+                                         (&mut provider as *mut _) as *mut _);
+            let _guard = PassphraseProviderGuard {
+                ctx: self.raw,
                 old: old,
-                _cb: PhantomData,
-            }
+            };
+            f(self)
         }
     }
 
-    pub fn with_progress_cb<'s, 'a, C>(&'s mut self, cb: &'a mut C) -> ProgressCallbackGuard<'s, 'a>
-    where C: ProgressCallback {
+    pub fn with_progress_handler<H, F, R>(&mut self, mut handler: H, f: F) -> R
+    where H: ProgressHandler, F: FnOnce(&mut Context) -> R {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_progress_cb(self.raw, &mut old.0, &mut old.1);
             ffi::gpgme_set_progress_cb(self.raw,
-                                       Some(progress_callback::<C>),
-                                       (cb as *mut _) as *mut _);
-            ProgressCallbackGuard {
-                ctx: self,
+                                       Some(progress_callback::<H>),
+                                       (&mut handler as *mut _) as *mut _);
+            let _guard = ProgressHandlerGuard {
+                ctx: self.raw,
                 old: old,
-                _cb: PhantomData,
-            }
+            };
+            f(self)
         }
     }
 
@@ -730,125 +726,102 @@ impl<'a> Iterator for SignersIter<'a> {
     }
 }
 
-pub trait PassphraseCallback: 'static + Send {
-    fn call(&mut self, uid_hint: Option<&CStr>, info: Option<&CStr>, prev_was_bad: bool,
-        out: &mut io::Write)
+pub struct PassphraseRequest<'a> {
+    pub uid_hint: StrResult<'a>,
+    pub context: StrResult<'a>,
+    pub prev_attempt_failed: bool,
+}
+
+pub trait PassphraseProvider: 'static + Send {
+    fn handle<W: io::Write>(&mut self, request: PassphraseRequest, out: W)
         -> Result<()>;
 }
 
-impl<T: 'static + Send> PassphraseCallback for T
-where T: FnMut(Option<&CStr>, Option<&CStr>, bool, &mut io::Write) -> Result<()> {
-    fn call(&mut self, uid_hint: Option<&CStr>, info: Option<&CStr>, prev_was_bad: bool,
-        out: &mut io::Write)
+impl<T: 'static + Send> PassphraseProvider for T
+where T: FnMut(PassphraseRequest, &mut io::Write) -> Result<()> {
+    fn handle<W: io::Write>(&mut self, request: PassphraseRequest, mut out: W)
         -> Result<()> {
-        (*self)(uid_hint, info, prev_was_bad, out)
+        (*self)(request, &mut out)
     }
 }
 
-pub struct PassphraseCallbackGuard<'a, 'b> {
-    _cb: PhantomData<&'b mut PassphraseCallback>,
-    ctx: &'a mut Context,
+struct PassphraseProviderGuard {
+    ctx: ffi::gpgme_ctx_t,
     old: (ffi::gpgme_passphrase_cb_t, *mut libc::c_void),
 }
 
-impl<'a, 'b> Drop for PassphraseCallbackGuard<'a, 'b> {
+impl Drop for PassphraseProviderGuard {
     fn drop(&mut self) {
         unsafe {
-            ffi::gpgme_set_passphrase_cb(self.ctx.as_raw(), self.old.0, self.old.1);
+            ffi::gpgme_set_passphrase_cb(self.ctx, self.old.0, self.old.1);
         }
     }
 }
 
-impl<'a, 'b> Deref for PassphraseCallbackGuard<'a, 'b> {
-    type Target = Context;
-
-    fn deref(&self) -> &Context {
-        self.ctx
-    }
-}
-
-impl<'a, 'b> DerefMut for PassphraseCallbackGuard<'a, 'b> {
-    fn deref_mut(&mut self) -> &mut Context {
-        self.ctx
-    }
-}
-
-pub trait ProgressCallback: 'static + Send {
-    fn call(&mut self, what: Option<&CStr>, typ: i64, current: i64, total: i64);
-}
-
-impl<T: 'static + Send> ProgressCallback for T where T: FnMut(Option<&CStr>, i64, i64, i64) {
-    fn call(&mut self, what: Option<&CStr>, typ: i64, current: i64, total: i64) {
-        (*self)(what, typ, current, total);
-    }
-}
-
-pub struct ProgressCallbackGuard<'a, 'b> {
-    _cb: PhantomData<&'b mut ProgressCallback>,
-    ctx: &'a mut Context,
-    old: (ffi::gpgme_progress_cb_t, *mut libc::c_void),
-}
-
-impl<'a, 'b> Drop for ProgressCallbackGuard<'a, 'b> {
-    fn drop(&mut self) {
-        unsafe {
-            ffi::gpgme_set_progress_cb(self.ctx.as_raw(), self.old.0, self.old.1);
-        }
-    }
-}
-
-impl<'a, 'b> Deref for ProgressCallbackGuard<'a, 'b> {
-    type Target = Context;
-
-    fn deref(&self) -> &Context {
-        self.ctx
-    }
-}
-
-impl<'a, 'b> DerefMut for ProgressCallbackGuard<'a, 'b> {
-    fn deref_mut(&mut self) -> &mut Context {
-        self.ctx
-    }
-}
-
-extern "C" fn passphrase_callback<C: PassphraseCallback>(hook: *mut libc::c_void,
+extern "C" fn passphrase_callback<H: PassphraseProvider>(hook: *mut libc::c_void,
     uid_hint: *const libc::c_char,
     info: *const libc::c_char,
     was_bad: libc::c_int, fd: libc::c_int)
     -> ffi::gpgme_error_t {
     use std::io::prelude::*;
 
-    let cb = hook as *mut C;
+    let handler = hook as *mut H;
     unsafe {
-        let uid_hint = if !uid_hint.is_null() {
-            Some(CStr::from_ptr(uid_hint))
-        } else {
-            None
-        };
-        let info = if !info.is_null() {
-            Some(CStr::from_ptr(info))
-        } else {
-            None
+        let info = PassphraseRequest {
+            uid_hint: utils::from_cstr(uid_hint),
+            context: utils::from_cstr(info),
+            prev_attempt_failed: was_bad != 0,
         };
         let mut writer = FdWriter::new(fd);
-        (*cb)
-            .call(uid_hint, info, was_bad != 0, &mut writer)
+        (*handler)
+            .handle(info, &mut writer)
             .and_then(|_| writer.write_all(b"\n").map_err(Error::from))
             .err()
             .map_or(0, |err| err.raw())
     }
 }
 
-extern "C" fn progress_callback<C: ProgressCallback>(hook: *mut libc::c_void,
+pub struct ProgressInfo<'a> {
+    pub what: StrResult<'a>,
+    pub typ: i64,
+    pub current: i64,
+    pub total: i64,
+}
+
+pub trait ProgressHandler: 'static + Send {
+    fn handle(&mut self, info: ProgressInfo);
+}
+
+impl<T: 'static + Send> ProgressHandler for T where T: FnMut(ProgressInfo) {
+    fn handle(&mut self, info: ProgressInfo) {
+        (*self)(info);
+    }
+}
+
+pub struct ProgressHandlerGuard {
+    ctx: ffi::gpgme_ctx_t,
+    old: (ffi::gpgme_progress_cb_t, *mut libc::c_void),
+}
+
+impl Drop for ProgressHandlerGuard {
+    fn drop(&mut self) {
+        unsafe {
+            ffi::gpgme_set_progress_cb(self.ctx, self.old.0, self.old.1);
+        }
+    }
+}
+
+extern "C" fn progress_callback<H: ProgressHandler>(hook: *mut libc::c_void,
     what: *const libc::c_char, typ: libc::c_int,
     current: libc::c_int, total: libc::c_int) {
-    let cb = hook as *mut C;
+    let handler = hook as *mut H;
     unsafe {
-        let what = if !what.is_null() {
-            Some(CStr::from_ptr(what))
-        } else {
-            None
+        let info = ProgressInfo {
+            what: utils::from_cstr(what),
+            typ: typ.into(),
+            current: current.into(),
+            total: total.into(),
         };
-        (*cb).call(what, typ.into(), current.into(), total.into());
+        (*handler).handle(info);
     }
 }

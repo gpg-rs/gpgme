@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 use std::env;
-use std::ffi::CStr;
 use std::fs::{self, File};
 use std::io;
 use std::io::prelude::*;
@@ -10,6 +9,7 @@ use std::process::{Command, Stdio};
 use tempdir::TempDir;
 
 use gpgme::{self, Data};
+use gpgme::context::PassphraseRequest;
 
 #[macro_export]
 macro_rules! fail_if_err {
@@ -75,8 +75,7 @@ pub fn setup() -> TempDir {
     dir
 }
 
-pub fn passphrase_cb(_hint: Option<&CStr>, _info: Option<&CStr>,
-                     _prev_was_bad: bool, out: &mut Write) -> gpgme::Result<()> {
+pub fn passphrase_cb(_req: PassphraseRequest, out: &mut Write) -> gpgme::Result<()> {
     try!(out.write_all(b"abc\n"));
     Ok(())
 }
