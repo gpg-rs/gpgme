@@ -74,22 +74,22 @@ impl Context {
     /// use gpgme::context::PassphraseRequest;
     ///
     /// let mut ctx = gpgme::create_context().unwrap();
-    /// ctx.with_passphrase_provider(|_: PassphraseRequest, out: &mut Write| {
+    /// ctx.with_passphrase_handler(|_: PassphraseRequest, out: &mut Write| {
     ///     try!(out.write_all(b"some passphrase"));
     ///     Ok(())
     /// }, |mut ctx| {
     ///     // Do something with ctx requiring a passphrase, for example decryption
     /// });
     /// ```
-    pub fn with_passphrase_provider<P, F, R>(&mut self, mut provider: P, f: F) -> R
-    where P: PassphraseProvider, F: FnOnce(&mut Context) -> R {
+    pub fn with_passphrase_handler<H, F, R>(&mut self, mut handler: H, f: F) -> R
+    where H: PassphraseHandler, F: FnOnce(&mut Context) -> R {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_passphrase_cb(self.raw, &mut old.0, &mut old.1);
             ffi::gpgme_set_passphrase_cb(self.raw,
-                                         Some(passphrase_callback::<P>),
-                                         (&mut provider as *mut _) as *mut _);
-            let _guard = PassphraseProviderGuard {
+                                         Some(passphrase_callback::<H>),
+                                         (&mut handler as *mut _) as *mut _);
+            let _guard = PassphraseHandlerGuard {
                 ctx: self.raw,
                 old: old,
             };
@@ -751,12 +751,12 @@ pub struct PassphraseRequest<'a> {
     pub prev_attempt_failed: bool,
 }
 
-pub trait PassphraseProvider: 'static + Send {
+pub trait PassphraseHandler: 'static + Send {
     fn handle<W: io::Write>(&mut self, request: PassphraseRequest, out: W)
         -> Result<()>;
 }
 
-impl<T: 'static + Send> PassphraseProvider for T
+impl<T: 'static + Send> PassphraseHandler for T
 where T: FnMut(PassphraseRequest, &mut io::Write) -> Result<()> {
     fn handle<W: io::Write>(&mut self, request: PassphraseRequest, mut out: W)
         -> Result<()> {
@@ -764,12 +764,12 @@ where T: FnMut(PassphraseRequest, &mut io::Write) -> Result<()> {
     }
 }
 
-struct PassphraseProviderGuard {
+struct PassphraseHandlerGuard {
     ctx: ffi::gpgme_ctx_t,
     old: (ffi::gpgme_passphrase_cb_t, *mut libc::c_void),
 }
 
-impl Drop for PassphraseProviderGuard {
+impl Drop for PassphraseHandlerGuard {
     fn drop(&mut self) {
         unsafe {
             ffi::gpgme_set_passphrase_cb(self.ctx, self.old.0, self.old.1);
@@ -777,7 +777,7 @@ impl Drop for PassphraseProviderGuard {
     }
 }
 
-extern "C" fn passphrase_callback<H: PassphraseProvider>(hook: *mut libc::c_void,
+extern "C" fn passphrase_callback<H: PassphraseHandler>(hook: *mut libc::c_void,
     uid_hint: *const libc::c_char,
     info: *const libc::c_char,
     was_bad: libc::c_int, fd: libc::c_int)

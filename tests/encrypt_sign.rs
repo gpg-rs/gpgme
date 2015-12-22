@@ -30,7 +30,7 @@ fn test_encrypt_sign() {
     let _gpghome = setup();
     let mut ctx = fail_if_err!(gpgme::create_context());
     fail_if_err!(ctx.set_protocol(gpgme::PROTOCOL_OPENPGP));
-    ctx.with_passphrase_provider(passphrase_cb, |mut ctx| {
+    ctx.with_passphrase_handler(passphrase_cb, |mut ctx| {
         ctx.set_armor(true);
         ctx.set_text_mode(true);
 

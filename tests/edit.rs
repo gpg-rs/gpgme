@@ -87,7 +87,7 @@ fn test_edit() {
 
     let mut ctx = fail_if_err!(gpgme::create_context());
     fail_if_err!(ctx.set_protocol(gpgme::PROTOCOL_OPENPGP));
-    ctx.with_passphrase_provider(passphrase_cb, |mut ctx| {
+    ctx.with_passphrase_handler(passphrase_cb, |mut ctx| {
         let key = fail_if_err!(ctx.find_keys(Some("Alpha"))).next().unwrap().unwrap();
         let mut output = fail_if_err!(Data::new());
         fail_if_err!(ctx.edit_key_with(&key, TestEditor, &mut output));
