@@ -1,4 +1,11 @@
+use std::fmt;
+use std::io::prelude::*;
+
 use ffi;
+
+use error::{Error, Result};
+
+pub use context::{EditHandler, EditStatus};
 
 ffi_enum_wrapper! {
     pub enum StatusCode: ffi::gpgme_status_code_t {
@@ -98,21 +105,9 @@ ffi_enum_wrapper! {
 }
 
 impl StatusCode {
-    pub fn can_ignore(&self) -> bool {
+    pub fn is_command(&self) -> bool {
         match *self {
-            STATUS_EOF => true,
-            STATUS_GOT_IT => true,
-            STATUS_NEED_PASSPHRASE => true,
-            STATUS_NEED_PASSPHRASE_SYM => true,
-            STATUS_GOOD_PASSPHRASE => true,
-            STATUS_BAD_PASSPHRASE => true,
-            STATUS_MISSING_PASSPHRASE => true,
-            STATUS_USERID_HINT => true,
-            STATUS_SIGEXPIRED => true,
-            STATUS_KEYEXPIRED => true,
-            STATUS_KEY_CREATED => true,
-            STATUS_ALREADY_SIGNED => true,
-            STATUS_PROGRESS => true,
+            STATUS_GET_BOOL | STATUS_GET_LINE | STATUS_GET_HIDDEN => true,
             _ => false,
         }
     }
@@ -139,3 +134,39 @@ pub const KEY_SIZE: &'static str = "keygen.size";
 pub const KEY_ALGORITHM: &'static str = "keygen.algo";
 pub const KEY_UID_COMMAND: &'static str = "keygen.userid.cmd";
 pub const KEY_CURVE: &'static str = "keygen.curve";
+
+pub trait Editor: 'static + Send {
+    type State: 'static + Send + Copy + Eq + fmt::Debug;
+
+    fn start() -> Self::State;
+
+    fn next_state(state: Result<Self::State>, status: EditStatus) -> Result<Self::State>;
+    fn action<W: Write>(&self, state: Self::State, out: W) -> Result<()>;
+}
+
+pub struct EditorWrapper<E: Editor> {
+    editor: E,
+    state: Result<E::State>,
+}
+
+impl<E: Editor> EditorWrapper<E> {
+    pub fn new(editor: E) -> EditorWrapper<E> {
+        EditorWrapper {
+            editor: editor,
+            state: Ok(E::start()),
+        }
+    }
+}
+
+impl<E: Editor> EditHandler for EditorWrapper<E> {
+    fn handle<W: Write>(&mut self, status: EditStatus, out: Option<W>) -> Result<()> {
+        self.state = E::next_state(self.state, status).and_then(|state| {
+            out.map_or(Ok(()), |mut out| {
+                self.editor.action(state, &mut out).and_then(|_| {
+                    out.write_all(b"\n").map_err(Error::from)
+                })
+            }).and(Ok(state))
+        });
+        self.state.and(Ok(()))
+    }
+}

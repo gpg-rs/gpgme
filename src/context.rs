@@ -18,19 +18,6 @@ use edit;
 use ops;
 use utils::{self, FdWriter, StrResult};
 
-pub trait EditCallback: 'static + Send {
-    fn call(&mut self, status: edit::StatusCode, args: Option<&str>,
-            output: &mut io::Write) -> Result<()>;
-}
-
-impl<T: 'static + Send> EditCallback for T
-where T: FnMut(edit::StatusCode, Option<&str>, &mut io::Write) -> Result<()> {
-    fn call(&mut self, status: edit::StatusCode, args: Option<&str>,
-            output: &mut io::Write) -> Result<()> {
-        (*self)(status, args, output)
-    }
-}
-
 /// A context for cryptographic operations
 pub struct Context {
     raw: ffi::gpgme_ctx_t,
@@ -324,13 +311,22 @@ impl Context {
         Ok(())
     }
 
-    pub fn edit_key<E: EditCallback>(&mut self, key: &Key, mut editor: E,
-                                     data: &mut Data) -> Result<()> {
+    pub fn edit_key<E: EditHandler>(&mut self, key: &Key, handler: E, data: &mut Data)
+        -> Result<()> {
         unsafe {
+            let mut wrapper = EditHandlerWrapper {
+                handler: handler,
+                response: data,
+            };
             return_err!(ffi::gpgme_op_edit(self.raw, key.as_raw(), Some(edit_callback::<E>),
-                                           mem::transmute(&mut editor), data.as_raw()));
+                                           (&mut wrapper as *mut _) as *mut _, data.as_raw()));
         }
         Ok(())
+    }
+
+    pub fn edit_key_with<E: edit::Editor>(&mut self, key: &Key, editor: E, data: &mut Data)
+        -> Result<()> {
+        self.edit_key(key, edit::EditorWrapper::new(editor), data)
     }
 
     pub fn delete_key(&mut self, key: &Key) -> Result<()> {
@@ -849,18 +845,35 @@ extern "C" fn progress_callback<H: ProgressHandler>(hook: *mut libc::c_void,
     }
 }
 
-extern fn edit_callback<E: EditCallback>(handle: *mut libc::c_void,
-                                         status: ffi::gpgme_status_code_t,
-                                         args: *const libc::c_char,
-                                         fd: libc::c_int) -> ffi::gpgme_error_t {
-    let cb = handle as *mut E;
+pub struct EditStatus<'a> {
+    pub code: edit::StatusCode,
+    pub args: StrResult<'a>,
+    pub response: &'a mut Data<'a>,
+}
+
+pub trait EditHandler: 'static + Send {
+    fn handle<W: io::Write>(&mut self, status: EditStatus, out: Option<W>) -> Result<()>;
+}
+
+struct EditHandlerWrapper<'a, E: EditHandler> {
+    handler: E,
+    response: *mut Data<'a>,
+}
+
+extern "C" fn edit_callback<'a, E: EditHandler>(hook: *mut libc::c_void,
+    status: ffi::gpgme_status_code_t, args: *const libc::c_char,
+    fd: libc::c_int) -> ffi::gpgme_error_t {
+    let wrapper = hook as *mut EditHandlerWrapper<'a, E>;
     let result = unsafe {
-        let status = edit::StatusCode::from_raw(status);
-        let args = utils::from_cstr(args);
+        let status = EditStatus {
+            code: edit::StatusCode::from_raw(status),
+            args: utils::from_cstr(args),
+            response: &mut *(*wrapper).response,
+        };
         if fd < 0 {
-            (*cb).call(status, args, &mut io::sink())
+            (*wrapper).handler.handle(status, None::<&mut io::Write>)
         } else {
-            (*cb).call(status, args, &mut FdWriter::new(fd))
+            (*wrapper).handler.handle(status, Some(FdWriter::new(fd)))
         }
     };
     result.err().map(|err| err.raw()).unwrap_or(0)
