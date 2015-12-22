@@ -1,7 +1,9 @@
+use std::error;
 use std::ffi::CStr;
+use std::fmt;
 use std::io;
 use std::io::prelude::*;
-use std::str;
+use std::str::Utf8Error;
 
 use libc;
 use ffi;
@@ -63,11 +65,40 @@ macro_rules! ffi_enum_wrapper {
     };
 }
 
-pub unsafe fn from_cstr<'a>(s: *const libc::c_char) -> Option<&'a str> {
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum StrError<'a> {
+    NotPresent,
+    NotUtf8(&'a CStr, Utf8Error),
+}
+
+pub type StrResult<'a> = Result<&'a str, StrError<'a>>;
+
+impl<'a> fmt::Display for StrError<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            StrError::NotPresent => write!(f, "no string present"),
+            StrError::NotUtf8(ref s, _) => {
+                write!(f, "string was not valid utf-8: {:?}", s)
+            }
+        }
+    }
+}
+
+impl<'a> error::Error for StrError<'a> {
+    fn description(&self) -> &str {
+        match *self {
+            StrError::NotPresent => "no string present",
+            StrError::NotUtf8(..) => "string was not valid utf-8",
+        }
+    }
+}
+
+pub unsafe fn from_cstr<'a>(s: *const libc::c_char) -> StrResult<'a> {
     if !s.is_null() {
-        str::from_utf8(CStr::from_ptr(s).to_bytes()).ok()
+        let s = CStr::from_ptr(s);
+        s.to_str().map_err(|e| StrError::NotUtf8(s, e))
     } else {
-        None
+        Err(StrError::NotPresent)
     }
 }
 
@@ -76,7 +107,7 @@ pub struct FdWriter {
 }
 
 impl FdWriter {
-    pub fn new(fd: libc::c_int) -> FdWriter {
+    pub unsafe fn new(fd: libc::c_int) -> FdWriter {
         FdWriter { fd: fd }
     }
 }
@@ -84,8 +115,7 @@ impl FdWriter {
 impl Write for FdWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let result = unsafe {
-            ffi::gpgme_io_write(self.fd, buf.as_ptr() as *const _,
-                                buf.len() as libc::size_t)
+            ffi::gpgme_io_write(self.fd, buf.as_ptr() as *const _, buf.len() as libc::size_t)
         };
         if result >= 0 {
             Ok(result as usize)

@@ -68,7 +68,7 @@ fn check_result(result: ops::ImportResult, secret: bool) {
     }
 
     for import in result.imports().filter(&filter_imports) {
-        assert_eq!(import.fingerprint(), Some(FINGERPRINT));
+        assert_eq!(import.fingerprint(), Ok(FINGERPRINT));
         assert_eq!(import.result(), Ok(()));
     }
 }

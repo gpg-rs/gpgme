@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use ffi;
 
-use utils;
+use utils::{self, StrResult};
 
 bitflags! {
     flags Flags: ffi::gpgme_sig_notation_flags_t {
@@ -19,7 +19,10 @@ pub struct SignatureNotation<'a, T: 'a> {
 impl<'a, T> SignatureNotation<'a, T> {
     pub unsafe fn from_raw<'b>(raw: ffi::gpgme_sig_notation_t) -> SignatureNotation<'b, T> {
         debug_assert!(!raw.is_null());
-        SignatureNotation { raw: raw, phantom: PhantomData }
+        SignatureNotation {
+            raw: raw,
+            phantom: PhantomData,
+        }
     }
 
     pub fn raw(&self) -> ffi::gpgme_sig_notation_t {
@@ -35,21 +38,15 @@ impl<'a, T> SignatureNotation<'a, T> {
     }
 
     pub fn flags(&self) -> Flags {
-        unsafe {
-            Flags::from_bits_truncate((*self.raw).flags)
-        }
+        unsafe { Flags::from_bits_truncate((*self.raw).flags) }
     }
 
-    pub fn name(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).name)
-        }
+    pub fn name(&self) -> StrResult<'a> {
+        unsafe { utils::from_cstr((*self.raw).name) }
     }
 
-    pub fn value(&self) -> Option<&'a str> {
-        unsafe {
-            utils::from_cstr((*self.raw).value)
-        }
+    pub fn value(&self) -> StrResult<'a> {
+        unsafe { utils::from_cstr((*self.raw).value) }
     }
 }
 
@@ -60,7 +57,10 @@ pub struct SignatureNotationIter<'a, T: 'a> {
 
 impl<'a, T> SignatureNotationIter<'a, T> {
     pub unsafe fn from_list<'b>(list: ffi::gpgme_sig_notation_t) -> SignatureNotationIter<'b, T> {
-        SignatureNotationIter { current: list, phantom: PhantomData }
+        SignatureNotationIter {
+            current: list,
+            phantom: PhantomData,
+        }
     }
 }
 

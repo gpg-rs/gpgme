@@ -27,14 +27,14 @@ fn test_symmetric() {
     let _gpghome = setup();
     let mut ctx = fail_if_err!(gpgme::create_context());
     ctx.set_protocol(gpgme::PROTOCOL_OPENPGP).unwrap();
-    let mut guard = ctx.with_passphrase_cb(passphrase_cb);
+    ctx.with_passphrase_provider(passphrase_cb, |mut ctx| {
+        let mut plain = fail_if_err!(Data::from_buffer(TEXT));
+        let mut cipher = fail_if_err!(Data::new());
+        fail_if_err!(ctx.encrypt_symmetric(ops::EncryptFlags::empty(), &mut plain, &mut cipher));
 
-    let mut plain = fail_if_err!(Data::from_buffer(TEXT));
-    let mut cipher = fail_if_err!(Data::new());
-    fail_if_err!(guard.encrypt_symmetric(ops::EncryptFlags::empty(), &mut plain, &mut cipher));
-
-    cipher.seek(io::SeekFrom::Start(0)).unwrap();
-    plain = fail_if_err!(Data::new());
-    fail_if_err!(guard.decrypt(&mut cipher, &mut plain));
-    assert_eq!(plain.into_bytes().unwrap(), TEXT.as_bytes());
+        cipher.seek(io::SeekFrom::Start(0)).unwrap();
+        plain = fail_if_err!(Data::new());
+        fail_if_err!(ctx.decrypt(&mut cipher, &mut plain));
+        assert_eq!(plain.into_bytes().unwrap(), TEXT.as_bytes());
+    });
 }

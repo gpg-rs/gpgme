@@ -2,6 +2,7 @@ extern crate tempdir;
 extern crate gpgme;
 
 use gpgme::keys::{self, Key};
+use gpgme::StrError::NotPresent;
 
 use self::support::setup;
 
@@ -330,9 +331,9 @@ fn test_keylist() {
         assert!(key.can_certify());
         assert!(!key.is_secret());
         assert_eq!(key.protocol(), gpgme::PROTOCOL_OPENPGP);
-        assert_eq!(key.issuer_serial(), None);
-        assert_eq!(key.issuer_name(), None);
-        assert_eq!(key.chain_id(), None);
+        assert_eq!(key.issuer_serial(), Err(NotPresent));
+        assert_eq!(key.issuer_name(), Err(NotPresent));
+        assert_eq!(key.chain_id(), Err(NotPresent));
         assert_eq!(key.owner_trust(), gpgme::VALIDITY_UNKNOWN);
 
         let info = &KEY_INFOS[i];
@@ -348,11 +349,11 @@ fn test_keylist() {
         assert!(primary.can_certify());
         assert!(!primary.is_secret());
         assert!(!primary.is_cardkey());
-        assert_eq!(primary.card_number(), None);
+        assert_eq!(primary.card_number(), Err(NotPresent));
         assert_eq!(primary.algorithm(), keys::PK_DSA);
         assert_eq!(primary.length(), 1024);
-        assert_eq!(primary.id(), Some(&info.fpr[24..]));
-        assert_eq!(primary.fingerprint(), Some(info.fpr));
+        assert_eq!(primary.id(), Ok(&info.fpr[24..]));
+        assert_eq!(primary.fingerprint(), Ok(info.fpr));
         assert_eq!(primary.expires(), None);
 
         let secondary = key.subkeys().nth(1).unwrap();
@@ -365,11 +366,11 @@ fn test_keylist() {
         assert!(!secondary.can_certify());
         assert!(!secondary.is_secret());
         assert!(!secondary.is_cardkey());
-        assert_eq!(secondary.card_number(), None);
+        assert_eq!(secondary.card_number(), Err(NotPresent));
         assert_eq!(secondary.algorithm(), keys::PK_ELGAMAL_ENCRYPT);
         assert_eq!(secondary.length(), 1024);
-        assert_eq!(secondary.id(), Some(info.sec_keyid));
-        assert!(secondary.fingerprint().is_some());
+        assert_eq!(secondary.id(), Ok(info.sec_keyid));
+        assert!(secondary.fingerprint().is_ok());
         assert_eq!(secondary.expires(), None);
 
         assert_eq!(key.user_ids().count(), info.uid.iter().filter(|u| u.is_some()).count());
@@ -389,6 +390,6 @@ fn test_keylist() {
         }
         i += 1;
     }
-    assert!(!fail_if_err!(keys.result()).truncated());
+    assert!(!fail_if_err!(keys.finish()).truncated());
     assert_eq!(i, KEY_INFOS.len());
 }

@@ -10,6 +10,7 @@ use std::process::{Command, Stdio};
 use tempdir::TempDir;
 
 use gpgme::{self, Data};
+use gpgme::context::PassphraseRequest;
 
 #[macro_export]
 macro_rules! fail_if_err {
@@ -35,7 +36,7 @@ const KEYS: [(&'static str, &'static [u8]); 5] = [
 fn create_keys(dir: &Path) {
     let keydir = dir.join("private-keys-v1.d");
     fs::create_dir(&keydir).unwrap();
-    for &(fpr, key) in KEYS.iter() {
+    for &(fpr, key) in &KEYS {
         let mut filename = keydir.join(fpr);
         filename.set_extension("key");
         File::create(filename).unwrap().write_all(key).unwrap();
@@ -75,8 +76,7 @@ pub fn setup() -> TempDir {
     dir
 }
 
-pub fn passphrase_cb(_hint: Option<&str>, _info: Option<&str>,
-                     _prev_was_bad: bool, out: &mut Write) -> gpgme::Result<()> {
+pub fn passphrase_cb(_req: PassphraseRequest, out: &mut Write) -> gpgme::Result<()> {
     try!(out.write_all(b"abc\n"));
     Ok(())
 }

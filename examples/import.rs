@@ -59,7 +59,7 @@ fn print_usage(program: &str, opts: &Options) {
 
 fn main() {
     let args: Vec<_> = env::args().collect();
-    let program = args[0].clone();
+    let program = &args[0];
 
     let mut opts = Options::new();
     opts.optflag("h", "help", "display this help message");
@@ -69,19 +69,19 @@ fn main() {
     let matches = match opts.parse(&args[1..]) {
         Ok(matches) => matches,
         Err(fail) => {
-            print_usage(&program, &opts);
+            print_usage(program, &opts);
             writeln!(io::stderr(), "{}", fail);
             exit(1);
         }
     };
 
     if matches.opt_present("h") {
-        print_usage(&program, &opts);
+        print_usage(program, &opts);
         return;
     }
 
     if matches.free.len() < 1 {
-        print_usage(&program, &opts);
+        print_usage(program, &opts);
         exit(1);
     }
 
@@ -101,7 +101,7 @@ fn main() {
     for file in matches.free {
         println!("reading file `{}'", &file);
 
-        let mut data = Data::load(&file).unwrap();
+        let mut data = Data::load(file).unwrap();
         mode.map(|m| data.set_encoding(m));
         print_import_result(ctx.import(&mut data).unwrap());
     }

@@ -7,7 +7,7 @@ extern crate lazy_static;
 extern crate gpg_error;
 extern crate gpgme_sys as ffi;
 
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::fmt;
 use std::mem;
 use std::ptr;
@@ -19,6 +19,7 @@ pub use gpg_error as error;
 pub use self::error::{Error, Result};
 pub use self::context::Context;
 pub use self::data::Data;
+pub use self::utils::{StrError, StrResult};
 
 #[macro_use]
 mod utils;
@@ -43,7 +44,7 @@ pub mod info {
 }
 
 ffi_enum_wrapper! {
-    #[doc="A cryptographic protocol that may be supported by the library."]
+    #[doc="A cryptographic protocol that may be used with the library."]
     #[doc=""]
     #[doc="Each protocol is implemented by an engine that the library communicates with"]
     #[doc="to perform various operations."]
@@ -61,10 +62,8 @@ ffi_enum_wrapper! {
 }
 
 impl Protocol {
-    pub fn name(&self) -> Option<&'static str> {
-        unsafe {
-            utils::from_cstr(ffi::gpgme_get_protocol_name(self.0))
-        }
+    pub fn name(&self) -> StrResult<'static> {
+        unsafe { utils::from_cstr(ffi::gpgme_get_protocol_name(self.0)) }
     }
 }
 
@@ -105,7 +104,7 @@ struct TokenImp {
 
 impl fmt::Debug for TokenImp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "")
+        write!(f, "Token")
     }
 }
 
@@ -116,7 +115,8 @@ lazy_static! {
             let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
 
             let result = ffi::gpgme_check_version_internal(ptr::null(), offset as libc::size_t);
-            utils::from_cstr(result).unwrap()
+            assert!(!result.is_null(), "gpgme library could not be initialized");
+            CStr::from_ptr(result).to_str().expect("gpgme version string is not valid utf-8")
         };
         Token(Arc::new(TokenImp { version: version, engine_info: RwLock::new(()) }))
     };
@@ -142,13 +142,7 @@ pub fn init() -> Token {
 /// let mut ctx = gpgme::create_context().unwrap();
 /// ```
 pub fn create_context() -> Result<Context> {
-    init();
-
-    let mut ctx: ffi::gpgme_ctx_t = ptr::null_mut();
-    unsafe {
-        return_err!(ffi::gpgme_new(&mut ctx));
-        Ok(Context::from_raw(ctx))
-    }
+    Context::new(init())
 }
 
 /// A type for managing global resources within the library.
@@ -167,14 +161,12 @@ impl Token {
     /// let gpgme = gpgme::init();
     /// assert!(gpgme.check_version("1.4.0"));
     /// ```
-    pub fn check_version<S: Into<String>>(&self, version: S) -> bool {
-        let version = match CString::new(version.into()) {
+    pub fn check_version<S: Into<Vec<u8>>>(&self, version: S) -> bool {
+        let version = match CString::new(version) {
             Ok(v) => v,
             Err(..) => return false,
         };
-        unsafe {
-            !ffi::gpgme_check_version(version.as_ptr()).is_null()
-        }
+        unsafe { !ffi::gpgme_check_version(version.as_ptr()).is_null() }
     }
 
     /// Returns the version string for the library.
@@ -187,15 +179,12 @@ impl Token {
     /// Commonly supported values for `what` are specified in [`info`](info/).
     ///
     /// This function requires a version of GPGme >= 1.5.0.
-    pub fn get_dir_info<S: Into<String>>(&self, what: S) -> Option<&'static str> {
-        let what = try_opt!(CString::new(what.into()).ok());
-        unsafe {
-            utils::from_cstr(ffi::gpgme_get_dirinfo(what.as_ptr()))
-        }
+    pub fn get_dir_info<S: Into<Vec<u8>>>(&self, what: S) -> utils::StrResult<'static> {
+        let what = try!(CString::new(what).or(Err(StrError::NotPresent)));
+        unsafe { utils::from_cstr(ffi::gpgme_get_dirinfo(what.as_ptr())) }
     }
 
-    /// Checks that the engine implementing the protocol `proto` meets requirements of
-    /// the library.
+    /// Checks that the engine implementing the specified protocol is supported by the library.
     pub fn check_engine_version(&self, proto: Protocol) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_engine_check_version(proto.raw()));
@@ -207,26 +196,47 @@ impl Token {
         EngineInfoGuard::new(&TOKEN)
     }
 
-    pub fn set_engine_info(&self, proto: Protocol, filename: Option<String>,
-                           home_dir: Option<String>) -> Result<()> {
-        let filename = try!(filename.map_or(Ok(None), |s| CString::new(s).map(Some)));
-        let home_dir = try!(home_dir.map_or(Ok(None), |s| CString::new(s).map(Some)));
+    pub fn set_engine_filename<S>(&self, proto: Protocol, filename: S) -> Result<()>
+    where S: Into<Vec<u8>> {
+        let filename = try!(CString::new(filename));
         unsafe {
-            let filename = filename.map_or(ptr::null(), |s| s.as_ptr());
-            let home_dir = home_dir.map_or(ptr::null(), |s| s.as_ptr());
-            let _lock = self.0.engine_info.write().unwrap();
+            let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
+            return_err!(ffi::gpgme_set_engine_info(proto.raw(), filename.as_ptr(), ptr::null()));
+        }
+        Ok(())
+    }
+
+    pub fn set_engine_home_dir<S>(&self, proto: Protocol, home_dir: S) -> Result<()>
+    where S: Into<Vec<u8>> {
+        let home_dir = try!(CString::new(home_dir));
+        unsafe {
+            let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
+            return_err!(ffi::gpgme_set_engine_info(proto.raw(), ptr::null(), home_dir.as_ptr()));
+        }
+        Ok(())
+    }
+
+    pub fn set_engine_info<S1, S2>(&self, proto: Protocol, filename: S1, home_dir: S2) -> Result<()>
+    where S1: Into<Vec<u8>>, S2: Into<Vec<u8>> {
+        let filename = try!(CString::new(filename));
+        let home_dir = try!(CString::new(home_dir));
+        unsafe {
+            let filename = filename.as_ptr();
+            let home_dir = home_dir.as_ptr();
+            let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
             return_err!(ffi::gpgme_set_engine_info(proto.raw(), filename, home_dir));
         }
         Ok(())
     }
 }
 
-pub unsafe trait Wrapper: Drop {
+pub unsafe trait Wrapper {
     type Raw: Copy;
 
     unsafe fn from_raw(raw: Self::Raw) -> Self;
     fn as_raw(&self) -> Self::Raw;
-    fn into_raw(self) -> Self::Raw where Self: Sized {
+    fn into_raw(self) -> Self::Raw
+    where Self: Sized {
         let result = self.as_raw();
         mem::forget(self);
         result

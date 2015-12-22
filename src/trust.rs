@@ -1,7 +1,7 @@
 use ffi;
 
 use Wrapper;
-use utils;
+use utils::{self, StrResult};
 
 pub struct TrustItem {
     raw: ffi::gpgme_trust_item_t,
@@ -9,9 +9,7 @@ pub struct TrustItem {
 
 impl Drop for TrustItem {
     fn drop(&mut self) {
-        unsafe {
-            ffi::gpgme_trust_item_unref(self.raw)
-        }
+        unsafe { ffi::gpgme_trust_item_unref(self.raw) }
     }
 }
 
@@ -38,33 +36,23 @@ unsafe impl Wrapper for TrustItem {
 }
 
 impl TrustItem {
-    pub fn level(&self) -> isize {
-        unsafe {
-            (*self.raw).level as isize
-        }
+    pub fn level(&self) -> i32 {
+        unsafe { (*self.raw).level.into() }
     }
 
-    pub fn key_id(&self) -> Option<&str> {
-        unsafe {
-            utils::from_cstr((*self.raw).keyid)
-        }
+    pub fn key_id(&self) -> StrResult {
+        unsafe { utils::from_cstr((*self.raw).keyid) }
     }
 
-    pub fn owner_trust(&self) -> Option<&str> {
-        unsafe {
-            utils::from_cstr((*self.raw).owner_trust)
-        }
+    pub fn owner_trust(&self) -> StrResult {
+        unsafe { utils::from_cstr((*self.raw).owner_trust) }
     }
 
-    pub fn name(&self) -> Option<&str> {
-        unsafe {
-            utils::from_cstr((*self.raw).name)
-        }
+    pub fn name(&self) -> StrResult {
+        unsafe { utils::from_cstr((*self.raw).name) }
     }
 
-    pub fn validity(&self) -> Option<&str> {
-        unsafe {
-            utils::from_cstr((*self.raw).validity)
-        }
+    pub fn validity(&self) -> StrResult {
+        unsafe { utils::from_cstr((*self.raw).validity) }
     }
 }

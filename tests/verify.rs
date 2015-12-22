@@ -47,7 +47,7 @@ fn check_result(result: ops::VerifyResult, fpr: &str, summary: ops::SignatureSum
 
     let signature = result.signatures().next().unwrap();
     assert_eq!(signature.summary(), summary);
-    assert_eq!(signature.fingerprint(), Some(fpr));
+    assert_eq!(signature.fingerprint(), Ok(fpr));
     assert_eq!(signature.status().err().map_or(0, |e| e.code()), status);
     assert!(!signature.wrong_key_usage());
     assert_eq!(signature.validity(), gpgme::VALIDITY_UNKNOWN);
@@ -70,7 +70,7 @@ fn check_result(result: ops::VerifyResult, fpr: &str, summary: ops::SignatureSum
                 }
             }
         }
-        for notation in expected.iter() {
+        for notation in &expected {
             assert_eq!(notation.2, 1);
         }
     }
