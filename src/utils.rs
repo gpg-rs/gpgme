@@ -37,7 +37,7 @@ macro_rules! ffi_enum_wrapper {
     ($(#[$Attr:meta])* pub enum $Name:ident: $T:ty {
         $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr),+
     }) => {
-        #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+        #[derive(Copy, Clone, Eq, PartialEq, Hash)]
         $(#[$Attr])*
         pub struct $Name($T);
 
@@ -50,6 +50,15 @@ macro_rules! ffi_enum_wrapper {
 
             pub fn raw(&self) -> $T {
                 self.0
+            }
+        }
+
+        impl ::std::fmt::Debug for $Name {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                match *self {
+                    $($Item => write!(f, concat!(stringify!($Item), "({})"), self.0),)+
+                    _ => write!(f, concat!(stringify!($Name), "({})"), self.0),
+                }
             }
         }
     };
