@@ -29,6 +29,7 @@ pub mod data;
 pub mod keys;
 pub mod trust;
 pub mod notation;
+pub mod edit;
 pub mod ops;
 
 /// Constants for use with `Token::get_dir_info`.

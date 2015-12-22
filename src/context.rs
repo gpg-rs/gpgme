@@ -14,6 +14,7 @@ use data::Data;
 use keys::Key;
 use trust::TrustItem;
 use notation::{self, SignatureNotationIter};
+use edit;
 use ops;
 use utils::{self, FdWriter, StrResult};
 
@@ -308,6 +309,24 @@ impl Context {
             return_err!(ffi::gpgme_op_passwd(self.raw, key.as_raw(), 0));
         }
         Ok(())
+    }
+
+    pub fn edit_key<E: EditHandler>(&mut self, key: &Key, handler: E, data: &mut Data)
+        -> Result<()> {
+        unsafe {
+            let mut wrapper = EditHandlerWrapper {
+                handler: handler,
+                response: data,
+            };
+            return_err!(ffi::gpgme_op_edit(self.raw, key.as_raw(), Some(edit_callback::<E>),
+                                           (&mut wrapper as *mut _) as *mut _, data.as_raw()));
+        }
+        Ok(())
+    }
+
+    pub fn edit_key_with<E: edit::Editor>(&mut self, key: &Key, editor: E, data: &mut Data)
+        -> Result<()> {
+        self.edit_key(key, edit::EditorWrapper::new(editor), data)
     }
 
     pub fn delete_key(&mut self, key: &Key) -> Result<()> {
@@ -824,4 +843,38 @@ extern "C" fn progress_callback<H: ProgressHandler>(hook: *mut libc::c_void,
         };
         (*handler).handle(info);
     }
+}
+
+pub struct EditStatus<'a> {
+    pub code: edit::StatusCode,
+    pub args: StrResult<'a>,
+    pub response: &'a mut Data<'a>,
+}
+
+pub trait EditHandler: 'static + Send {
+    fn handle<W: io::Write>(&mut self, status: EditStatus, out: Option<W>) -> Result<()>;
+}
+
+struct EditHandlerWrapper<'a, E: EditHandler> {
+    handler: E,
+    response: *mut Data<'a>,
+}
+
+extern "C" fn edit_callback<'a, E: EditHandler>(hook: *mut libc::c_void,
+    status: ffi::gpgme_status_code_t, args: *const libc::c_char,
+    fd: libc::c_int) -> ffi::gpgme_error_t {
+    let wrapper = hook as *mut EditHandlerWrapper<'a, E>;
+    let result = unsafe {
+        let status = EditStatus {
+            code: edit::StatusCode::from_raw(status),
+            args: utils::from_cstr(args),
+            response: &mut *(*wrapper).response,
+        };
+        if fd < 0 {
+            (*wrapper).handler.handle(status, None::<&mut io::Write>)
+        } else {
+            (*wrapper).handler.handle(status, Some(FdWriter::new(fd)))
+        }
+    };
+    result.err().map(|err| err.raw()).unwrap_or(0)
 }
