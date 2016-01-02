@@ -33,7 +33,7 @@ impl Context {
     }
 
     pub fn has_armor(&self) -> bool {
-        unsafe { ffi::gpgme_get_armor(self.raw) == 1 }
+        unsafe { ffi::gpgme_get_armor(self.raw) != 0 }
     }
 
     pub fn set_armor(&mut self, enabled: bool) {
@@ -43,7 +43,7 @@ impl Context {
     }
 
     pub fn text_mode(&self) -> bool {
-        unsafe { ffi::gpgme_get_textmode(self.raw) == 1 }
+        unsafe { ffi::gpgme_get_textmode(self.raw) != 0 }
     }
 
     pub fn set_text_mode(&mut self, enabled: bool) {
@@ -113,6 +113,22 @@ impl Context {
         }
     }
 
+    pub fn with_status_handler<H, F, R>(&mut self, mut handler: H, f: F) -> R
+    where H: StatusHandler, F: FnOnce(&mut Context) -> R {
+        unsafe {
+            let mut old = (None, ptr::null_mut());
+            ffi::gpgme_get_status_cb(self.raw, &mut old.0, &mut old.1);
+            ffi::gpgme_set_status_cb(self.raw,
+                                     Some(status_callback::<H>),
+                                     (&mut handler as *mut _) as *mut _);
+            let _guard = StatusHandlerGuard {
+                ctx: self.raw,
+                old: old,
+            };
+            f(self)
+        }
+    }
+
     pub fn engine_info(&self) -> EngineInfoIter<Context> {
         unsafe { EngineInfoIter::from_list(ffi::gpgme_ctx_get_engine_info(self.raw)) }
     }
@@ -163,6 +179,16 @@ impl Context {
                                                       max_level.into()));
         }
         Ok(TrustItems { ctx: self })
+    }
+
+    pub fn offline(&self) -> bool {
+        unsafe { ffi::gpgme_get_offline(self.raw) != 0 }
+    }
+
+    pub fn set_offline(&mut self, enabled: bool) {
+        unsafe {
+            ffi::gpgme_set_offline(self.raw, enabled as libc::c_int);
+        }
     }
 
     pub fn key_list_mode(&self) -> ops::KeyListMode {
@@ -842,6 +868,39 @@ extern "C" fn progress_callback<H: ProgressHandler>(hook: *mut libc::c_void,
             total: total.into(),
         };
         (*handler).handle(info);
+    }
+}
+
+pub trait StatusHandler: 'static + Send {
+    fn handle(&mut self, keyword: StrResult, args: StrResult) -> Result<()>;
+}
+
+impl<T: 'static + Send> StatusHandler for T where T: FnMut(StrResult, StrResult) -> Result<()> {
+    fn handle(&mut self, keyword: StrResult, args: StrResult) -> Result<()> {
+        (*self)(keyword, args)
+    }
+}
+
+pub struct StatusHandlerGuard {
+    ctx: ffi::gpgme_ctx_t,
+    old: (ffi::gpgme_status_cb_t, *mut libc::c_void),
+}
+
+impl Drop for StatusHandlerGuard {
+    fn drop(&mut self) {
+        unsafe {
+            ffi::gpgme_set_status_cb(self.ctx, self.old.0, self.old.1);
+        }
+    }
+}
+
+extern "C" fn status_callback<H: StatusHandler>(hook: *mut libc::c_void,
+    keyword: *const libc::c_char, args: *const libc::c_char) -> ffi::gpgme_error_t {
+    let handler = hook as *mut H;
+    unsafe {
+        let keyword = utils::from_cstr(keyword);
+        let args = utils::from_cstr(args);
+        (*handler).handle(args, keyword).err().map(|err| err.raw()).unwrap_or(0)
     }
 }
 

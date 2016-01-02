@@ -56,6 +56,9 @@ extern {
     pub fn gpgme_set_include_certs(ctx: gpgme_ctx_t, nr_of_certs: c_int);
     pub fn gpgme_get_include_certs(ctx: gpgme_ctx_t) -> c_int;
 
+    pub fn gpgme_set_offline(ctx: gpgme_ctx_t, yes: c_int);
+    pub fn gpgme_get_offline(ctx: gpgme_ctx_t) -> c_int;
+
     pub fn gpgme_set_keylist_mode(ctx: gpgme_ctx_t, mode: gpgme_keylist_mode_t) -> gpgme_error_t;
     pub fn gpgme_get_keylist_mode(ctx: gpgme_ctx_t) -> gpgme_keylist_mode_t;
 
@@ -67,6 +70,9 @@ extern {
 
     pub fn gpgme_set_progress_cb(ctx: gpgme_ctx_t, cb: gpgme_progress_cb_t, hook_value: *mut c_void);
     pub fn gpgme_get_progress_cb(ctx: gpgme_ctx_t, cb: *mut gpgme_progress_cb_t, hook_value: *mut *mut c_void);
+
+    pub fn gpgme_set_status_cb(ctx: gpgme_ctx_t, cb: gpgme_status_cb_t, hook_value: *mut c_void);
+    pub fn gpgme_get_status_cb(ctx: gpgme_ctx_t, cb: *mut gpgme_status_cb_t, hook_value: *mut *mut c_void);
 
     pub fn gpgme_set_locale(ctx: gpgme_ctx_t, category: c_int, value: *const c_char) -> gpgme_error_t;
 

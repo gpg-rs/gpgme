@@ -103,6 +103,9 @@ pub const GPGME_PINENTRY_MODE_LOOPBACK: gpgme_pinentry_mode_t = 4;
 pub type gpgme_export_mode_t = libc::c_uint;
 pub const GPGME_EXPORT_MODE_EXTERN: gpgme_export_mode_t = 2;
 pub const GPGME_EXPORT_MODE_MINIMAL: gpgme_export_mode_t = 4;
+pub const GPGME_EXPORT_MODE_SECRET: gpgme_export_mode_t = 16;
+pub const GPGME_EXPORT_MODE_RAW: gpgme_export_mode_t = 32;
+pub const GPGME_EXPORT_MODE_PKCS12: gpgme_export_mode_t = 64;
 
 pub const GPGME_AUDITLOG_HTML: libc::c_uint = 1;
 pub const GPGME_AUDITLOG_WITH_HELP: libc::c_uint = 128;

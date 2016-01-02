@@ -293,6 +293,9 @@ bitflags! {
     flags ExportMode: ffi::gpgme_export_mode_t {
         const EXPORT_EXTERN = ffi::GPGME_EXPORT_MODE_EXTERN,
         const EXPORT_MINIMAL = ffi::GPGME_EXPORT_MODE_MINIMAL,
+        const EXPORT_SECRET = ffi::GPGME_EXPORT_MODE_SECRET,
+        const EXPORT_RAW = ffi::GPGME_EXPORT_MODE_RAW,
+        const EXPORT_PKCS12 = ffi::GPGME_EXPORT_MODE_PKCS12,
     }
 }
 
