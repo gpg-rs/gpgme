@@ -13,10 +13,7 @@ libc = "0.2"
 bitflags = "0.3"
 lazy_static = "0.1"
 gpg-error = "0.1"
-
-[dependencies.gpgme-sys]
-path = "gpgme-sys"
-version = "0.2.0"
+gpgme-sys = {path = "gpgme-sys", version = "0.2.0"}
 
 [dev-dependencies]
 getopts = "0.2"
@@ -64,3 +61,5 @@ name = "import"
 
 [[test]]
 name = "export"
+
+[workspace]

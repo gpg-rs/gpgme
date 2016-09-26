@@ -3,9 +3,9 @@ extern crate libc;
 extern crate bitflags;
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
-extern crate gpg_error;
 extern crate gpgme_sys as ffi;
+#[macro_use]
+pub extern crate gpg_error as error;
 
 use std::ffi::{CStr, CString};
 use std::fmt;
@@ -15,7 +15,6 @@ use std::sync::{Arc, RwLock};
 
 use self::engine::EngineInfoGuard;
 
-pub use gpg_error as error;
 pub use self::error::{Error, Result};
 pub use self::context::Context;
 pub use self::data::Data;

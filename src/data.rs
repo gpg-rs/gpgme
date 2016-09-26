@@ -117,7 +117,7 @@ impl<'a> Data<'a> {
     pub fn from_bytes<B: AsRef<[u8]>>(bytes: B) -> Result<Data<'static>> {
         let bytes = bytes.as_ref();
         unsafe {
-            let (buf, len) = (bytes.as_ptr() as *const _, bytes.len() as libc::size_t);
+            let (buf, len) = (bytes.as_ptr() as *const _, bytes.len().into());
             let mut data = ptr::null_mut();
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf, len, 1));
             Ok(Data::from_raw(data))
@@ -128,7 +128,7 @@ impl<'a> Data<'a> {
     pub fn from_buffer<B: AsRef<[u8]> + ?Sized>(buf: &B) -> Result<Data> {
         let buf = buf.as_ref();
         unsafe {
-            let (buf, len) = (buf.as_ptr() as *const _, buf.len() as libc::size_t);
+            let (buf, len) = (buf.as_ptr() as *const _, buf.len().into());
             let mut data = ptr::null_mut();
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf, len, 0));
             Ok(Data::from_raw(data))

@@ -19,14 +19,11 @@ macro_rules! list_iterator {
         type Item = $item;
 
         fn next(&mut self) -> Option<Self::Item> {
-            let current = self.current;
-            if !current.is_null() {
-                unsafe {
-                    self.current = (*current).next;
-                    Some($constructor(current))
-                }
-            } else {
-                None
+            unsafe {
+                self.current.as_mut().map(|c| {
+                    self.current = c.next;
+                    $constructor(c)
+                })
             }
         }
     };
@@ -103,12 +100,10 @@ impl<'a> error::Error for StrError<'a> {
 }
 
 pub unsafe fn from_cstr<'a>(s: *const libc::c_char) -> StrResult<'a> {
-    if !s.is_null() {
+    s.as_ref().ok_or(StrError::NotPresent).and_then(|s| {
         let s = CStr::from_ptr(s);
         s.to_str().map_err(|e| StrError::NotUtf8(s, e))
-    } else {
-        Err(StrError::NotPresent)
-    }
+    })
 }
 
 pub struct FdWriter {
@@ -124,7 +119,7 @@ impl FdWriter {
 impl Write for FdWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let result = unsafe {
-            ffi::gpgme_io_write(self.fd, buf.as_ptr() as *const _, buf.len() as libc::size_t)
+            ffi::gpgme_io_write(self.fd, buf.as_ptr() as *const _, buf.len().into())
         };
         if result >= 0 {
             Ok(result as usize)
