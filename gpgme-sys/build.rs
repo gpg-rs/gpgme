@@ -3,8 +3,13 @@ use std::process::Command;
 use std::str;
 
 fn parse_config_output(output: &str) {
-    let parts: Vec<_> = output.split(' ').filter(|p| p.len() > 2)
-        .map(|p| (&p[0..2], &p[2..])).collect();
+    let parts = output.split(|c: char| c.is_whitespace()).filter_map(|p| {
+        if p.len() > 2 {
+            Some(p.split_at(2))
+        } else {
+            None
+        }
+    });
 
     for (flag, val) in parts {
         match flag {
@@ -22,27 +27,27 @@ fn parse_config_output(output: &str) {
     }
 }
 
-fn fail<S: AsRef<str>>(s: S) -> ! {
-    panic!("\n{}\n\nbuild script failed, exiting...", s.as_ref());
-}
-
 fn main() {
-    let mut command = Command::new(env::var_os("GPGME_CONFIG").unwrap_or("gpgme-config".into()));
-    if cfg!(unix) {
-        command.arg("--thread=pthread");
-    }
-    command.arg("--libs");
-    let output = match command.output() {
-        Ok(out) => out,
-        Err(err) => {
-            fail(format!("failed to run `{:?}`: {}", command, err));
+    if let Ok(lib) = env::var("GPGME_LIB") {
+        let mode = match env::var_os("GPGME_STATIC")  {
+            Some(_) => "static",
+            _ => "dylib",
+        };
+        println!("cargo:rustc-flags=-l {0}={1}", mode, lib);
+    } else {
+        let mut command = Command::new(env::var_os("GPGME_CONFIG")
+                .unwrap_or("gpgme-config".into()));
+        if cfg!(unix) {
+            command.arg("--thread=pthread");
         }
-    };
+        command.arg("--libs");
 
-    if !output.status.success() {
-        fail(format!("`{:?}` did not exit successfully: {}", command, output.status));
+        let output = command.output().unwrap();
+        if !output.status.success() {
+            panic!("`{:?}` did not exit successfully: {}", command, output.status);
+        }
+
+        parse_config_output(str::from_utf8(&output.stdout).unwrap());
     }
-
-    parse_config_output(str::from_utf8(&output.stdout).unwrap());
 }
 
