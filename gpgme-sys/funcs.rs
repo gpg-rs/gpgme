@@ -39,6 +39,7 @@ extern {
     pub fn gpgme_new(ctx: *mut gpgme_ctx_t) -> gpgme_error_t;
     pub fn gpgme_release(ctx: gpgme_ctx_t);
 
+    pub fn gpgme_set_ctx_flag(ctx: gpgme_ctx_t, name: *const c_char, value: *const c_char) -> gpgme_error_t;
     pub fn gpgme_set_protocol(ctx: gpgme_ctx_t, proto: gpgme_protocol_t) -> gpgme_error_t;
     pub fn gpgme_get_protocol(ctx: gpgme_ctx_t) -> gpgme_protocol_t;
 
@@ -79,6 +80,7 @@ extern {
     pub fn gpgme_ctx_get_engine_info(ctx: gpgme_ctx_t) -> gpgme_engine_info_t;
     pub fn gpgme_ctx_set_engine_info(ctx: gpgme_ctx_t, proto: gpgme_protocol_t, file_name: *const c_char, home_dir: *const c_char) -> gpgme_error_t;
 
+    pub fn gpgme_pubkey_algo_string(subkey: gpgme_subkey_t) -> *mut c_char;
     pub fn gpgme_pubkey_algo_name(algo: gpgme_pubkey_algo_t) -> *const c_char;
     pub fn gpgme_hash_algo_name(algo: gpgme_hash_algo_t) -> *const c_char;
 
@@ -122,6 +124,8 @@ extern {
 
     pub fn gpgme_data_get_file_name(dh: gpgme_data_t) -> *mut c_char;
     pub fn gpgme_data_set_file_name(dh: gpgme_data_t, file_name: *const c_char) -> gpgme_error_t;
+
+    pub fn gpgme_data_set_flag(dh: gpgme_data_t, name: *const c_char, value: *const c_char) -> gpgme_error_t;
 
     pub fn gpgme_data_identify(dh: gpgme_data_t, _reserved: c_int) -> gpgme_data_type_t;
 
@@ -175,14 +179,50 @@ extern {
     pub fn gpgme_op_genkey_result(ctx: gpgme_ctx_t) -> gpgme_genkey_result_t;
     pub fn gpgme_op_genkey_start(ctx: gpgme_ctx_t, parms: *const c_char, pubkey: gpgme_data_t, seckey: gpgme_data_t) -> gpgme_error_t;
     pub fn gpgme_op_genkey(ctx: gpgme_ctx_t, parms: *const c_char, pubkey: gpgme_data_t, seckey: gpgme_data_t) -> gpgme_error_t;
+    pub fn gpgme_op_createkey_start(ctx: gpgme_ctx_t, userid: *const c_char, algo: *const c_char,
+                                    reserved: c_ulong, expires: c_ulong, certkey: gpgme_key_t,
+                                    flags: c_uint) -> gpgme_error_t;
+    pub fn gpgme_op_createkey(ctx: gpgme_ctx_t, userid: *const c_char, algo: *const c_char,
+                              reserved: c_ulong, expires: c_ulong, certkey: gpgme_key_t,
+                              flags: c_uint) -> gpgme_error_t;
+    pub fn gpgme_op_createsubkey_start(ctx: gpgme_ctx_t, key: gpgme_key_t, algo: *const c_char,
+                                       reserved: c_ulong, expires: c_ulong,
+                                       flags: c_uint) -> gpgme_error_t;
+    pub fn gpgme_op_createsubkey(ctx: gpgme_ctx_t, key: gpgme_key_t, algo: *const c_char,
+                                 reserved: c_ulong, expires: c_ulong,
+                                 flags: c_uint) -> gpgme_error_t;
+    pub fn gpgme_op_adduid_start(ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char,
+                                 reserved: c_uint) -> gpgme_error_t;
+    pub fn gpgme_op_adduid(ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char,
+                           reserved: c_uint) -> gpgme_error_t;
+    pub fn gpgme_op_revuid_start(ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char,
+                                 reserved: c_uint) -> gpgme_error_t;
+    pub fn gpgme_op_revuid(ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char,
+                           reserved: c_uint) -> gpgme_error_t;
 
     pub fn gpgme_op_delete_start(ctx: gpgme_ctx_t, key: gpgme_key_t, allow_secret: c_int) -> gpgme_error_t;
     pub fn gpgme_op_delete(ctx: gpgme_ctx_t, key: gpgme_key_t, allow_secret: c_int) -> gpgme_error_t;
+
+    pub fn gpgme_op_keysign_start(ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char,
+                                  expires: c_ulong, flags: c_uint) -> gpgme_error_t;
+    pub fn gpgme_op_keysign(ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char,
+                            expires: c_ulong, flags: c_uint) -> gpgme_error_t;
+
+    pub fn gpgme_op_interact_start(ctx: gpgme_ctx_t, key: gpgme_key_t, flags: c_uint,
+                                   fnc: gpgme_interact_cb_t, fnc_value: *mut c_void,
+                                   out: gpgme_data_t) -> gpgme_error_t;
+    pub fn gpgme_op_interact(ctx: gpgme_ctx_t, key: gpgme_key_t, flags: c_uint,
+                             fnc: gpgme_interact_cb_t, fnc_value: *mut c_void,
+                             out: gpgme_data_t) -> gpgme_error_t;
 
     pub fn gpgme_op_edit_start(ctx: gpgme_ctx_t, key: gpgme_key_t, fnc: gpgme_edit_cb_t, fnc_value: *mut c_void, out: gpgme_data_t) -> gpgme_error_t;
     pub fn gpgme_op_edit(ctx: gpgme_ctx_t, key: gpgme_key_t, fnc: gpgme_edit_cb_t, fnc_value: *mut c_void, out: gpgme_data_t) -> gpgme_error_t;
     pub fn gpgme_op_card_edit_start(ctx: gpgme_ctx_t, key: gpgme_key_t, fnc: gpgme_edit_cb_t, fnc_value: *mut c_void, out: gpgme_data_t) -> gpgme_error_t;
     pub fn gpgme_op_card_edit(ctx: gpgme_ctx_t, key: gpgme_key_t, fnc: gpgme_edit_cb_t, fnc_value: *mut c_void, out: gpgme_data_t) -> gpgme_error_t;
+
+    pub fn gpgme_op_tofu_policy_start(ctx: gpgme_ctx_t, key: gpgme_key_t,
+                                      policy: gpgme_tofu_policy_t) -> gpgme_error_t;
+    pub fn gpgme_op_tofu_policy(ctx: gpgme_ctx_t, key: gpgme_key_t, policy: gpgme_tofu_policy_t) -> gpgme_error_t;
 
     pub fn gpgme_op_spawn_start(ctx: gpgme_ctx_t, file: *const c_char, argv: *mut *const c_char,
                                 datain: gpgme_data_t, dataout: gpgme_data_t, dataerr: gpgme_data_t,

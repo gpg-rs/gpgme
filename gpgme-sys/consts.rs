@@ -19,13 +19,16 @@ pub const GPGME_DATA_ENCODING_ARMOR: gpgme_data_encoding_t = 3;
 pub const GPGME_DATA_ENCODING_URL: gpgme_data_encoding_t = 4;
 pub const GPGME_DATA_ENCODING_URLESC: gpgme_data_encoding_t = 5;
 pub const GPGME_DATA_ENCODING_URL0: gpgme_data_encoding_t = 6;
+pub const GPGME_DATA_ENCODING_MIME: gpgme_data_encoding_t = 7;
 
 pub type gpgme_data_type_t = libc::c_uint;
 pub const GPGME_DATA_TYPE_INVALID: gpgme_data_type_t = 0;
 pub const GPGME_DATA_TYPE_UNKNOWN: gpgme_data_type_t = 1;
 pub const GPGME_DATA_TYPE_PGP_SIGNED: gpgme_data_type_t = 0x10;
+pub const GPGME_DATA_TYPE_PGP_ENCRYPTED: gpgme_data_type_t = 0x11;
 pub const GPGME_DATA_TYPE_PGP_OTHER: gpgme_data_type_t = 0x12;
 pub const GPGME_DATA_TYPE_PGP_KEY: gpgme_data_type_t = 0x13;
+pub const GPGME_DATA_TYPE_PGP_SIGNATURE: gpgme_data_type_t = 0x18;
 pub const GPGME_DATA_TYPE_CMS_SIGNED: gpgme_data_type_t = 0x20;
 pub const GPGME_DATA_TYPE_CMS_ENCRYPTED: gpgme_data_type_t = 0x21;
 pub const GPGME_DATA_TYPE_CMS_OTHER: gpgme_data_type_t = 0x22;
@@ -42,6 +45,7 @@ pub const GPGME_PK_ECC: gpgme_pubkey_algo_t = 18;
 pub const GPGME_PK_ELG: gpgme_pubkey_algo_t = 20;
 pub const GPGME_PK_ECDSA: gpgme_pubkey_algo_t = 301;
 pub const GPGME_PK_ECDH: gpgme_pubkey_algo_t = 302;
+pub const GPGME_PK_EDDSA: gpgme_pubkey_algo_t = 303;
 
 pub type gpgme_hash_algo_t = libc::c_uint;
 pub const GPGME_MD_NONE: gpgme_hash_algo_t = 0;
@@ -73,6 +77,14 @@ pub const GPGME_VALIDITY_MARGINAL: gpgme_validity_t = 3;
 pub const GPGME_VALIDITY_FULL: gpgme_validity_t = 4;
 pub const GPGME_VALIDITY_ULTIMATE: gpgme_validity_t = 5;
 
+pub type gpgme_tofu_policy_t = libc::c_uint;
+pub const GPGME_TOFU_POLICY_NONE: gpgme_tofu_policy_t = 0;
+pub const GPGME_TOFU_POLICY_AUTO: gpgme_tofu_policy_t = 1;
+pub const GPGME_TOFU_POLICY_GOOD: gpgme_tofu_policy_t = 2;
+pub const GPGME_TOFU_POLICY_UNKNOWN: gpgme_tofu_policy_t = 3;
+pub const GPGME_TOFU_POLICY_BAD: gpgme_tofu_policy_t = 4;
+pub const GPGME_TOFU_POLICY_ASK: gpgme_tofu_policy_t = 5;
+
 pub type gpgme_protocol_t = libc::c_uint;
 pub const GPGME_PROTOCOL_OpenPGP: gpgme_protocol_t = 0;
 pub const GPGME_PROTOCOL_CMS: gpgme_protocol_t = 1;
@@ -90,6 +102,7 @@ pub const GPGME_KEYLIST_MODE_EXTERN: gpgme_keylist_mode_t = 2;
 pub const GPGME_KEYLIST_MODE_SIGS: gpgme_keylist_mode_t = 4;
 pub const GPGME_KEYLIST_MODE_SIG_NOTATIONS: gpgme_keylist_mode_t = 8;
 pub const GPGME_KEYLIST_MODE_WITH_SECRET: gpgme_keylist_mode_t = 16;
+pub const GPGME_KEYLIST_MODE_WITH_TOFU: gpgme_keylist_mode_t = 32;
 pub const GPGME_KEYLIST_MODE_EPHEMERAL: gpgme_keylist_mode_t = 128;
 pub const GPGME_KEYLIST_MODE_VALIDATE: gpgme_keylist_mode_t = 256;
 
@@ -216,6 +229,13 @@ pub const GPGME_STATUS_PINENTRY_LAUNCHED: gpgme_status_code_t = 88;
 pub const GPGME_STATUS_ATTRIBUTE: gpgme_status_code_t = 89;
 pub const GPGME_STATUS_BEGIN_SIGNING: gpgme_status_code_t = 90;
 pub const GPGME_STATUS_KEY_NOT_CREATED: gpgme_status_code_t = 91;
+pub const GPGME_STATUS_INQUIRE_MAXLEN: gpgme_status_code_t = 92;
+pub const GPGME_STATUS_FAILURE: gpgme_status_code_t = 93;
+pub const GPGME_STATUS_KEY_CONSIDERED: gpgme_status_code_t = 94;
+pub const GPGME_STATUS_TOFU_USER: gpgme_status_code_t = 95;
+pub const GPGME_STATUS_TOFU_STATS: gpgme_status_code_t = 96;
+pub const GPGME_STATUS_TOFU_STATS_LONG: gpgme_status_code_t = 97;
+pub const GPGME_STATUS_NOTATION_FLAGS: gpgme_status_code_t = 98;
 
 pub const GPGME_INCLUDE_CERTS_DEFAULT: libc::c_int = -256;
 
@@ -231,7 +251,7 @@ pub const GPGME_ENCRYPT_NO_ENCRYPT_TO: gpgme_encrypt_flags_t = 2;
 pub const GPGME_ENCRYPT_PREPARE: gpgme_encrypt_flags_t = 4;
 pub const GPGME_ENCRYPT_EXPECT_SIGN: gpgme_encrypt_flags_t = 8;
 pub const GPGME_ENCRYPT_NO_COMPRESS: gpgme_encrypt_flags_t = 16;
-
+pub const GPGME_ENCRYPT_SYMMETRIC: gpgme_encrypt_flags_t = 32;
 
 pub type gpgme_sigsum_t = libc::c_uint;
 pub const GPGME_SIGSUM_VALID: gpgme_sigsum_t = 0x0001;
@@ -245,12 +265,30 @@ pub const GPGME_SIGSUM_CRL_MISSING: gpgme_sigsum_t = 0x0100;
 pub const GPGME_SIGSUM_CRL_TOO_OLD: gpgme_sigsum_t = 0x0200;
 pub const GPGME_SIGSUM_BAD_POLICY: gpgme_sigsum_t = 0x0400;
 pub const GPGME_SIGSUM_SYS_ERROR: gpgme_sigsum_t = 0x0800;
+pub const GPGME_SIGSUM_TOFU_CONFLICT: gpgme_sigsum_t = 0x1000;
 
 pub const GPGME_IMPORT_NEW: libc::c_uint = 1;
 pub const GPGME_IMPORT_UID: libc::c_uint = 2;
 pub const GPGME_IMPORT_SIG: libc::c_uint = 4;
 pub const GPGME_IMPORT_SUBKEY: libc::c_uint = 8;
 pub const GPGME_IMPORT_SECRET: libc::c_uint = 16;
+
+pub const GPGME_CREATE_SIGN: libc::c_uint = 1 << 0;
+pub const GPGME_CREATE_ENCR: libc::c_uint = 1 << 1;
+pub const GPGME_CREATE_CERT: libc::c_uint = 1 << 2;
+pub const GPGME_CREATE_AUTH: libc::c_uint = 1 << 3;
+pub const GPGME_CREATE_NOPASSWD: libc::c_uint = 1 << 7;
+pub const GPGME_CREATE_SELFSIGNED: libc::c_uint = 1 << 8;
+pub const GPGME_CREATE_NOSTORE: libc::c_uint = 1 << 9;
+pub const GPGME_CREATE_WANTPUB: libc::c_uint = 1 << 10;
+pub const GPGME_CREATE_WANTSEC: libc::c_uint = 1 << 11;
+pub const GPGME_CREATE_FORCE: libc::c_uint = 1 << 12;
+
+pub const GPGME_KEYSIGN_LOCAL: libc::c_uint = 1 << 7;
+pub const GPGME_KEYSIGN_LFSEP: libc::c_uint = 1 << 8;
+pub const GPGME_KEYSIGN_NOEXPIRE: libc::c_uint = 1 << 9;
+
+pub const GPGME_INTERACT_CARD: libc::c_uint = 1 << 0;
 
 pub const GPGME_SPAWN_DETACHED: libc::c_uint = 1;
 pub const GPGME_SPAWN_ALLOW_SET_FG: libc::c_uint = 2;
