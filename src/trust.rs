@@ -1,7 +1,7 @@
-use ffi;
+use std::ffi::CStr;
 
+use ffi;
 use Wrapper;
-use utils::{self, StrResult};
 
 pub struct TrustItem {
     raw: ffi::gpgme_trust_item_t,
@@ -40,19 +40,19 @@ impl TrustItem {
         unsafe { (*self.raw).level.into() }
     }
 
-    pub fn key_id(&self) -> StrResult {
-        unsafe { utils::from_cstr((*self.raw).keyid) }
+    pub fn key_id_raw(&self) -> Option<&CStr> {
+        unsafe { (*self.raw).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
-    pub fn owner_trust(&self) -> StrResult {
-        unsafe { utils::from_cstr((*self.raw).owner_trust) }
+    pub fn owner_trust_raw(&self) -> Option<&CStr> {
+        unsafe { (*self.raw).owner_trust.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
-    pub fn name(&self) -> StrResult {
-        unsafe { utils::from_cstr((*self.raw).name) }
+    pub fn name_raw(&self) -> Option<&CStr> {
+        unsafe { (*self.raw).name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
-    pub fn validity(&self) -> StrResult {
-        unsafe { utils::from_cstr((*self.raw).validity) }
+    pub fn validity_raw(&self) -> Option<&CStr> {
+        unsafe { (*self.raw).validity.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }

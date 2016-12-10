@@ -35,6 +35,6 @@ fn test_symmetric() {
         cipher.seek(io::SeekFrom::Start(0)).unwrap();
         plain = fail_if_err!(Data::new());
         fail_if_err!(ctx.decrypt(&mut cipher, &mut plain));
-        assert_eq!(plain.into_bytes().unwrap(), TEXT.as_bytes());
+        assert_eq!(plain.try_into_bytes().unwrap(), TEXT.as_bytes());
     });
 }

@@ -1,9 +1,7 @@
-use std::error;
-use std::ffi::CStr;
-use std::fmt;
+use std::borrow::Cow;
+use std::ffi::{CStr, CString};
 use std::io;
 use std::io::prelude::*;
-use std::str::Utf8Error;
 
 use libc;
 use ffi;
@@ -71,39 +69,114 @@ macro_rules! ffi_enum_wrapper {
     };
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum StrError<'a> {
-    NotPresent,
-    NotUtf8(&'a CStr, Utf8Error),
-}
+macro_rules! impl_wrapper {
+    ($Name:ident: $T:ty) => {
+        impl $Name {
+            pub unsafe fn from_raw(raw: $T) -> Self {
+                $Name(raw)
+            }
 
-pub type StrResult<'a> = Result<&'a str, StrError<'a>>;
+            pub fn as_raw(&self) -> $T {
+                self.0
+            }
 
-impl<'a> fmt::Display for StrError<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            StrError::NotPresent => write!(f, "no string present"),
-            StrError::NotUtf8(ref s, _) => {
-                write!(f, "string was not valid utf-8: {:?}", s)
+            pub fn into_raw(self) -> $T {
+                let raw = self.0;
+                ::std::mem::forget(self);
+                raw
             }
         }
     }
 }
 
-impl<'a> error::Error for StrError<'a> {
-    fn description(&self) -> &str {
-        match *self {
-            StrError::NotPresent => "no string present",
-            StrError::NotUtf8(..) => "string was not valid utf-8",
+pub trait IntoNativeString {
+    type Output: AsRef<CStr>;
+
+    fn into_native(self) -> Self::Output;
+}
+
+impl<'a> IntoNativeString for CString {
+    type Output = Self;
+
+    fn into_native(self) -> Self {
+        self
+    }
+}
+
+impl<'a> IntoNativeString for &'a CString {
+    type Output = &'a CStr;
+
+    fn into_native(self) -> Self::Output {
+        self
+    }
+}
+
+impl<'a> IntoNativeString for &'a CStr {
+    type Output = Self;
+
+    fn into_native(self) -> Self {
+        self
+    }
+}
+
+impl<'a> IntoNativeString for String {
+    type Output = CString;
+
+    fn into_native(self) -> Self::Output {
+        self.into_bytes().into_native()
+    }
+}
+
+impl<'a> IntoNativeString for &'a String {
+    type Output = Cow<'a, CStr>;
+
+    fn into_native(self) -> Self::Output {
+        self.as_str().into_native()
+    }
+}
+
+impl<'a> IntoNativeString for &'a str {
+    type Output = Cow<'a, CStr>;
+
+    fn into_native(self) -> Self::Output {
+        self.as_bytes().into_native()
+    }
+}
+
+impl<'a> IntoNativeString for Vec<u8> {
+    type Output = CString;
+
+    fn into_native(mut self) -> Self::Output {
+        if let Some(term) = self.iter().position(|&x| x == 0) {
+            self.truncate(term);
+        }
+
+        unsafe {
+            CString::from_vec_unchecked(self)
         }
     }
 }
 
-pub unsafe fn from_cstr<'a>(s: *const libc::c_char) -> StrResult<'a> {
-    s.as_ref().ok_or(StrError::NotPresent).and_then(|s| {
-        let s = CStr::from_ptr(s);
-        s.to_str().map_err(|e| StrError::NotUtf8(s, e))
-    })
+impl<'a> IntoNativeString for &'a Vec<u8> {
+    type Output = Cow<'a, CStr>;
+
+    fn into_native(self) -> Self::Output {
+        self.as_slice().into_native()
+    }
+}
+
+impl<'a> IntoNativeString for &'a [u8] {
+    type Output = Cow<'a, CStr>;
+
+    fn into_native(self) -> Self::Output {
+        unsafe {
+            if let Some(term) = self.iter().position(|&x| x == 0) {
+                Cow::Borrowed(CStr::from_bytes_with_nul_unchecked(&self[..term]))
+            } else {
+                Cow::Owned(CString::from_vec_unchecked(self.into()))
+            }
+        }
+    }
 }
 
 pub struct FdWriter {

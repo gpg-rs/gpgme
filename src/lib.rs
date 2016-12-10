@@ -7,10 +7,12 @@ extern crate gpgme_sys as ffi;
 #[macro_use]
 pub extern crate gpg_error as error;
 
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::fmt;
 use std::mem;
 use std::ptr;
+use std::result;
+use std::str::Utf8Error;
 use std::sync::{Arc, RwLock};
 
 use self::engine::EngineInfoGuard;
@@ -18,7 +20,7 @@ use self::engine::EngineInfoGuard;
 pub use self::error::{Error, Result};
 pub use self::context::Context;
 pub use self::data::Data;
-pub use self::utils::{StrError, StrResult};
+pub use self::utils::IntoNativeString;
 
 #[macro_use]
 mod utils;
@@ -61,8 +63,12 @@ ffi_enum_wrapper! {
 }
 
 impl Protocol {
-    pub fn name(&self) -> StrResult<'static> {
-        unsafe { utils::from_cstr(ffi::gpgme_get_protocol_name(self.0)) }
+    pub fn name(&self) -> result::Result<&'static str, Option<Utf8Error>> {
+        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn name_raw(&self) -> Option<&'static CStr> {
+        unsafe { ffi::gpgme_get_protocol_name(self.0).as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }
 
@@ -161,12 +167,9 @@ impl Token {
     /// let gpgme = gpgme::init();
     /// assert!(gpgme.check_version("1.4.0"));
     /// ```
-    pub fn check_version<S: Into<Vec<u8>>>(&self, version: S) -> bool {
-        let version = match CString::new(version) {
-            Ok(v) => v,
-            Err(..) => return false,
-        };
-        unsafe { !ffi::gpgme_check_version(version.as_ptr()).is_null() }
+    pub fn check_version<S: IntoNativeString>(&self, version: S) -> bool {
+        let version = version.into_native();
+        unsafe { !ffi::gpgme_check_version(version.as_ref().as_ptr()).is_null() }
     }
 
     /// Returns the version string for the library.
@@ -179,9 +182,9 @@ impl Token {
     /// Commonly supported values for `what` are specified in [`info`](info/).
     ///
     /// This function requires a version of GPGme >= 1.5.0.
-    pub fn get_dir_info<S: Into<Vec<u8>>>(&self, what: S) -> utils::StrResult<'static> {
-        let what = try!(CString::new(what).or(Err(StrError::NotPresent)));
-        unsafe { utils::from_cstr(ffi::gpgme_get_dirinfo(what.as_ptr())) }
+    pub fn get_dir_info_raw<S: IntoNativeString>(&self, what: S) -> Option<&'static CStr> {
+        let what = what.into_native();
+        unsafe { ffi::gpgme_get_dirinfo(what.as_ref().as_ptr()).as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     /// Checks that the engine implementing the specified protocol is supported by the library.
@@ -196,35 +199,35 @@ impl Token {
         EngineInfoGuard::new(&TOKEN)
     }
 
-    pub fn set_engine_filename<S>(&self, proto: Protocol, filename: S) -> Result<()>
-    where S: Into<Vec<u8>> {
-        let filename = try!(CString::new(filename));
+    pub fn set_engine_path<S>(&self, proto: Protocol, path: S) -> Result<()>
+    where S: IntoNativeString {
+        let path = path.into_native();
         unsafe {
             let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
-            return_err!(ffi::gpgme_set_engine_info(proto.raw(), filename.as_ptr(), ptr::null()));
+            return_err!(ffi::gpgme_set_engine_info(proto.raw(), path.as_ref().as_ptr(), ptr::null()));
         }
         Ok(())
     }
 
     pub fn set_engine_home_dir<S>(&self, proto: Protocol, home_dir: S) -> Result<()>
-    where S: Into<Vec<u8>> {
-        let home_dir = try!(CString::new(home_dir));
+    where S: IntoNativeString {
+        let home_dir = home_dir.into_native();
         unsafe {
             let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
-            return_err!(ffi::gpgme_set_engine_info(proto.raw(), ptr::null(), home_dir.as_ptr()));
+            return_err!(ffi::gpgme_set_engine_info(proto.raw(), ptr::null(), home_dir.as_ref().as_ptr()));
         }
         Ok(())
     }
 
-    pub fn set_engine_info<S1, S2>(&self, proto: Protocol, filename: S1, home_dir: S2) -> Result<()>
-    where S1: Into<Vec<u8>>, S2: Into<Vec<u8>> {
-        let filename = try!(CString::new(filename));
-        let home_dir = try!(CString::new(home_dir));
+    pub fn set_engine_info<S1, S2>(&self, proto: Protocol, path: S1, home_dir: S2) -> Result<()>
+    where S1: IntoNativeString, S2: IntoNativeString {
+        let path = path.into_native();
+        let home_dir = home_dir.into_native();
         unsafe {
-            let filename = filename.as_ptr();
-            let home_dir = home_dir.as_ptr();
+            let path = path.as_ref().as_ptr();
+            let home_dir = home_dir.as_ref().as_ptr();
             let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
-            return_err!(ffi::gpgme_set_engine_info(proto.raw(), filename, home_dir));
+            return_err!(ffi::gpgme_set_engine_info(proto.raw(), path, home_dir));
         }
         Ok(())
     }

@@ -1,4 +1,7 @@
+use std::ffi::CStr;
 use std::marker::PhantomData;
+use std::result;
+use std::str::Utf8Error;
 
 use libc;
 use ffi;
@@ -8,7 +11,6 @@ use error::{self, Error, Result};
 use context::Context;
 use keys::{HashAlgorithm, KeyAlgorithm};
 use notation::SignatureNotationIter;
-use utils::{self, StrResult};
 
 pub unsafe trait OpResult: Clone + Wrapper {
     fn from_context(ctx: &Context) -> Option<Self>;
@@ -121,8 +123,12 @@ impl<'a, T> InvalidKey<'a, T> {
         self.raw
     }
 
-    pub fn fingerprint(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).fpr) }
+    pub fn fingerprint(&self) -> result::Result<&'a str, Option<Utf8Error>> {
+        self.fingerprint_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn fingerprint_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn reason(&self) -> Option<Error> {
@@ -218,8 +224,12 @@ impl KeyGenerateResult {
         unsafe { (*self.raw).uid() }
     }
 
-    pub fn fingerprint(&self) -> StrResult {
-        unsafe { utils::from_cstr((*self.raw).fpr) }
+    pub fn fingerprint(&self) -> result::Result<&str, Option<Utf8Error>> {
+        self.fingerprint_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn fingerprint_raw(&self) -> Option<&CStr> {
+        unsafe { (*self.raw).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }
 
@@ -302,8 +312,12 @@ bitflags! {
 
 impl_subresult!(ImportStatus: ffi::gpgme_import_status_t, ImportStatusIter, ImportResult);
 impl<'a> ImportStatus<'a> {
-    pub fn fingerprint(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).fpr) }
+    pub fn fingerprint(&self) -> result::Result<&'a str, Option<Utf8Error>> {
+        self.fingerprint_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn fingerprint_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn result(&self) -> Result<()> {
@@ -348,12 +362,20 @@ impl EncryptResult {
 
 impl_result!(DecryptResult: ffi::gpgme_decrypt_result_t = ffi::gpgme_op_decrypt_result);
 impl DecryptResult {
-    pub fn filename(&self) -> StrResult {
-        unsafe { utils::from_cstr((*self.raw).file_name) }
+    pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
+        self.filename_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    pub fn unsupported_algorithm(&self) -> StrResult {
-        unsafe { utils::from_cstr((*self.raw).unsupported_algorithm) }
+    pub fn filename_raw(&self) -> Option<&CStr> {
+        unsafe { (*self.raw).file_name.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn unsupported_algorithm(&self) -> result::Result<&str, Option<Utf8Error>> {
+        self.unsupported_algorithm_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn unsupported_algorithm_raw(&self) -> Option<&CStr> {
+        unsafe { (*self.raw).unsupported_algorithm.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn wrong_key_usage(&self) -> bool {
@@ -367,8 +389,12 @@ impl DecryptResult {
 
 impl_subresult!(Recipient: ffi::gpgme_recipient_t, RecipientIter, DecryptResult);
 impl<'a> Recipient<'a> {
-    pub fn key_id(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).keyid) }
+    pub fn key_id(&self) -> result::Result<&'a str, Option<Utf8Error>> {
+        self.key_id_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn key_id_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn algorithm(&self) -> KeyAlgorithm {
@@ -404,8 +430,12 @@ impl SignResult {
 
 impl_subresult!(NewSignature: ffi::gpgme_new_signature_t, NewSignatureIter, SignResult);
 impl<'a> NewSignature<'a> {
-    pub fn fingerprint(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).fpr) }
+    pub fn fingerprint(&self) -> result::Result<&'a str, Option<Utf8Error>> {
+        self.fingerprint_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn fingerprint_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn kind(&self) -> SignMode {
@@ -431,8 +461,12 @@ impl<'a> NewSignature<'a> {
 
 impl_result!(VerifyResult: ffi::gpgme_verify_result_t = ffi::gpgme_op_verify_result);
 impl VerifyResult {
-    pub fn filename(&self) -> StrResult {
-        unsafe { utils::from_cstr((*self.raw).file_name) }
+    pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
+        self.filename_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn filename_raw(&self) -> Option<&CStr> {
+        unsafe { (*self.raw).file_name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn signatures(&self) -> SignatureIter {
@@ -467,8 +501,12 @@ ffi_enum_wrapper! {
 
 impl_subresult!(Signature: ffi::gpgme_signature_t, SignatureIter, VerifyResult);
 impl<'a> Signature<'a> {
-    pub fn fingerprint(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).fpr) }
+    pub fn fingerprint(&self) -> result::Result<&'a str, Option<Utf8Error>> {
+        self.fingerprint_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn fingerprint_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn chain_model(&self) -> bool {
@@ -530,8 +568,12 @@ impl<'a> Signature<'a> {
         unsafe { SignatureSummary::from_bits_truncate((*self.raw).summary as u32) }
     }
 
-    pub fn pka_address(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).pka_address) }
+    pub fn pka_address(&self) -> result::Result<&'a str, Option<Utf8Error>> {
+        self.pka_address_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn pka_address_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).pka_address.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn notations(&self) -> SignatureNotationIter<'a, VerifyResult> {

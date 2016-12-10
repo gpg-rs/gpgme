@@ -1,21 +1,21 @@
-use std::ffi::CString;
+use std::ffi::CStr;
 use std::fmt;
 use std::io;
 use std::io::prelude::*;
 use std::marker::PhantomData;
+use std::mem;
 #[cfg(unix)]
 use std::os::unix::io::AsRawFd;
 use std::ptr;
 use std::result;
 use std::slice;
-use std::string::FromUtf8Error;
+use std::str::Utf8Error;
 
 use libc;
 use ffi;
 
-use Wrapper;
+use IntoNativeString;
 use error::{self, Error, Result};
-use utils;
 
 ffi_enum_wrapper! {
     pub enum Encoding: ffi::gpgme_data_encoding_t {
@@ -84,6 +84,24 @@ pub struct Data<'a> {
 }
 
 impl<'a> Data<'a> {
+    pub unsafe fn from_raw(raw: ffi::gpgme_data_t) -> Self {
+        debug_assert!(!raw.is_null());
+        Data {
+            raw: raw,
+            phantom:  PhantomData,
+        }
+    }
+
+    pub fn as_raw(&self) -> ffi::gpgme_data_t {
+        self.raw
+    }
+
+    pub fn into_raw(self) -> ffi::gpgme_data_t {
+        let raw = self.raw;
+        mem::forget(self);
+        raw
+    }
+
     pub fn stdin() -> Result<Data<'static>> {
         Data::from_reader(io::stdin()).map_err(|err| err.error())
     }
@@ -107,11 +125,11 @@ impl<'a> Data<'a> {
 
     /// Constructs a data object and fills it with the contents of the file
     /// referenced by `path`.
-    pub fn load<P: Into<Vec<u8>>>(path: P) -> Result<Data<'static>> {
-        let filename = try!(CString::new(path).or(Err(Error::from_code(error::GPG_ERR_INV_VALUE))));
+    pub fn load<P: IntoNativeString>(path: P) -> Result<Data<'static>> {
+        let path = path.into_native();
         unsafe {
             let mut data = ptr::null_mut();
-            return_err!(ffi::gpgme_data_new_from_file(&mut data, filename.as_ptr(), 1));
+            return_err!(ffi::gpgme_data_new_from_file(&mut data, path.as_ref().as_ptr(), 1));
             Ok(Data::from_raw(data))
         }
     }
@@ -236,8 +254,12 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, s) }
     }
 
-    pub fn filename(&self) -> utils::StrResult {
-        unsafe { utils::from_cstr(ffi::gpgme_data_get_file_name(self.raw)) }
+    pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
+        self.filename_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn filename_raw(&self) -> Option<&CStr> {
+        unsafe { ffi::gpgme_data_get_file_name(self.raw).as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn clear_filename(&mut self) -> Result<()> {
@@ -247,10 +269,10 @@ impl<'a> Data<'a> {
         Ok(())
     }
 
-    pub fn set_filename<S: Into<Vec<u8>>>(&mut self, name: S) -> Result<()> {
-        let name = try!(CString::new(name.into()));
+    pub fn set_filename<S: IntoNativeString>(&mut self, name: S) -> Result<()> {
+        let name = name.into_native();
         unsafe {
-            return_err!(ffi::gpgme_data_set_file_name(self.raw, name.as_ptr()));
+            return_err!(ffi::gpgme_data_set_file_name(self.raw, name.as_ref().as_ptr()));
         }
         Ok(())
     }
@@ -265,11 +287,11 @@ impl<'a> Data<'a> {
     }
 
     pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
-    where S1: Into<String>, S2: Into<String> {
-        let name = try!(CString::new(name.into()));
-        let value = try!(CString::new(value.into()));
+    where S1: IntoNativeString, S2: IntoNativeString {
+        let name = name.into_native();
+        let value = value.into_native();
         unsafe {
-            return_err!(ffi::gpgme_data_set_flag(self.raw, name.as_ptr(), value.as_ptr()));
+            return_err!(ffi::gpgme_data_set_flag(self.raw, name.as_ref().as_ptr(), value.as_ref().as_ptr()));
         }
         Ok(())
     }
@@ -279,7 +301,7 @@ impl<'a> Data<'a> {
         unsafe { Type::from_raw(ffi::gpgme_data_identify(self.raw, 0)) }
     }
 
-    pub fn into_bytes(self) -> Option<Vec<u8>> {
+    pub fn try_into_bytes(self) -> Option<Vec<u8>> {
         unsafe {
             let mut len = 0;
             let buf = ffi::gpgme_data_release_and_get_mem(self.into_raw(), &mut len);
@@ -290,10 +312,6 @@ impl<'a> Data<'a> {
             }
         }
     }
-
-    pub fn into_string(self) -> result::Result<String, Option<FromUtf8Error>> {
-        self.into_bytes().map_or(Err(None), |s| String::from_utf8(s).map_err(Some))
-    }
 }
 
 impl<'a> Drop for Data<'a> {
@@ -301,22 +319,6 @@ impl<'a> Drop for Data<'a> {
         unsafe {
             ffi::gpgme_data_release(self.raw);
         }
-    }
-}
-
-unsafe impl<'a> Wrapper for Data<'a> {
-    type Raw = ffi::gpgme_data_t;
-
-    unsafe fn from_raw<'b>(raw: ffi::gpgme_data_t) -> Data<'b> {
-        debug_assert!(!raw.is_null());
-        Data {
-            raw: raw,
-            phantom: PhantomData,
-        }
-    }
-
-    fn as_raw(&self) -> ffi::gpgme_data_t {
-        self.raw
     }
 }
 

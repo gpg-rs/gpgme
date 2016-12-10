@@ -1,7 +1,7 @@
 extern crate tempdir;
 extern crate gpgme;
 
-use gpgme::{Data, StrError};
+use gpgme::Data;
 use gpgme::error::ErrorCode;
 use gpgme::ops;
 
@@ -37,8 +37,8 @@ fn test_decrypt_verify() {
 
         let result = fail_if_err!(ctx.decrypt_and_verify(&mut input, &mut output));
         match result.0.unsupported_algorithm() {
-            Ok(ref alg) => panic!("unsupported algorithm: {}", alg),
-            Err(StrError::NotUtf8(ref alg, _)) => panic!("unsupported algorithm: {:?}", alg),
+            Ok(alg) => panic!("unsupported algorithm: {}", alg),
+            Err(Some(_)) => panic!("unsupported algorithm"),
             _ => {},
         }
         check_result(result.1, "A0FF4590BB6122EDEF6E3C542D727CC768697734",

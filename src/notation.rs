@@ -1,8 +1,8 @@
+use std::ffi::CStr;
 use std::marker::PhantomData;
+use std::str::Utf8Error;
 
 use ffi;
-
-use utils::{self, StrResult};
 
 bitflags! {
     flags Flags: ffi::gpgme_sig_notation_flags_t {
@@ -41,12 +41,20 @@ impl<'a, T> SignatureNotation<'a, T> {
         unsafe { Flags::from_bits_truncate((*self.raw).flags) }
     }
 
-    pub fn name(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).name) }
+    pub fn name(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    pub fn value(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).value) }
+    pub fn name_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).name.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn value(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.value_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn value_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).value.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }
 

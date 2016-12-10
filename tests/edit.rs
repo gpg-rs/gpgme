@@ -36,25 +36,24 @@ impl Editor for TestEditor {
     fn next_state(state: Result<Self::State>, status: EditStatus) -> Result<Self::State> {
         use self::TestEditorState as State;
 
-        println!("[-- Code: {:?}, {:?} --]", status.code, status.args);
+        println!("[-- Code: {:?}, {:?} --]", status.code, status.args());
         if !status.code.is_command() {
             return state;
         }
 
-        if status.args == Ok(edit::PROMPT) {
+        if status.args() == Ok(edit::PROMPT) {
             match state {
                 Ok(State::Start) => Ok(State::Fingerprint),
                 Ok(State::Fingerprint) => Ok(State::Expire),
                 Ok(State::Valid) => Ok(State::Uid),
                 Ok(State::Uid) => Ok(State::Primary),
-                Ok(State::Primary) => Ok(State::Quit),
                 Ok(State::Quit) => state,
-                Err(_) => Ok(State::Quit),
+                Ok(State::Primary) | Err(_) => Ok(State::Quit),
                 _ => Err(Error::from_code(error::GPG_ERR_GENERAL)),
             }
-        } else if (status.args == Ok(edit::KEY_VALID)) && (state == Ok(State::Expire)) {
+        } else if (status.args() == Ok(edit::KEY_VALID)) && (state == Ok(State::Expire)) {
             Ok(State::Valid)
-        } else if (status.args == Ok(edit::CONFIRM_SAVE)) && (state == Ok(State::Quit)) {
+        } else if (status.args() == Ok(edit::CONFIRM_SAVE)) && (state == Ok(State::Quit)) {
             Ok(State::Save)
         } else {
             state.and(Err(Error::from_code(error::GPG_ERR_GENERAL)))

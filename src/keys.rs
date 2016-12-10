@@ -1,5 +1,7 @@
+use std::ffi::CStr;
 use std::fmt;
 use std::marker::PhantomData;
+use std::str::Utf8Error;
 
 use ffi;
 
@@ -7,7 +9,6 @@ use {Protocol, Validity, Wrapper};
 use error::Error;
 use ops::KeyListMode;
 use notation::SignatureNotationIter;
-use utils::{self, StrError, StrResult};
 
 ffi_enum_wrapper! {
     pub enum KeyAlgorithm: ffi::gpgme_pubkey_algo_t {
@@ -25,8 +26,12 @@ ffi_enum_wrapper! {
 }
 
 impl KeyAlgorithm {
-    pub fn name(&self) -> StrResult<'static> {
-        unsafe { utils::from_cstr(ffi::gpgme_pubkey_algo_name(self.0)) }
+    pub fn name(&self) -> Result<&'static str, Option<Utf8Error>> {
+        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn name_raw(&self) -> Option<&'static CStr> {
+        unsafe { ffi::gpgme_pubkey_algo_name(self.0).as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }
 
@@ -57,8 +62,12 @@ ffi_enum_wrapper! {
 }
 
 impl HashAlgorithm {
-    pub fn name(&self) -> StrResult<'static> {
-        unsafe { utils::from_cstr(ffi::gpgme_hash_algo_name(self.0)) }
+    pub fn name(&self) -> Result<&'static str, Option<Utf8Error>> {
+        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn name_raw(&self) -> Option<&'static CStr> {
+        unsafe { ffi::gpgme_hash_algo_name(self.0).as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }
 
@@ -144,12 +153,20 @@ impl Key {
         unsafe { (*self.raw).can_authenticate() }
     }
 
-    pub fn id(&self) -> StrResult {
-        self.primary_key().map_or(Err(StrError::NotPresent), |k| k.id())
+    pub fn id(&self) -> Result<&str, Option<Utf8Error>> {
+        self.primary_key().map_or(Err(None), |k| k.id())
     }
 
-    pub fn fingerprint(&self) -> StrResult {
-        self.primary_key().map_or(Err(StrError::NotPresent), |k| k.fingerprint())
+    pub fn id_raw(&self) -> Option<&CStr> {
+        self.primary_key().and_then(|k| k.id_raw())
+    }
+
+    pub fn fingerprint(&self) -> Result<&str, Option<Utf8Error>> {
+        self.primary_key().map_or(Err(None), |k| k.fingerprint())
+    }
+
+    pub fn fingerprint_raw(&self) -> Option<&CStr> {
+        self.primary_key().and_then(|k| k.fingerprint_raw())
     }
 
     pub fn key_list_mode(&self) -> KeyListMode {
@@ -164,16 +181,28 @@ impl Key {
         unsafe { Validity::from_raw((*self.raw).owner_trust) }
     }
 
-    pub fn issuer_serial(&self) -> StrResult {
-        unsafe { utils::from_cstr((*self.raw).issuer_serial) }
+    pub fn issuer_serial(&self) -> Result<&str, Option<Utf8Error>> {
+        self.issuer_serial_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    pub fn issuer_name(&self) -> StrResult {
-        unsafe { utils::from_cstr((*self.raw).issuer_name) }
+    pub fn issuer_serial_raw(&self) -> Option<&CStr> {
+        unsafe { (*self.raw).issuer_serial.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
-    pub fn chain_id(&self) -> StrResult {
-        unsafe { utils::from_cstr((*self.raw).chain_id) }
+    pub fn issuer_name(&self) -> Result<&str, Option<Utf8Error>> {
+        self.issuer_name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn issuer_name_raw(&self) -> Option<&CStr> {
+        unsafe { (*self.raw).issuer_name.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn chain_id(&self) -> Result<&str, Option<Utf8Error>> {
+        self.chain_id_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn chain_id_raw(&self) -> Option<&CStr> {
+        unsafe { (*self.raw).chain_id.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn primary_key(&self) -> Option<SubKey> {
@@ -252,16 +281,28 @@ impl<'a> SubKey<'a> {
         unsafe { (*self.raw).can_authenticate() }
     }
 
-    pub fn id(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).keyid) }
+    pub fn id(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.id_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    pub fn keygrip(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).keygrip) }
+    pub fn id_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
-    pub fn fingerprint(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).fpr) }
+    pub fn keygrip(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.keygrip_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn keygrip_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn fingerprint(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.fingerprint_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn fingerprint_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn algorithm(&self) -> KeyAlgorithm {
@@ -270,15 +311,14 @@ impl<'a> SubKey<'a> {
 
     pub fn algorithm_string(&self) -> ::Result<String> {
         unsafe {
-            let raw = ffi::gpgme_pubkey_algo_string(self.raw);
-            if raw.is_null() {
-                Err(Error::last_os_error())
-            } else {
-                let result = utils::from_cstr(raw)
-                    .expect("algorithm string is not valid ascii")
-                    .to_owned();
-                ffi::gpgme_free(raw as *mut _);
-                Ok(result)
+            match ffi::gpgme_pubkey_algo_string(self.raw).as_mut() {
+                Some(raw) => {
+                    let result = CStr::from_ptr(raw).to_str().expect("algorithm string is not valid
+                                                                 ascii").to_owned();
+                    ffi::gpgme_free(raw as *mut _ as *mut _);
+                    Ok(result)
+                }
+                None => Err(Error::last_os_error()),
             }
         }
     }
@@ -297,12 +337,20 @@ impl<'a> SubKey<'a> {
         if expires > 0 { Some(expires) } else { None }
     }
 
-    pub fn card_number(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).card_number) }
+    pub fn card_number(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.card_number_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    pub fn curve(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).curve) }
+    pub fn card_number_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).card_number.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn curve(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.curve_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn curve_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).curve.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }
 
@@ -352,24 +400,44 @@ impl<'a> UserId<'a> {
         unsafe { (*self.raw).invalid() }
     }
 
-    pub fn uid(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).uid) }
+    pub fn uid(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.uid_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    pub fn name(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).name) }
+    pub fn uid_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).uid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
-    pub fn email(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).email) }
+    pub fn name(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    pub fn comment(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).comment) }
+    pub fn name_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
-    pub fn address(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).address) }
+    pub fn email(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.email_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn email_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).email.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn comment(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.comment_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn comment_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).comment.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn address(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.address_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn address_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).address.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn validity(&self) -> Validity {
@@ -387,11 +455,7 @@ impl<'a> UserId<'a> {
 
 impl<'a> fmt::Display for UserId<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let uid = match self.uid() {
-            Ok(s) => s.into(),
-            Err(StrError::NotUtf8(s, _)) => s.to_string_lossy(),
-            _ => "".into(),
-        };
+        let uid = self.uid_raw().map(|s| s.to_string_lossy()).unwrap_or("".into());
         write!(f, "{}", uid)
     }
 }
@@ -450,24 +514,44 @@ impl<'a> KeySignature<'a> {
         unsafe { (*self.raw).exportable() }
     }
 
-    pub fn key_id(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).keyid) }
+    pub fn key_id(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.key_id_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    pub fn uid(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).uid) }
+    pub fn key_id_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
-    pub fn name(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).name) }
+    pub fn uid(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.uid_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    pub fn email(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).email) }
+    pub fn uid_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).uid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
-    pub fn comment(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).comment) }
+    pub fn name(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn name_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).name.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn email(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.email_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn email_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).email.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn comment(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.comment_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn comment_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.raw).comment.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn timestamp(&self) -> Option<i64> {
@@ -591,9 +675,13 @@ impl<'a> TofuInfo<'a> {
         }
     }
 
-    pub fn description(&self) -> StrResult<'a> {
+    pub fn description(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.description_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn description_raw(&self) -> Option<&'a CStr> {
         unsafe {
-            utils::from_cstr((*self.raw).description)
+            (*self.raw).description.as_ref().map(|s| CStr::from_ptr(s))
         }
     }
 }

@@ -2,7 +2,6 @@ extern crate tempdir;
 extern crate gpgme;
 
 use gpgme::keys::{self, Key};
-use gpgme::StrError::NotPresent;
 
 use self::support::setup;
 
@@ -331,9 +330,9 @@ fn test_keylist() {
         assert!(key.can_certify());
         assert!(!key.is_secret());
         assert_eq!(key.protocol(), gpgme::PROTOCOL_OPENPGP);
-        assert_eq!(key.issuer_serial(), Err(NotPresent));
-        assert_eq!(key.issuer_name(), Err(NotPresent));
-        assert_eq!(key.chain_id(), Err(NotPresent));
+        assert_eq!(key.issuer_serial(), Err(None));
+        assert_eq!(key.issuer_name(), Err(None));
+        assert_eq!(key.chain_id(), Err(None));
         assert_eq!(key.owner_trust(), gpgme::VALIDITY_UNKNOWN);
 
         let info = &KEY_INFOS[i];
@@ -349,7 +348,7 @@ fn test_keylist() {
         assert!(primary.can_certify());
         assert!(!primary.is_secret());
         assert!(!primary.is_cardkey());
-        assert_eq!(primary.card_number(), Err(NotPresent));
+        assert_eq!(primary.card_number(), Err(None));
         assert_eq!(primary.algorithm(), keys::PK_DSA);
         assert_eq!(primary.length(), 1024);
         assert_eq!(primary.id(), Ok(&info.fpr[24..]));
@@ -366,7 +365,7 @@ fn test_keylist() {
         assert!(!secondary.can_certify());
         assert!(!secondary.is_secret());
         assert!(!secondary.is_cardkey());
-        assert_eq!(secondary.card_number(), Err(NotPresent));
+        assert_eq!(secondary.card_number(), Err(None));
         assert_eq!(secondary.algorithm(), keys::PK_ELGAMAL_ENCRYPT);
         assert_eq!(secondary.length(), 1024);
         assert_eq!(secondary.id(), Ok(info.sec_keyid));
@@ -384,9 +383,8 @@ fn test_keylist() {
             assert_eq!(actual.comment().unwrap_or(""), expected.comment);
         }
 
-        match info.misc_check {
-            Some(f) => f(info, &key),
-            None => (),
+        if let Some(f) = info.misc_check {
+            f(info, &key);
         }
         i += 1;
     }

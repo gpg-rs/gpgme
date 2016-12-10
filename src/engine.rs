@@ -1,12 +1,14 @@
+use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::ptr;
+use std::result;
+use std::str::Utf8Error;
 use std::sync::RwLockReadGuard;
 
 use ffi;
 
 use {Protocol, TOKEN, Token};
 use error::Result;
-use utils::{self, StrResult};
 
 #[derive(Debug, Copy, Clone)]
 pub struct EngineInfo<'a, T: 'a> {
@@ -32,20 +34,44 @@ impl<'a, T> EngineInfo<'a, T> {
         unsafe { Protocol::from_raw((*self.raw).protocol) }
     }
 
-    pub fn filename(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).file_name) }
+    pub fn path(&self) -> result::Result<&str, Option<Utf8Error>> {
+        self.path_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    pub fn home_dir(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).file_name) }
+    pub fn path_raw(&self) -> Option<&CStr> {
+        unsafe {
+            (*self.raw).file_name.as_ref().map(|s| CStr::from_ptr(s))
+        }
     }
 
-    pub fn version(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).version) }
+    pub fn home_dir(&self) -> result::Result<&str, Option<Utf8Error>> {
+        self.home_dir_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    pub fn required_version(&self) -> StrResult<'a> {
-        unsafe { utils::from_cstr((*self.raw).req_version) }
+    pub fn home_dir_raw(&self) -> Option<&CStr> {
+        unsafe {
+            (*self.raw).home_dir.as_ref().map(|s| CStr::from_ptr(s))
+        }
+    }
+
+    pub fn version(&self) -> result::Result<&str, Option<Utf8Error>> {
+        self.version_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn version_raw(&self) -> Option<&CStr> {
+        unsafe {
+            (*self.raw).version.as_ref().map(|s| CStr::from_ptr(s))
+        }
+    }
+
+    pub fn required_version(&self) -> result::Result<&str, Option<Utf8Error>> {
+        self.required_version_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn required_version_raw(&self) -> Option<&CStr> {
+        unsafe {
+            (*self.raw).req_version.as_ref().map(|s| CStr::from_ptr(s))
+        }
     }
 }
 
