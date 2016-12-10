@@ -64,8 +64,8 @@ fn print_result(result: &ops::VerifyResult) {
         print_summary(sig.summary());
         println!("");
         println!("  fingerprint: {}", sig.fingerprint().unwrap_or("[none]"));
-        println!("  created ...: {}", sig.timestamp());
-        println!("  expires ...: {}", sig.expires().unwrap_or(0));
+        println!("  created ...: {:?}", sig.creation_time());
+        println!("  expires ...: {:?}", sig.expiration_time());
         println!("  validity ..: {:?}", sig.validity());
         println!("  val.reason : {:?}", sig.validity_reason());
         println!("  pubkey algo: {}", sig.key_algorithm());

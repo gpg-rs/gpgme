@@ -23,7 +23,7 @@ fn print_result(result: &ops::SignResult) {
         println!("Signature type : {:?}", sig.kind());
         println!("Public key algo: {}", sig.key_algorithm());
         println!("Hash algo .....: {}", sig.hash_algorithm());
-        println!("Creation time .: {}", sig.timestamp());
+        println!("Creation time .: {:?}", sig.creation_time());
     }
 }
 
@@ -80,18 +80,15 @@ fn main() {
     ctx.set_protocol(proto).unwrap();
     ctx.set_armor(true);
 
-    match matches.opt_str("key") {
-        Some(key) => {
-            if proto != gpgme::PROTOCOL_UISERVER {
-                let key = ctx.find_secret_key(key).unwrap();
-                ctx.add_signer(&key).unwrap();
-            } else {
-                writeln!(io::stderr(),
-                         "{}: ignoring --key in UI-server mode",
-                         program);
-            }
+    if let Some(key) = matches.opt_str("key") {
+        if proto != gpgme::PROTOCOL_UISERVER {
+            let key = ctx.find_secret_key(key).unwrap();
+            ctx.add_signer(&key).unwrap();
+        } else {
+            writeln!(io::stderr(),
+            "{}: ignoring --key in UI-server mode",
+            program);
         }
-        None => (),
     }
 
     let mut input = match Data::load(matches.free[0].clone()) {

@@ -1,6 +1,8 @@
 extern crate tempdir;
 extern crate gpgme;
 
+use std::time::{Duration, UNIX_EPOCH};
+
 use gpgme::keys::{self, Key};
 
 use self::support::setup;
@@ -307,8 +309,8 @@ fn check_whisky(_info: &KeyInfo, key: &Key) {
 
     assert!(sub1.is_expired());
     assert!(sub2.is_expired());
-    assert_eq!(sub1.expires(), Some(1129636886));
-    assert_eq!(sub2.expires(), Some(1129636939));
+    assert_eq!(sub1.expiration_time(), Some(UNIX_EPOCH + Duration::from_secs(1129636886)));
+    assert_eq!(sub2.expiration_time(), Some(UNIX_EPOCH + Duration::from_secs(1129636939)));
 }
 
 #[test]
@@ -353,7 +355,7 @@ fn test_keylist() {
         assert_eq!(primary.length(), 1024);
         assert_eq!(primary.id(), Ok(&info.fpr[24..]));
         assert_eq!(primary.fingerprint(), Ok(info.fpr));
-        assert_eq!(primary.expires(), None);
+        assert_eq!(primary.expiration_time(), None);
 
         let secondary = key.subkeys().nth(1).unwrap();
         assert!(!secondary.is_revoked());
@@ -370,7 +372,7 @@ fn test_keylist() {
         assert_eq!(secondary.length(), 1024);
         assert_eq!(secondary.id(), Ok(info.sec_keyid));
         assert!(secondary.fingerprint().is_ok());
-        assert_eq!(secondary.expires(), None);
+        assert_eq!(secondary.expiration_time(), None);
 
         assert_eq!(key.user_ids().count(), info.uid.iter().filter(|u| u.is_some()).count());
         for (actual, expected) in key.user_ids().zip(info.uid.iter().filter_map(|u| u.as_ref())) {

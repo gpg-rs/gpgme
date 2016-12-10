@@ -2,6 +2,7 @@ use std::ffi::CStr;
 use std::fmt;
 use std::marker::PhantomData;
 use std::str::Utf8Error;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ffi;
 
@@ -327,14 +328,26 @@ impl<'a> SubKey<'a> {
         unsafe { (*self.raw).length as usize }
     }
 
-    pub fn timestamp(&self) -> Option<i64> {
-        let timestamp = unsafe { (*self.raw).timestamp };
-        if timestamp > 0 { Some(timestamp) } else { None }
+    pub fn never_expires(&self) -> bool {
+        self.expiration_time().is_none()
     }
 
-    pub fn expires(&self) -> Option<i64> {
+    pub fn creation_time(&self) -> Option<SystemTime> {
+        let timestamp = unsafe { (*self.raw).timestamp };
+        if timestamp > 0 {
+            Some(UNIX_EPOCH + Duration::from_secs(timestamp as u64))
+        } else {
+            None
+        }
+    }
+
+    pub fn expiration_time(&self) -> Option<SystemTime> {
         let expires = unsafe { (*self.raw).expires };
-        if expires > 0 { Some(expires) } else { None }
+        if expires > 0 {
+            Some(UNIX_EPOCH + Duration::from_secs(expires as u64))
+        } else {
+            None
+        }
     }
 
     pub fn card_number(&self) -> Result<&'a str, Option<Utf8Error>> {
@@ -554,14 +567,26 @@ impl<'a> KeySignature<'a> {
         unsafe { (*self.raw).comment.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
-    pub fn timestamp(&self) -> Option<i64> {
-        let timestamp = unsafe { (*self.raw).timestamp };
-        if timestamp > 0 { Some(timestamp) } else { None }
+    pub fn never_expires(&self) -> bool {
+        self.expiration_time().is_none()
     }
 
-    pub fn expires(&self) -> Option<i64> {
+    pub fn creation_time(&self) -> Option<SystemTime> {
+        let timestamp = unsafe { (*self.raw).timestamp };
+        if timestamp > 0 {
+            Some(UNIX_EPOCH + Duration::from_secs(timestamp as u64))
+        } else {
+            None
+        }
+    }
+
+    pub fn expiration_time(&self) -> Option<SystemTime> {
         let expires = unsafe { (*self.raw).expires };
-        if expires > 0 { Some(expires) } else { None }
+        if expires > 0 {
+            Some(UNIX_EPOCH + Duration::from_secs(expires as u64))
+        } else {
+            None
+        }
     }
 
     pub fn key_algorithm(&self) -> KeyAlgorithm {

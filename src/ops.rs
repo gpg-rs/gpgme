@@ -2,6 +2,7 @@ use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::result;
 use std::str::Utf8Error;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use libc;
 use ffi;
@@ -446,8 +447,9 @@ impl<'a> NewSignature<'a> {
         unsafe { (*self.raw).sig_class as u32 }
     }
 
-    pub fn timestamp(&self) -> i64 {
-        unsafe { (*self.raw).timestamp as i64 }
+    pub fn creation_time(&self) -> SystemTime {
+        let timestamp = unsafe { (*self.raw).timestamp };
+        UNIX_EPOCH + Duration::from_secs(timestamp as u64)
     }
 
     pub fn key_algorithm(&self) -> KeyAlgorithm {
@@ -536,14 +538,23 @@ impl<'a> Signature<'a> {
         }
     }
 
-    pub fn timestamp(&self) -> i64 {
-        unsafe { (*self.raw).timestamp as i64 }
+    pub fn never_expires(&self) -> bool {
+        self.expiration_time().is_none()
     }
 
-    pub fn expires(&self) -> Option<i64> {
+    pub fn creation_time(&self) -> Option<SystemTime> {
+        let timestamp = unsafe { (*self.raw).timestamp };
+        if timestamp > 0 {
+            Some(UNIX_EPOCH + Duration::from_secs(timestamp as u64))
+        } else {
+            None
+        }
+    }
+
+    pub fn expiration_time(&self) -> Option<SystemTime> {
         let expires = unsafe { (*self.raw).exp_timestamp };
         if expires > 0 {
-            Some(expires as i64)
+            Some(UNIX_EPOCH + Duration::from_secs(expires as u64))
         } else {
             None
         }
