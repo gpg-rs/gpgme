@@ -175,6 +175,8 @@ bitflags! {
         const KEY_LIST_MODE_EXTERN = ffi::GPGME_KEYLIST_MODE_EXTERN,
         const KEY_LIST_MODE_SIGS = ffi::GPGME_KEYLIST_MODE_SIGS,
         const KEY_LIST_MODE_SIG_NOTATIONS = ffi::GPGME_KEYLIST_MODE_SIG_NOTATIONS,
+        const KEY_LIST_MODE_WITH_SECRET = ffi::GPGME_KEYLIST_MODE_WITH_SECRET,
+        const KEY_LIST_MODE_WITH_TOFU = ffi::GPGME_KEYLIST_MODE_WITH_TOFU,
         const KEY_LIST_MODE_EPHEMERAL = ffi::GPGME_KEYLIST_MODE_EPHEMERAL,
         const KEY_LIST_MODE_VALIDATE = ffi::GPGME_KEYLIST_MODE_VALIDATE,
     }
@@ -184,6 +186,21 @@ impl_result!(KeyListResult: ffi::gpgme_keylist_result_t = ffi::gpgme_op_keylist_
 impl KeyListResult {
     pub fn truncated(&self) -> bool {
         unsafe { (*self.raw).truncated() }
+    }
+}
+
+bitflags! {
+    flags CreateKeyFlags: libc::c_uint {
+        const CREATE_SIGN = ffi::GPGME_CREATE_SIGN,
+        const CREATE_ENCR = ffi::GPGME_CREATE_ENCR,
+        const CREATE_CERT = ffi::GPGME_CREATE_CERT,
+        const CREATE_AUTH = ffi::GPGME_CREATE_AUTH,
+        const CREATE_NOPASSWD = ffi::GPGME_CREATE_NOPASSWD,
+        const CREATE_SELFSIGNED = ffi::GPGME_CREATE_SELFSIGNED,
+        const CREATE_NOSTORE = ffi::GPGME_CREATE_NOSTORE,
+        const CREATE_WANTPUB = ffi::GPGME_CREATE_WANTPUB,
+        const CREATE_WANTSEC = ffi::GPGME_CREATE_WANTSEC,
+        const CREATE_FORCE = ffi::GPGME_CREATE_FORCE,
     }
 }
 
@@ -197,8 +214,20 @@ impl KeyGenerateResult {
         unsafe { (*self.raw).sub() }
     }
 
+    pub fn has_uid(&self) -> bool {
+        unsafe { (*self.raw).uid() }
+    }
+
     pub fn fingerprint(&self) -> StrResult {
         unsafe { utils::from_cstr((*self.raw).fpr) }
+    }
+}
+
+bitflags! {
+    flags KeySignFlags: libc::c_uint {
+        const KEY_SIGN_LOCAL = ffi::GPGME_KEYSIGN_LOCAL,
+        const KEY_SIGN_LFSEP = ffi::GPGME_KEYSIGN_LFSEP,
+        const KEY_SIGN_NOEXPIRE = ffi::GPGME_KEYSIGN_NOEXPIRE,
     }
 }
 
@@ -306,6 +335,7 @@ bitflags! {
         const ENCRYPT_PREPARE = ffi::GPGME_ENCRYPT_PREPARE,
         const ENCRYPT_EXPECT_SIGN = ffi::GPGME_ENCRYPT_EXPECT_SIGN,
         const ENCRYPT_NO_COMPRESS= ffi::GPGME_ENCRYPT_NO_COMPRESS,
+        const ENCRYPT_SYMMETRIC = ffi::GPGME_ENCRYPT_SYMMETRIC,
     }
 }
 
@@ -423,6 +453,7 @@ bitflags! {
         const SIGNATURE_CRL_TOO_OLD = ffi::GPGME_SIGSUM_CRL_TOO_OLD,
         const SIGNATURE_BAD_POLICY = ffi::GPGME_SIGSUM_BAD_POLICY,
         const SIGNATURE_SYS_ERROR = ffi::GPGME_SIGSUM_SYS_ERROR,
+        const SIGNATURE_TOFU_CONFLICT = ffi::GPGME_SIGSUM_TOFU_CONFLICT,
     }
 }
 

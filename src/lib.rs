@@ -113,7 +113,8 @@ lazy_static! {
             let base: ffi::_gpgme_signature = mem::zeroed();
             let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
 
-            let result = ffi::gpgme_check_version_internal(ptr::null(), offset as libc::size_t);
+            let result = ffi::gpgme_check_version_internal(b"1.2.0\0".as_ptr() as *const _,
+                                                           offset);
             assert!(!result.is_null(), "gpgme library could not be initialized");
             CStr::from_ptr(result).to_str().expect("gpgme version string is not valid utf-8")
         };
@@ -144,7 +145,7 @@ pub fn create_context() -> Result<Context> {
     Context::new(init())
 }
 
-/// A type for managing global resources within the library.
+/// A type for managing the library's configuration.
 #[derive(Debug, Clone)]
 pub struct Token(Arc<TokenImp>);
 

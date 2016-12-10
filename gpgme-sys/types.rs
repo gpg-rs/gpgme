@@ -72,8 +72,8 @@ pub struct _gpgme_tofu_info {
 pub type gpgme_tofu_info_t = *mut _gpgme_tofu_info;
 
 impl _gpgme_tofu_info {
-    pub fn validity(&self) -> c_int {
-        (self.bitfield & 0x7) as c_int
+    pub fn validity(&self) -> c_uint {
+        (self.bitfield & 0x7) as c_uint
     }
 
     pub fn policy(&self) -> gpgme_tofu_policy_t {

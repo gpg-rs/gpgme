@@ -26,6 +26,7 @@ ffi_enum_wrapper! {
         ENCODING_URL = ffi::GPGME_DATA_ENCODING_URL,
         ENCODING_URLESC = ffi::GPGME_DATA_ENCODING_URLESC,
         ENCODING_URL0 = ffi::GPGME_DATA_ENCODING_URL0,
+        ENCODING_MIME = ffi::GPGME_DATA_ENCODING_MIME,
     }
 }
 
@@ -34,8 +35,10 @@ ffi_enum_wrapper! {
         TYPE_UNKNOWN = ffi::GPGME_DATA_TYPE_UNKNOWN,
         TYPE_INVALID = ffi::GPGME_DATA_TYPE_INVALID,
         TYPE_PGP_SIGNED = ffi::GPGME_DATA_TYPE_PGP_SIGNED,
+        TYPE_PGP_ENCRYPTED = ffi::GPGME_DATA_TYPE_PGP_ENCRYPTED,
         TYPE_PGP_OTHER = ffi::GPGME_DATA_TYPE_PGP_OTHER,
         TYPE_PGP_KEY = ffi::GPGME_DATA_TYPE_PGP_KEY,
+        TYPE_PGP_SIGNATURE = ffi::GPGME_DATA_TYPE_PGP_SIGNATURE,
         TYPE_CMS_SIGNED = ffi::GPGME_DATA_TYPE_CMS_SIGNED,
         TYPE_CMS_ENCRYPTED = ffi::GPGME_DATA_TYPE_CMS_ENCRYPTED,
         TYPE_CMS_OTHER = ffi::GPGME_DATA_TYPE_CMS_OTHER,
@@ -261,6 +264,16 @@ impl<'a> Data<'a> {
         Ok(())
     }
 
+    pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
+    where S1: Into<String>, S2: Into<String> {
+        let name = try!(CString::new(name.into()));
+        let value = try!(CString::new(value.into()));
+        unsafe {
+            return_err!(ffi::gpgme_data_set_flag(self.raw, name.as_ptr(), value.as_ptr()));
+        }
+        Ok(())
+    }
+
     // GPGME_VERSION >= 1.4.3
     pub fn identify(&mut self) -> Type {
         unsafe { Type::from_raw(ffi::gpgme_data_identify(self.raw, 0)) }
@@ -310,7 +323,7 @@ unsafe impl<'a> Wrapper for Data<'a> {
 impl<'a> Read for Data<'a> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let result = unsafe {
-            let (buf, len) = (buf.as_mut_ptr() as *mut _, buf.len() as libc::size_t);
+            let (buf, len) = (buf.as_mut_ptr() as *mut _, buf.len());
             ffi::gpgme_data_read(self.raw, buf, len)
         };
         if result >= 0 {
@@ -324,7 +337,7 @@ impl<'a> Read for Data<'a> {
 impl<'a> Write for Data<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let result = unsafe {
-            let (buf, len) = (buf.as_ptr() as *const _, buf.len() as libc::size_t);
+            let (buf, len) = (buf.as_ptr() as *const _, buf.len());
             ffi::gpgme_data_write(self.raw, buf, len)
         };
         if result >= 0 {
@@ -389,12 +402,10 @@ extern "C" fn seek_callback<S: Seek>(handle: *mut libc::c_void, offset: libc::of
         libc::SEEK_SET => io::SeekFrom::Start(offset as u64),
         libc::SEEK_END => io::SeekFrom::End(offset as i64),
         libc::SEEK_CUR => io::SeekFrom::Current(offset as i64),
-        _ => {
-            unsafe {
-                ffi::gpgme_err_set_errno(ffi::gpgme_err_code_to_errno(error::GPG_ERR_EINVAL));
-            }
+        _ => unsafe {
+            ffi::gpgme_err_set_errno(ffi::gpgme_err_code_to_errno(error::GPG_ERR_EINVAL));
             return -1 as libc::off_t;
-        }
+        },
     };
     unsafe {
         (*handle).inner.seek(pos).map(|n| n as libc::off_t).unwrap_or_else(|err| {

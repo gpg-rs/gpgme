@@ -12,6 +12,7 @@ use error::{self, Error, Result};
 use engine::{EngineInfo, EngineInfoIter};
 use data::Data;
 use keys::Key;
+use keys::TofuPolicy;
 use trust::TrustItem;
 use notation::{self, SignatureNotationIter};
 use edit;
@@ -30,6 +31,16 @@ impl Context {
             return_err!(ffi::gpgme_new(&mut ctx));
             Ok(Context::from_raw(ctx))
         }
+    }
+
+    pub fn set_flag<S1, S2>(&self, name: S1, value: S2) -> Result<()>
+    where S1: Into<String>, S2: Into<String> {
+        let name = try!(CString::new(name.into()));
+        let value = try!(CString::new(value.into()));
+        unsafe {
+            return_err!(ffi::gpgme_set_ctx_flag(self.raw, name.as_ptr(), value.as_ptr()));
+        }
+        Ok(())
     }
 
     pub fn has_armor(&self) -> bool {
@@ -203,7 +214,8 @@ impl Context {
         unsafe {
             let old = ffi::gpgme_get_keylist_mode(self.raw);
             return_err!(ffi::gpgme_set_keylist_mode(self.raw,
-                mask.bits() | (old & !ops::KeyListMode::all().bits())));
+                                                    mask.bits() |
+                                                    (old & !ops::KeyListMode::all().bits())));
         }
         Ok(())
     }
@@ -253,7 +265,8 @@ impl Context {
     }
 
     pub fn generate_key<S: Into<String>>(&mut self, params: S, public: Option<&mut Data>,
-        secret: Option<&mut Data>) -> Result<ops::KeyGenerateResult> {
+        secret: Option<&mut Data>)
+        -> Result<ops::KeyGenerateResult> {
         let params = try!(CString::new(params.into()));
         let public = public.map_or(ptr::null_mut(), |d| d.as_raw());
         let secret = secret.map_or(ptr::null_mut(), |d| d.as_raw());
@@ -261,6 +274,203 @@ impl Context {
             return_err!(ffi::gpgme_op_genkey(self.raw, params.as_ptr(), public, secret));
         }
         Ok(self.get_result().unwrap())
+    }
+
+    pub fn create_key<S1, S2>(&mut self, userid: S1, algo: S2, expires: Option<u32>,
+        flags: ops::CreateKeyFlags)
+        -> Result<ops::KeyGenerateResult>
+    where S1: Into<String>, S2: Into<String> {
+        let userid = try!(CString::new(userid.into()));
+        let algo = try!(CString::new(algo.into()));
+        unsafe {
+            return_err!(ffi::gpgme_op_createkey(self.raw,
+                                                userid.as_ptr(),
+                                                algo.as_ptr(),
+                                                0,
+                                                expires.unwrap_or(0).into(),
+                                                ptr::null_mut(),
+                                                flags.bits()));
+        }
+        Ok(self.get_result().unwrap())
+    }
+
+    pub fn create_subkey<S>(&mut self, key: &Key, algo: S, expires: Option<u32>,
+        flags: ops::CreateKeyFlags)
+        -> Result<ops::KeyGenerateResult>
+    where S: Into<String> {
+        let algo = try!(CString::new(algo.into()));
+        unsafe {
+            return_err!(ffi::gpgme_op_createsubkey(self.raw,
+                                                   key.as_raw(),
+                                                   algo.as_ptr(),
+                                                   0,
+                                                   expires.unwrap_or(0).into(),
+                                                   flags.bits()));
+        }
+        Ok(self.get_result().unwrap())
+    }
+
+    pub fn add_uid<S>(&mut self, key: &Key, userid: S) -> Result<()> where S: Into<String> {
+        let userid = try!(CString::new(userid.into()));
+        unsafe {
+            return_err!(ffi::gpgme_op_adduid(self.raw, key.as_raw(), userid.as_ptr(), 0));
+        }
+        Ok(())
+    }
+
+    pub fn revoke_uid<S>(&mut self, key: &Key, userid: S) -> Result<()> where S: Into<String> {
+        let userid = try!(CString::new(userid.into()));
+        unsafe {
+            return_err!(ffi::gpgme_op_revuid(self.raw, key.as_raw(), userid.as_ptr(), 0));
+        }
+        Ok(())
+    }
+
+    pub fn sign_key<I>(&mut self, key: &Key, userids: I, expires: Option<u32>) -> Result<()>
+    where I: IntoIterator, I::Item: AsRef<[u8]> {
+        let (userids, flags) = {
+            let mut userids = userids.into_iter();
+            match (userids.next(), userids.next()) {
+                (Some(first), Some(second)) => {
+                    (userids.fold([first.as_ref(), second.as_ref()].join(&b'\n'), |mut acc, x| {
+                        acc.push(b'\n');
+                        acc.extend_from_slice(x.as_ref());
+                        acc
+                    }), ffi::GPGME_KEYSIGN_LFSEP)
+                }
+                (Some(first), None) => (first.as_ref().to_owned(), 0),
+                _ => panic!("no userids provided"),
+            }
+        };
+        let userids = try!(CString::new(userids));
+        unsafe {
+            return_err!(ffi::gpgme_op_keysign(self.raw,
+                                              key.as_raw(),
+                                              userids.as_ptr(),
+                                              expires.unwrap_or(0).into(),
+                                              flags));
+        }
+        Ok(())
+    }
+
+    pub fn sign_key_with_flags<I>(&mut self, key: &Key, userids: I, expires: Option<u32>,
+        flags: ops::KeySignFlags)
+        -> Result<()>
+    where I: IntoIterator, I::Item: AsRef<[u8]> {
+        let (userids, flags) = {
+            let mut userids = userids.into_iter();
+            match (userids.next(), userids.next()) {
+                (Some(first), Some(second)) => {
+                    (userids.fold([first.as_ref(), second.as_ref()].join(&b'\n'), |mut acc, x| {
+                        acc.push(b'\n');
+                        acc.extend_from_slice(x.as_ref());
+                        acc
+                    }), ops::KEY_SIGN_LFSEP | flags)
+                }
+                (Some(first), None) => (first.as_ref().to_owned(), flags),
+                _ => panic!("no userids provided"),
+            }
+        };
+        let userids = try!(CString::new(userids));
+        unsafe {
+            return_err!(ffi::gpgme_op_keysign(self.raw,
+                                              key.as_raw(),
+                                              userids.as_ptr(),
+                                              expires.unwrap_or(0).into(),
+                                              flags.bits()));
+        }
+        Ok(())
+    }
+
+    pub fn change_key_tofu_policy(&mut self, key: &Key, policy: TofuPolicy) -> Result<()> {
+        unsafe {
+            return_err!(ffi::gpgme_op_tofu_policy(self.raw, key.as_raw(), policy.raw()));
+        }
+        Ok(())
+    }
+
+    // Only works with GPG >= 2.0.15
+    pub fn change_key_passphrase(&mut self, key: &Key) -> Result<()> {
+        unsafe {
+            return_err!(ffi::gpgme_op_passwd(self.raw, key.as_raw(), 0));
+        }
+        Ok(())
+    }
+
+
+    pub fn edit_card_key<E: EditHandler>(&mut self, key: &Key, handler: E, data: &mut Data)
+        -> Result<()> {
+        unsafe {
+            let mut wrapper = EditHandlerWrapper {
+                handler: handler,
+                response: data,
+            };
+            return_err!(ffi::gpgme_op_card_edit(self.raw,
+                                                key.as_raw(),
+                                                Some(edit_callback::<E>),
+                                                (&mut wrapper as *mut _) as *mut _,
+                                                data.as_raw()));
+        }
+        Ok(())
+    }
+
+    pub fn edit_key_with<E: edit::Editor>(&mut self, key: &Key, editor: E, data: &mut Data)
+        -> Result<()> {
+        self.edit_key(key, edit::EditorWrapper::new(editor), data)
+    }
+
+    pub fn edit_card_key_with<E: edit::Editor>(&mut self, key: &Key, editor: E, data: &mut Data)
+        -> Result<()> {
+        self.edit_card_key(key, edit::EditorWrapper::new(editor), data)
+    }
+
+    pub fn interact<H: InteractHandler>(&mut self, key: &Key, handler: H, data: &mut Data)
+        -> Result<()> {
+        unsafe {
+            let mut wrapper = InteractHandlerWrapper {
+                handler: handler,
+                response: data,
+            };
+            return_err!(ffi::gpgme_op_interact(self.raw,
+                                               key.as_raw(),
+                                               0,
+                                               Some(interact_callback::<H>),
+                                               &mut wrapper as *mut _ as *mut _,
+                                               data.as_raw()));
+        }
+        Ok(())
+    }
+
+    pub fn interact_with_card<H: InteractHandler>(&mut self, key: &Key, handler: H,
+        data: &mut Data)
+        -> Result<()> {
+        unsafe {
+            let mut wrapper = InteractHandlerWrapper {
+                handler: handler,
+                response: data,
+            };
+            return_err!(ffi::gpgme_op_interact(self.raw,
+                                               key.as_raw(),
+                                               ffi::GPGME_INTERACT_CARD,
+                                               Some(interact_callback::<H>),
+                                               &mut wrapper as *mut _ as *mut _,
+                                               data.as_raw()));
+        }
+        Ok(())
+    }
+
+    pub fn delete_key(&mut self, key: &Key) -> Result<()> {
+        unsafe {
+            return_err!(ffi::gpgme_op_delete(self.raw, key.as_raw(), 0));
+        }
+        Ok(())
+    }
+
+    pub fn delete_secret_key(&mut self, key: &Key) -> Result<()> {
+        unsafe {
+            return_err!(ffi::gpgme_op_delete(self.raw, key.as_raw(), 1));
+        }
+        Ok(())
     }
 
     pub fn import(&mut self, key_data: &mut Data) -> Result<ops::ImportResult> {
@@ -331,14 +541,6 @@ impl Context {
         Ok(())
     }
 
-    // Only works with GPG >= 2.0.15
-    pub fn change_key_passphrase(&mut self, key: &Key) -> Result<()> {
-        unsafe {
-            return_err!(ffi::gpgme_op_passwd(self.raw, key.as_raw(), 0));
-        }
-        Ok(())
-    }
-
     pub fn edit_key<E: EditHandler>(&mut self, key: &Key, handler: E, data: &mut Data)
         -> Result<()> {
         unsafe {
@@ -351,25 +553,6 @@ impl Context {
                                            Some(edit_callback::<E>),
                                            (&mut wrapper as *mut _) as *mut _,
                                            data.as_raw()));
-        }
-        Ok(())
-    }
-
-    pub fn edit_key_with<E: edit::Editor>(&mut self, key: &Key, editor: E, data: &mut Data)
-        -> Result<()> {
-        self.edit_key(key, edit::EditorWrapper::new(editor), data)
-    }
-
-    pub fn delete_key(&mut self, key: &Key) -> Result<()> {
-        unsafe {
-            return_err!(ffi::gpgme_op_delete(self.raw, key.as_raw(), 0));
-        }
-        Ok(())
-    }
-
-    pub fn delete_secret_key(&mut self, key: &Key) -> Result<()> {
-        unsafe {
-            return_err!(ffi::gpgme_op_delete(self.raw, key.as_raw(), 1));
         }
         Ok(())
     }
@@ -637,7 +820,7 @@ pub struct Keys<'a> {
 }
 
 impl<'a> Keys<'a> {
-    fn new<'b, I>(ctx: &'b mut Context, patterns: I, secret_only: bool) -> Result<Keys<'b>>
+    fn new<I>(ctx: &mut Context, patterns: I, secret_only: bool) -> Result<Keys>
     where I: IntoIterator, I::Item: Into<Vec<u8>> {
         let mut strings = Vec::new();
         for pattern in patterns {
@@ -754,29 +937,27 @@ impl<'a> Iterator for SignersIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
-            self.current.and_then(|x| {
-                match ffi::gpgme_signers_enum(self.ctx.as_raw(), x).as_mut() {
-                    Some(key) => {
-                        self.current = x.checked_add(1);
-                        Some(Key::from_raw(key))
-                    }
-                    _ => {
-                        self.current = None;
-                        None
-                    }
+            self.current.and_then(|x| match ffi::gpgme_signers_enum(self.ctx.as_raw(), x)
+                .as_mut() {
+                Some(key) => {
+                    self.current = x.checked_add(1);
+                    Some(Key::from_raw(key))
+                }
+                _ => {
+                    self.current = None;
+                    None
                 }
             })
         }
     }
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.current = self.current.and_then(|x| {
-            if (n as i64) <= (libc::c_int::max_value() as i64) {
+        self.current = self.current
+            .and_then(|x| if (n as i64) <= (libc::c_int::max_value() as i64) {
                 x.checked_add(n as libc::c_int)
             } else {
                 None
-            }
-        });
+            });
         self.next()
     }
 }
@@ -812,8 +993,10 @@ impl Drop for PassphraseHandlerGuard {
 }
 
 extern "C" fn passphrase_callback<H: PassphraseHandler>(hook: *mut libc::c_void,
-    uid_hint: *const libc::c_char, info: *const libc::c_char,
-    was_bad: libc::c_int, fd: libc::c_int) -> ffi::gpgme_error_t {
+    uid_hint: *const libc::c_char,
+    info: *const libc::c_char,
+    was_bad: libc::c_int, fd: libc::c_int)
+    -> ffi::gpgme_error_t {
     use std::io::prelude::*;
 
     let handler = hook as *mut H;
@@ -844,7 +1027,7 @@ pub trait ProgressHandler: 'static + Send {
 }
 
 impl<T: 'static + Send> ProgressHandler for T
-where T: FnMut(ProgressInfo) {
+    where T: FnMut(ProgressInfo) {
     fn handle(&mut self, info: ProgressInfo) {
         (*self)(info);
     }
@@ -883,7 +1066,7 @@ pub trait StatusHandler: 'static + Send {
 }
 
 impl<T: 'static + Send> StatusHandler for T
-where T: FnMut(StrResult, StrResult) -> Result<()> {
+    where T: FnMut(StrResult, StrResult) -> Result<()> {
     fn handle(&mut self, keyword: StrResult, args: StrResult) -> Result<()> {
         (*self)(keyword, args)
     }
@@ -914,6 +1097,41 @@ extern "C" fn status_callback<H: StatusHandler>(hook: *mut libc::c_void,
     }
 }
 
+pub struct InteractStatus<'a> {
+    pub keyword: StrResult<'a>,
+    pub args: StrResult<'a>,
+    pub response: &'a mut Data<'a>,
+}
+
+pub trait InteractHandler: 'static + Send {
+    fn handle<W: io::Write>(&mut self, status: InteractStatus, out: Option<W>) -> Result<()>;
+}
+
+struct InteractHandlerWrapper<'a, H: InteractHandler> {
+    handler: H,
+    response: *mut Data<'a>,
+}
+
+extern "C" fn interact_callback<H: InteractHandler>(hook: *mut libc::c_void,
+    keyword: *const libc::c_char,
+    args: *const libc::c_char, fd: libc::c_int)
+    -> ffi::gpgme_error_t {
+    let wrapper = hook as *mut InteractHandlerWrapper<H>;
+    let result = unsafe {
+        let status = InteractStatus {
+            keyword: utils::from_cstr(keyword),
+            args: utils::from_cstr(args),
+            response: &mut *(*wrapper).response,
+        };
+        if fd < 0 {
+            (*wrapper).handler.handle(status, None::<&mut io::Write>)
+        } else {
+            (*wrapper).handler.handle(status, Some(FdWriter::new(fd)))
+        }
+    };
+    result.err().map(|err| err.raw()).unwrap_or(0)
+}
+
 pub struct EditStatus<'a> {
     pub code: edit::StatusCode,
     pub args: StrResult<'a>,
@@ -929,10 +1147,11 @@ struct EditHandlerWrapper<'a, E: EditHandler> {
     response: *mut Data<'a>,
 }
 
-extern "C" fn edit_callback<'a, E: EditHandler>(hook: *mut libc::c_void,
-    status: ffi::gpgme_status_code_t, args: *const libc::c_char, fd: libc::c_int)
+extern "C" fn edit_callback<E: EditHandler>(hook: *mut libc::c_void,
+    status: ffi::gpgme_status_code_t,
+    args: *const libc::c_char, fd: libc::c_int)
     -> ffi::gpgme_error_t {
-    let wrapper = hook as *mut EditHandlerWrapper<'a, E>;
+    let wrapper = hook as *mut EditHandlerWrapper<E>;
     let result = unsafe {
         let status = EditStatus {
             code: edit::StatusCode::from_raw(status),

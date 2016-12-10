@@ -20,6 +20,7 @@ ffi_enum_wrapper! {
         PK_ELGAMAL = ffi::GPGME_PK_ELG,
         PK_ECDSA = ffi::GPGME_PK_ECDSA,
         PK_ECDH = ffi::GPGME_PK_ECDH,
+        PK_EDDSA = ffi::GPGME_PK_EDDSA,
     }
 }
 
@@ -255,6 +256,10 @@ impl<'a> SubKey<'a> {
         unsafe { utils::from_cstr((*self.raw).keyid) }
     }
 
+    pub fn keygrip(&self) -> StrResult<'a> {
+        unsafe { utils::from_cstr((*self.raw).keygrip) }
+    }
+
     pub fn fingerprint(&self) -> StrResult<'a> {
         unsafe { utils::from_cstr((*self.raw).fpr) }
     }
@@ -263,26 +268,33 @@ impl<'a> SubKey<'a> {
         unsafe { KeyAlgorithm::from_raw((*self.raw).pubkey_algo) }
     }
 
+    pub fn algorithm_string(&self) -> ::Result<String> {
+        unsafe {
+            let raw = ffi::gpgme_pubkey_algo_string(self.raw);
+            if raw.is_null() {
+                Err(Error::last_os_error())
+            } else {
+                let result = utils::from_cstr(raw)
+                    .expect("algorithm string is not valid ascii")
+                    .to_owned();
+                ffi::gpgme_free(raw as *mut _);
+                Ok(result)
+            }
+        }
+    }
+
     pub fn length(&self) -> usize {
         unsafe { (*self.raw).length as usize }
     }
 
     pub fn timestamp(&self) -> Option<i64> {
         let timestamp = unsafe { (*self.raw).timestamp };
-        if timestamp > 0 {
-            Some(timestamp)
-        } else {
-            None
-        }
+        if timestamp > 0 { Some(timestamp) } else { None }
     }
 
     pub fn expires(&self) -> Option<i64> {
         let expires = unsafe { (*self.raw).expires };
-        if expires > 0 {
-            Some(expires)
-        } else {
-            None
-        }
+        if expires > 0 { Some(expires) } else { None }
     }
 
     pub fn card_number(&self) -> StrResult<'a> {
@@ -356,12 +368,20 @@ impl<'a> UserId<'a> {
         unsafe { utils::from_cstr((*self.raw).comment) }
     }
 
+    pub fn address(&self) -> StrResult<'a> {
+        unsafe { utils::from_cstr((*self.raw).address) }
+    }
+
     pub fn validity(&self) -> Validity {
         unsafe { Validity::from_raw((*self.raw).validity) }
     }
 
     pub fn signatures(&self) -> KeySignatureIter {
         unsafe { KeySignatureIter::from_list((*self.raw).signatures) }
+    }
+
+    pub fn tofu_info(&self) -> TofuInfoIter {
+        unsafe { TofuInfoIter::from_list((*self.raw).tofu) }
     }
 }
 
@@ -452,20 +472,12 @@ impl<'a> KeySignature<'a> {
 
     pub fn timestamp(&self) -> Option<i64> {
         let timestamp = unsafe { (*self.raw).timestamp };
-        if timestamp > 0 {
-            Some(timestamp)
-        } else {
-            None
-        }
+        if timestamp > 0 { Some(timestamp) } else { None }
     }
 
     pub fn expires(&self) -> Option<i64> {
         let expires = unsafe { (*self.raw).expires };
-        if expires > 0 {
-            Some(expires)
-        } else {
-            None
-        }
+        if expires > 0 { Some(expires) } else { None }
     }
 
     pub fn key_algorithm(&self) -> KeyAlgorithm {
@@ -502,4 +514,105 @@ impl<'a> KeySignatureIter<'a> {
 
 impl<'a> Iterator for KeySignatureIter<'a> {
     list_iterator!(KeySignature<'a>, KeySignature::from_raw);
+}
+
+ffi_enum_wrapper! {
+    pub enum TofuPolicy: ffi::gpgme_tofu_policy_t {
+        TOFU_POLICY_NONE = ffi::GPGME_TOFU_POLICY_NONE,
+        TOFU_POLICY_AUTO = ffi::GPGME_TOFU_POLICY_AUTO,
+        TOFU_POLICY_GOOD = ffi::GPGME_TOFU_POLICY_GOOD,
+        TOFU_POLICY_UNKNOWN = ffi::GPGME_TOFU_POLICY_UNKNOWN,
+        TOFU_POLICY_BAD = ffi::GPGME_TOFU_POLICY_BAD,
+        TOFU_POLICY_ASK = ffi::GPGME_TOFU_POLICY_ASK,
+    }
+}
+
+pub struct TofuInfo<'a> {
+    raw: ffi::gpgme_tofu_info_t,
+    _phantom: PhantomData<&'a ()>,
+}
+
+impl<'a> TofuInfo<'a> {
+    pub unsafe fn from_raw(raw: ffi::gpgme_tofu_info_t) -> Self {
+        debug_assert!(!raw.is_null());
+        TofuInfo {
+            raw: raw,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn raw(&self) -> ffi::gpgme_tofu_info_t {
+        self.raw
+    }
+
+    pub fn validity(&self) -> u32 {
+        unsafe { (*self.raw).validity() }
+    }
+
+    pub fn policy(&self) -> TofuPolicy {
+        unsafe {
+            TofuPolicy::from_raw((*self.raw).policy())
+        }
+    }
+
+    pub fn sign_count(&self) -> u64 {
+        unsafe {
+            (*self.raw).signcount.into()
+        }
+    }
+
+    pub fn encr_count(&self) -> u64 {
+        unsafe {
+            (*self.raw).encrcount.into()
+        }
+    }
+
+    pub fn sign_first(&self) -> u64 {
+        unsafe {
+            (*self.raw).signfirst.into()
+        }
+    }
+
+    pub fn sign_last(&self) -> u64 {
+        unsafe {
+            (*self.raw).signlast.into()
+        }
+    }
+
+    pub fn encr_first(&self) -> u64 {
+        unsafe {
+            (*self.raw).encrfirst.into()
+        }
+    }
+
+    pub fn encr_last(&self) -> u64 {
+        unsafe {
+            (*self.raw).encrlast.into()
+        }
+    }
+
+    pub fn description(&self) -> StrResult<'a> {
+        unsafe {
+            utils::from_cstr((*self.raw).description)
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct TofuInfoIter<'a> {
+    current: ffi::gpgme_tofu_info_t,
+    _phantom: PhantomData<&'a Key>,
+}
+
+impl<'a> TofuInfoIter<'a> {
+    pub unsafe fn from_list<'b>(raw: ffi::gpgme_tofu_info_t) -> TofuInfoIter<'b> {
+        TofuInfoIter {
+            current: raw,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a> Iterator for TofuInfoIter<'a> {
+    list_iterator!(TofuInfo<'a>, TofuInfo::from_raw);
 }
