@@ -37,11 +37,11 @@ pub type gpgme_sig_notation_t = *mut _gpgme_sig_notation;
 
 impl _gpgme_sig_notation {
     pub fn human_readable(&self) -> bool {
-        (self.bitfield & 0x1) == 0x1
+        (self.bitfield & 0b01) == 0b01
     }
 
     pub fn critical(&self) -> bool {
-        (self.bitfield & 0x2) == 0x2
+        (self.bitfield & 0b10) == 0b10
     }
 }
 
@@ -58,9 +58,10 @@ pub struct _gpgme_engine_info {
 pub type gpgme_engine_info_t = *mut _gpgme_engine_info;
 
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct _gpgme_tofu_info {
     pub next: gpgme_tofu_info_t,
-    bitfield: u32,
+    pub bitfield: u32,
     pub signcount: c_ushort,
     pub encrcount: c_ushort,
     pub signfirst: c_ulong,
@@ -73,11 +74,11 @@ pub type gpgme_tofu_info_t = *mut _gpgme_tofu_info;
 
 impl _gpgme_tofu_info {
     pub fn validity(&self) -> c_uint {
-        (self.bitfield & 0x7) as c_uint
+        (self.bitfield & 0b0000_0111) as c_uint
     }
 
     pub fn policy(&self) -> gpgme_tofu_policy_t {
-        (self.bitfield & 0xf) as gpgme_tofu_policy_t
+        ((self.bitfield & 0b1111_0000) >> 4) as gpgme_tofu_policy_t
     }
 }
 
@@ -85,7 +86,7 @@ impl _gpgme_tofu_info {
 #[derive(Copy, Clone)]
 pub struct _gpgme_subkey {
     pub next: gpgme_subkey_t,
-    bitfield: u32,
+    pub bitfield: u32,
     pub pubkey_algo: gpgme_pubkey_algo_t,
     pub length: c_uint,
     pub keyid: *mut c_char,
@@ -101,37 +102,37 @@ pub type gpgme_subkey_t = *mut _gpgme_subkey;
 
 impl _gpgme_subkey {
     pub fn revoked(&self) -> bool {
-        (self.bitfield & 0x1) == 0x1
+        (self.bitfield & 0b000_00000001) == 0b000_00000001
     }
     pub fn expired(&self) -> bool {
-        (self.bitfield & 0x2) == 0x2
+        (self.bitfield & 0b000_00000010) == 0b000_00000010
     }
     pub fn disabled(&self) -> bool {
-        (self.bitfield & 0x4) == 0x4
+        (self.bitfield & 0b000_00000100) == 0b000_00000100
     }
     pub fn invalid(&self) -> bool {
-        (self.bitfield & 0x8) == 0x8
+        (self.bitfield & 0b000_00001000) == 0b000_00001000
     }
     pub fn can_encrypt(&self) -> bool {
-        (self.bitfield & 0x10) == 0x10
+        (self.bitfield & 0b000_00010000) == 0b000_00010000
     }
     pub fn can_sign(&self) -> bool {
-        (self.bitfield & 0x20) == 0x20
+        (self.bitfield & 0b000_00100000) == 0b000_00100000
     }
     pub fn can_certify(&self) -> bool {
-        (self.bitfield & 0x40) == 0x40
+        (self.bitfield & 0b000_01000000) == 0b000_01000000
     }
     pub fn secret(&self) -> bool {
-        (self.bitfield & 0x80) == 0x80
+        (self.bitfield & 0b000_10000000) == 0b000_10000000
     }
     pub fn can_authenticate(&self) -> bool {
-        (self.bitfield & 0x100) == 0x100
+        (self.bitfield & 0b001_00000000) == 0b001_00000000
     }
     pub fn is_qualified(&self) -> bool {
-        (self.bitfield & 0x200) == 0x200
+        (self.bitfield & 0b010_00000000) == 0b010_00000000
     }
     pub fn is_cardkey(&self) -> bool {
-        (self.bitfield & 0x400) == 0x400
+        (self.bitfield & 0b100_00000000) == 0b100_00000000
     }
 }
 
@@ -159,16 +160,16 @@ pub type gpgme_key_sig_t = *mut _gpgme_key_sig;
 
 impl _gpgme_key_sig {
     pub fn revoked(&self) -> bool {
-        (self.bitfield & 0x1) == 0x1
+        (self.bitfield & 0b0001) == 0b0001
     }
     pub fn expired(&self) -> bool {
-        (self.bitfield & 0x2) == 0x2
+        (self.bitfield & 0b0010) == 0b0010
     }
     pub fn invalid(&self) -> bool {
-        (self.bitfield & 0x4) == 0x4
+        (self.bitfield & 0b0100) == 0b0100
     }
     pub fn exportable(&self) -> bool {
-        (self.bitfield & 0x8) == 0x8
+        (self.bitfield & 0b1000) == 0b1000
     }
 }
 
@@ -192,10 +193,10 @@ pub type gpgme_user_id_t = *mut _gpgme_user_id;
 
 impl _gpgme_user_id {
     pub fn revoked(&self) -> bool {
-        (self.bitfield & 0x1) == 0x1
+        (self.bitfield & 0b01) == 0b01
     }
     pub fn invalid(&self) -> bool {
-        (self.bitfield & 0x2) == 0x2
+        (self.bitfield & 0b10) == 0b10
     }
 }
 
@@ -220,34 +221,34 @@ pub type gpgme_key_t = *mut _gpgme_key;
 
 impl _gpgme_key {
     pub fn revoked(&self) -> bool {
-        (self.bitfield & 0x1) == 0x1
+        (self.bitfield & 0b00_00000001) == 0b00_00000001
     }
     pub fn expired(&self) -> bool {
-        (self.bitfield & 0x2) == 0x2
+        (self.bitfield & 0b00_00000010) == 0b00_00000010
     }
     pub fn disabled(&self) -> bool {
-        (self.bitfield & 0x4) == 0x4
+        (self.bitfield & 0b00_00000100) == 0b00_00000100
     }
     pub fn invalid(&self) -> bool {
-        (self.bitfield & 0x8) == 0x8
+        (self.bitfield & 0b00_00001000) == 0b00_00001000
     }
     pub fn can_encrypt(&self) -> bool {
-        (self.bitfield & 0x10) == 0x10
+        (self.bitfield & 0b00_00010000) == 0b00_00010000
     }
     pub fn can_sign(&self) -> bool {
-        (self.bitfield & 0x20) == 0x20
+        (self.bitfield & 0b00_00100000) == 0b00_00100000
     }
     pub fn can_certify(&self) -> bool {
-        (self.bitfield & 0x40) == 0x40
+        (self.bitfield & 0b00_01000000) == 0b00_01000000
     }
     pub fn secret(&self) -> bool {
-        (self.bitfield & 0x80) == 0x80
+        (self.bitfield & 0b00_10000000) == 0b00_10000000
     }
     pub fn can_authenticate(&self) -> bool {
-        (self.bitfield & 0x100) == 0x100
+        (self.bitfield & 0b01_00000000) == 0b01_00000000
     }
     pub fn is_qualified(&self) -> bool {
-        (self.bitfield & 0x200) == 0x200
+        (self.bitfield & 0b10_00000000) == 0b10_00000000
     }
 }
 
@@ -330,13 +331,14 @@ pub struct _gpgme_op_decrypt_result {
     pub unsupported_algorithm: *mut c_char,
     pub bitfield: u32,
     pub recipients: gpgme_recipient_t,
-    pub file_name: *mut c_char
+    pub file_name: *mut c_char,
+    pub session_key: *mut c_char,
 }
 pub type gpgme_decrypt_result_t = *mut _gpgme_op_decrypt_result;
 
 impl _gpgme_op_decrypt_result {
     pub fn wrong_key_usage(&self) -> bool {
-        (self.bitfield & 0x1) == 0x1
+        (self.bitfield & 0b1) == 0b1
     }
 }
 
@@ -385,15 +387,15 @@ pub type gpgme_signature_t = *mut _gpgme_signature;
 
 impl _gpgme_signature {
     pub fn wrong_key_usage(&self) -> bool {
-        (self.bitfield & 0x1) == 0x1
+        (self.bitfield & 0b0001) == 0b0001
     }
 
     pub fn pka_trust(&self) -> c_uint {
-        (self.bitfield & 0x6) >> 1
+        (self.bitfield & 0b0110) >> 1
     }
 
     pub fn chain_model(&self) -> bool {
-        (self.bitfield & 0x8) == 0x8
+        (self.bitfield & 0b1000) == 0b1000
     }
 }
 
@@ -448,15 +450,15 @@ pub type gpgme_genkey_result_t = *mut _gpgme_op_genkey_result;
 
 impl _gpgme_op_genkey_result {
     pub fn primary(&self) -> bool {
-        (self.bitfield & 0x1) == 0x1
+        (self.bitfield & 0b001) == 0b001
     }
 
     pub fn sub(&self) -> bool {
-        (self.bitfield & 0x2) == 0x2
+        (self.bitfield & 0b010) == 0b010
     }
 
     pub fn uid(&self) -> bool {
-        (self.bitfield & 0x3) == 0x3
+        (self.bitfield & 0b100) == 0b100
     }
 }
 
@@ -469,7 +471,7 @@ pub type gpgme_keylist_result_t = *mut _gpgme_op_keylist_result;
 
 impl _gpgme_op_keylist_result {
     pub fn truncated(&self) -> bool {
-        (self.bitfield & 0x1) == 0x1
+        (self.bitfield & 0b1) == 0b1
     }
 }
 
@@ -542,3 +544,47 @@ pub struct gpgme_conf_comp {
     pub options: gpgme_conf_opt_t
 }
 pub type gpgme_conf_comp_t = *mut gpgme_conf_comp;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct _gpgme_op_query_swdb_result {
+  pub next: *mut _gpgme_op_query_swdb_result,
+  pub name: *mut c_char,
+  pub iversion: *mut c_char,
+  pub created: c_ulong,
+  pub retrieved: c_ulong,
+  bitfield: u32,
+  pub version: *mut c_char,
+  pub reldate: c_ulong,
+}
+
+impl _gpgme_op_query_swdb_result {
+    pub fn warning(&self) -> bool {
+        (self.bitfield & 0b0000_0001) == 0b0000_0001
+    }
+
+    pub fn update(&self) -> bool {
+        (self.bitfield & 0b0000_0010) == 0b0000_0010
+    }
+
+    pub fn urgent(&self) -> bool {
+        (self.bitfield & 0b0000_0100) == 0b0000_0100
+    }
+
+    pub fn noinfo(&self) -> bool {
+        (self.bitfield & 0b0000_1000) == 0b0000_1000
+    }
+
+    pub fn unknown(&self) -> bool {
+        (self.bitfield & 0b0001_0000) == 0b0001_0000
+    }
+
+    pub fn tooold(&self) -> bool {
+        (self.bitfield & 0b0010_0000) == 0b0010_0000
+    }
+
+    pub fn error(&self) -> bool {
+        (self.bitfield & 0b0100_0000) == 0b0100_0000
+    }
+}
+pub type gpgme_query_swdb_result_t = *mut _gpgme_op_query_swdb_result;

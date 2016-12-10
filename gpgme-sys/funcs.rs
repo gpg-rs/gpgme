@@ -40,6 +40,8 @@ extern {
     pub fn gpgme_release(ctx: gpgme_ctx_t);
 
     pub fn gpgme_set_ctx_flag(ctx: gpgme_ctx_t, name: *const c_char, value: *const c_char) -> gpgme_error_t;
+    pub fn gpgme_get_ctx_flag(ctx: gpgme_ctx_t, name: *const c_char) -> *const c_char;
+
     pub fn gpgme_set_protocol(ctx: gpgme_ctx_t, proto: gpgme_protocol_t) -> gpgme_error_t;
     pub fn gpgme_get_protocol(ctx: gpgme_ctx_t) -> gpgme_protocol_t;
 
@@ -84,6 +86,8 @@ extern {
     pub fn gpgme_pubkey_algo_name(algo: gpgme_pubkey_algo_t) -> *const c_char;
     pub fn gpgme_hash_algo_name(algo: gpgme_hash_algo_t) -> *const c_char;
 
+    pub fn gpgme_addrspec_from_uid(uid: *const c_char) -> *mut c_char;
+
     pub fn gpgme_signers_clear(ctx: gpgme_ctx_t);
     pub fn gpgme_signers_add(ctx: gpgme_ctx_t, key: gpgme_key_t) -> gpgme_error_t;
     pub fn gpgme_signers_count(ctx: gpgme_ctx_t) -> c_uint;
@@ -92,6 +96,9 @@ extern {
     pub fn gpgme_sig_notation_clear(ctx: gpgme_ctx_t);
     pub fn gpgme_sig_notation_add(ctx: gpgme_ctx_t, name: *const c_char, value: *const c_char, flags: gpgme_sig_notation_flags_t) -> gpgme_error_t;
     pub fn gpgme_sig_notation_get(ctx: gpgme_ctx_t) -> gpgme_sig_notation_t;
+
+    pub fn gpgme_set_sender(ctx: gpgme_ctx_t, address: *const c_char) -> gpgme_error_t;
+    pub fn gpgme_get_sender(ctx: gpgme_ctx_t) -> *const c_char;
 
     pub fn gpgme_set_io_cbs(ctx: gpgme_ctx_t, io_cbs: gpgme_io_cbs_t);
     pub fn gpgme_get_io_cbs(ctx: gpgme_ctx_t, io_cbs: gpgme_io_cbs_t);
@@ -263,6 +270,11 @@ extern {
     pub fn gpgme_op_vfs_mount_result(ctx: gpgme_ctx_t) -> gpgme_vfs_mount_result_t;
     pub fn gpgme_op_vfs_mount(ctx: gpgme_ctx_t, container_file: *const c_char, mount_dir: *const c_char, flags: c_uint, op_err: *mut gpgme_error_t) -> gpgme_error_t;
     pub fn gpgme_op_vfs_create(ctx: gpgme_ctx_t, recp: *mut gpgme_key_t, container_file: *const c_char, flags: c_uint, op_err: *mut gpgme_error_t) -> gpgme_error_t;
+
+    pub fn gpgme_op_query_swdb(ctx: gpgme_ctx_t,
+                               name: *const c_char, iversion: *const c_char,
+                               _reserved: c_uint) -> gpgme_error_t;
+    pub fn gpgme_op_query_swdb_result(ctx: gpgme_ctx_t) -> gpgme_query_swdb_result_t;
 
     pub fn gpgme_conf_arg_new(arg_p: *mut gpgme_conf_arg_t, arg_type: gpgme_conf_type_t, value: *const c_void) -> gpgme_error_t;
     pub fn gpgme_conf_arg_release(arg: gpgme_conf_arg_t, arg_type: gpgme_conf_type_t);
