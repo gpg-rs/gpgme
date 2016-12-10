@@ -33,10 +33,17 @@ impl Context {
         }
     }
 
-    pub fn set_flag<S1, S2>(&self, name: S1, value: S2) -> Result<()>
-    where S1: Into<String>, S2: Into<String> {
-        let name = try!(CString::new(name.into()));
-        let value = try!(CString::new(value.into()));
+    pub fn get_flag<S>(&self, name: S) -> StrResult where S: Into<Vec<u8>> {
+        let name = try!(CString::new(name).map_err(|_| utils::StrError::NotPresent));
+        unsafe {
+            utils::from_cstr(ffi::gpgme_get_ctx_flag(self.raw, name.as_ptr()))
+        }
+    }
+
+    pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
+    where S1: Into<Vec<u8>>, S2: Into<Vec<u8>> {
+        let name = try!(CString::new(name));
+        let value = try!(CString::new(value));
         unsafe {
             return_err!(ffi::gpgme_set_ctx_flag(self.raw, name.as_ptr(), value.as_ptr()));
         }
@@ -555,6 +562,27 @@ impl Context {
                                            data.as_raw()));
         }
         Ok(())
+    }
+
+    pub fn clear_sender(&mut self) -> Result<()> {
+        unsafe {
+            return_err!(ffi::gpgme_set_sender(self.raw, ptr::null()));
+        }
+        Ok(())
+    }
+
+    pub fn set_sender<S: Into<Vec<u8>>>(&mut self, sender: S) -> Result<()> {
+        let sender = try!(CString::new(sender));
+        unsafe {
+            return_err!(ffi::gpgme_set_sender(self.raw, sender.as_ptr()));
+        }
+        Ok(())
+    }
+
+    pub fn sender(&self) -> StrResult {
+        unsafe {
+            utils::from_cstr(ffi::gpgme_get_sender(self.raw))
+        }
     }
 
     pub fn clear_signers(&mut self) {
