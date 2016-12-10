@@ -5,7 +5,7 @@ use std::str::Utf8Error;
 use ffi;
 
 bitflags! {
-    flags Flags: ffi::gpgme_sig_notation_flags_t {
+    pub flags Flags: ffi::gpgme_sig_notation_flags_t {
         const HUMAN_READABLE = ffi::GPGME_SIG_NOTATION_HUMAN_READABLE,
         const CRITICAL = ffi::GPGME_SIG_NOTATION_CRITICAL,
     }

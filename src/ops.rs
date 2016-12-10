@@ -176,7 +176,7 @@ impl<'a, T> Iterator for InvalidKeyIter<'a, T> {
 }
 
 bitflags! {
-    flags KeyListMode: ffi::gpgme_keylist_mode_t {
+    pub flags KeyListMode: ffi::gpgme_keylist_mode_t {
         const KEY_LIST_MODE_LOCAL = ffi::GPGME_KEYLIST_MODE_LOCAL,
         const KEY_LIST_MODE_EXTERN = ffi::GPGME_KEYLIST_MODE_EXTERN,
         const KEY_LIST_MODE_SIGS = ffi::GPGME_KEYLIST_MODE_SIGS,
@@ -196,7 +196,7 @@ impl KeyListResult {
 }
 
 bitflags! {
-    flags CreateKeyFlags: libc::c_uint {
+    pub flags CreateKeyFlags: libc::c_uint {
         const CREATE_SIGN = ffi::GPGME_CREATE_SIGN,
         const CREATE_ENCR = ffi::GPGME_CREATE_ENCR,
         const CREATE_CERT = ffi::GPGME_CREATE_CERT,
@@ -234,7 +234,7 @@ impl KeyGenerateResult {
 }
 
 bitflags! {
-    flags KeySignFlags: libc::c_uint {
+    pub flags KeySignFlags: libc::c_uint {
         const KEY_SIGN_LOCAL = ffi::GPGME_KEYSIGN_LOCAL,
         const KEY_SIGN_LFSEP = ffi::GPGME_KEYSIGN_LFSEP,
         const KEY_SIGN_NOEXPIRE = ffi::GPGME_KEYSIGN_NOEXPIRE,
@@ -301,7 +301,7 @@ impl ImportResult {
 }
 
 bitflags! {
-    flags ImportFlags: libc::c_uint {
+    pub flags ImportFlags: libc::c_uint {
         const IMPORT_NEW = ffi::GPGME_IMPORT_NEW,
         const IMPORT_UID = ffi::GPGME_IMPORT_UID,
         const IMPORT_SIG = ffi::GPGME_IMPORT_SIG,
@@ -333,7 +333,7 @@ impl<'a> ImportStatus<'a> {
 }
 
 bitflags! {
-    flags ExportMode: ffi::gpgme_export_mode_t {
+    pub flags ExportMode: ffi::gpgme_export_mode_t {
         const EXPORT_EXTERN = ffi::GPGME_EXPORT_MODE_EXTERN,
         const EXPORT_MINIMAL = ffi::GPGME_EXPORT_MODE_MINIMAL,
         const EXPORT_SECRET = ffi::GPGME_EXPORT_MODE_SECRET,
@@ -343,7 +343,7 @@ bitflags! {
 }
 
 bitflags! {
-    flags EncryptFlags: ffi::gpgme_encrypt_flags_t {
+    pub flags EncryptFlags: ffi::gpgme_encrypt_flags_t {
         const ENCRYPT_ALWAYS_TRUST = ffi::GPGME_ENCRYPT_ALWAYS_TRUST,
         const ENCRYPT_NO_ENCRYPT_TO = ffi::GPGME_ENCRYPT_NO_ENCRYPT_TO,
         const ENCRYPT_PREPARE = ffi::GPGME_ENCRYPT_PREPARE,
@@ -475,7 +475,7 @@ impl VerifyResult {
 }
 
 bitflags! {
-    flags SignatureSummary: ffi::gpgme_sigsum_t {
+    pub flags SignatureSummary: ffi::gpgme_sigsum_t {
         const SIGNATURE_VALID = ffi::GPGME_SIGSUM_VALID,
         const SIGNATURE_GREEN = ffi::GPGME_SIGSUM_GREEN,
         const SIGNATURE_RED = ffi::GPGME_SIGSUM_RED,

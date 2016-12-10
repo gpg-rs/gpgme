@@ -10,8 +10,8 @@ keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 
 [dependencies]
 libc = "0.2"
-bitflags = "0.3"
-lazy_static = "0.1"
+bitflags = "0.7"
+lazy_static = "0.2"
 gpg-error = "0.1"
 gpgme-sys = {path = "gpgme-sys", version = "0.2.0"}
 
