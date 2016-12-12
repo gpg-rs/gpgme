@@ -24,6 +24,6 @@ fn test_decrypt() {
         }
         check_data(&mut output,
                    b"Wenn Sie dies lesen k\xf6nnen, ist es wohl nicht\n\
-                geheim genug.\n");
+                     geheim genug.\n");
     });
 }

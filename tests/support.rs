@@ -64,6 +64,7 @@ pub fn setup_agent(dir: &Path) {
 
     let agent_conf = dir.join("gpg-agent.conf");
     let mut agent_conf = File::create(agent_conf).unwrap();
+    agent_conf.write_all(b"allow-loopback-pinentry\n").unwrap();
     agent_conf.write_all(b"pinentry-program ").unwrap();
     agent_conf.write_all(pinentry.to_str().unwrap().as_ref()).unwrap();
     agent_conf.write_all(b"\n").unwrap();

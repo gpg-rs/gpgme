@@ -177,3 +177,13 @@ impl fmt::Display for HashAlgorithm {
         write!(f, "{}", self.name().unwrap_or("Unknown"))
     }
 }
+
+ffi_enum_wrapper! {
+    pub enum PinentryMode: ffi::gpgme_pinentry_mode_t {
+        Default = ffi::GPGME_PINENTRY_MODE_DEFAULT,
+        Ask = ffi::GPGME_PINENTRY_MODE_ASK,
+        Cancel = ffi::GPGME_PINENTRY_MODE_CANCEL,
+        Error = ffi::GPGME_PINENTRY_MODE_ERROR,
+        Loopback = ffi::GPGME_PINENTRY_MODE_LOOPBACK,
+    }
+}

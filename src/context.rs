@@ -158,6 +158,21 @@ impl Context {
         Ok(())
     }
 
+    #[cfg(feature = "v1_4_0")]
+    pub fn pinentry_mode(self) -> ::PinentryMode {
+        unsafe {
+            ::PinentryMode::from_raw(ffi::gpgme_get_pinentry_mode(self.0))
+        }
+    }
+
+    #[cfg(feature = "v1_4_0")]
+    pub fn set_pinentry_mode(&mut self, mode: ::PinentryMode) -> Result<()> {
+        unsafe {
+            return_err!(ffi::gpgme_set_pinentry_mode(self.0, mode.raw()));
+        }
+        Ok(())
+    }
+
     /// Uses the specified provider to handle passphrase requests for the duration of the
     /// closure.
     ///
