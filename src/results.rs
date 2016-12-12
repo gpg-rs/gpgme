@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use libc;
 use ffi;
 
-use {Context, Error, HashAlgorithm, ImportFlags, Key, KeyAlgorithm, OpResult, Result, SignMode,
+use {Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm, OpResult, Result, SignMode,
      SignatureSummary, Validity};
 use error;
 use notation::SignatureNotations;
@@ -519,11 +519,12 @@ impl<'a> Signature<'a> {
     }
 
     #[inline]
-    pub fn key(&self) -> Option<Key> {
+    #[cfg(feature = "v1_7_0")]
+    pub fn key(&self) -> Option<::Key> {
         unsafe {
             (*self.0).key.as_mut().map(|k| {
                 ffi::gpgme_key_ref(k);
-                Key::from_raw(k)
+                ::Key::from_raw(k)
             })
         }
     }

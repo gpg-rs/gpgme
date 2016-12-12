@@ -1,15 +1,17 @@
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::{mem, ptr, result};
 use std::str::Utf8Error;
+#[cfg(feature = "v1_7_0")]
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use libc;
-use conv::{UnwrapOrSaturate, ValueInto};
+use conv::ValueInto;
+#[cfg(feature = "v1_4_3")]
+use conv::UnwrapOrSaturate;
 use ffi;
 
-use {Data, EditHandler, Error, InteractHandler, IntoNativeString, Key, KeyListMode,
-     PassphraseProvider, ProgressHandler, Protocol, Result, SignMode, StatusHandler, TofuPolicy,
-     TrustItem};
+use {Data, EditHandler, Error, IntoNativeString, Key, KeyListMode, PassphraseProvider,
+     ProgressHandler, Protocol, Result, SignMode, TrustItem};
 use {callbacks, edit, error};
 use engine::EngineInfo;
 use notation::SignatureNotations;
@@ -69,21 +71,25 @@ impl Context {
         }
     }
 
+    #[cfg(feature = "v1_6_0")]
     pub fn offline(&self) -> bool {
         unsafe { ffi::gpgme_get_offline(self.0) != 0 }
     }
 
+    #[cfg(feature = "v1_6_0")]
     pub fn set_offline(&mut self, enabled: bool) {
         unsafe {
             ffi::gpgme_set_offline(self.0, if enabled { 1 } else { 0 });
         }
     }
 
+    #[cfg(feature = "v1_8_0")]
     pub fn get_flag<S>(&self, name: S) -> result::Result<&str, Option<Utf8Error>>
     where S: IntoNativeString {
         self.get_flag_raw(name).map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    #[cfg(feature = "v1_8_0")]
     pub fn get_flag_raw<S>(&self, name: S) -> Option<&CStr> where S: IntoNativeString {
         let name = name.into_native();
         unsafe {
@@ -93,6 +99,7 @@ impl Context {
         }
     }
 
+    #[cfg(feature = "v1_7_0")]
     pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
     where S1: IntoNativeString, S2: IntoNativeString {
         let name = name.into_native();
@@ -201,8 +208,9 @@ impl Context {
         }
     }
 
+    #[cfg(feature = "v1_6_0")]
     pub fn with_status_handler<H, F, R>(&mut self, mut handler: H, f: F) -> R
-    where H: StatusHandler, F: FnOnce(&mut Context) -> R {
+    where H: ::StatusHandler, F: FnOnce(&mut Context) -> R {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_status_cb(self.0, &mut old.0, &mut old.1);
@@ -306,6 +314,7 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    #[cfg(feature = "v1_7_0")]
     pub fn create_key<S1, S2>(&mut self, userid: S1, algo: S2, expires: Option<SystemTime>,
         flags: ::CreateKeyFlags)
         -> Result<results::KeyGenerationResult>
@@ -327,6 +336,7 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    #[cfg(feature = "v1_7_0")]
     pub fn create_subkey<S>(&mut self, key: &Key, algo: S, expires: Option<SystemTime>,
         flags: ::CreateKeyFlags)
         -> Result<results::KeyGenerationResult>
@@ -346,6 +356,7 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    #[cfg(feature = "v1_7_0")]
     pub fn add_uid<S>(&mut self, key: &Key, userid: S) -> Result<()> where S: IntoNativeString {
         let userid = userid.into_native();
         unsafe {
@@ -354,6 +365,7 @@ impl Context {
         Ok(())
     }
 
+    #[cfg(feature = "v1_7_0")]
     pub fn revoke_uid<S>(&mut self, key: &Key, userid: S) -> Result<()> where S: IntoNativeString {
         let userid = userid.into_native();
         unsafe {
@@ -362,11 +374,13 @@ impl Context {
         Ok(())
     }
 
+    #[cfg(feature = "v1_7_0")]
     pub fn sign_key<I>(&mut self, key: &Key, userids: I, expires: Option<SystemTime>) -> Result<()>
     where I: IntoIterator, I::Item: AsRef<[u8]> {
         self.sign_key_with_flags(key, userids, expires, ::KeySigningFlags::empty())
     }
 
+    #[cfg(feature = "v1_7_0")]
     pub fn sign_key_with_flags<I>(&mut self, key: &Key, userids: I, expires: Option<SystemTime>,
         flags: ::KeySigningFlags)
         -> Result<()>
@@ -387,20 +401,21 @@ impl Context {
                 _ => panic!("no userids provided"),
             }
         };
-        let userids = try!(CString::new(userids));
+        let userids = userids.into_native();
         let expires = expires.and_then(|e| e.duration_since(UNIX_EPOCH).ok())
             .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
         unsafe {
             return_err!(ffi::gpgme_op_keysign(self.0,
                                               key.as_raw(),
-                                              userids.as_ptr(),
+                                              userids.as_ref().as_ptr(),
                                               expires,
                                               flags.bits()));
         }
         Ok(())
     }
 
-    pub fn change_key_tofu_policy(&mut self, key: &Key, policy: TofuPolicy) -> Result<()> {
+    #[cfg(feature = "v1_7_0")]
+    pub fn change_key_tofu_policy(&mut self, key: &Key, policy: ::TofuPolicy) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_op_tofu_policy(self.0, key.as_raw(), policy.raw()));
         }
@@ -408,6 +423,7 @@ impl Context {
     }
 
     // Only works with GPG >= 2.0.15
+    #[cfg(feature = "v1_3_0")]
     pub fn change_key_passphrase(&mut self, key: &Key) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_op_passwd(self.0, key.as_raw(), 0));
@@ -457,7 +473,8 @@ impl Context {
         self.edit_card_key(key, edit::EditorWrapper::new(editor), data)
     }
 
-    pub fn interact<H: InteractHandler>(&mut self, key: &Key, handler: H, data: &mut Data)
+    #[cfg(feature = "v1_7_0")]
+    pub fn interact<H: ::InteractHandler>(&mut self, key: &Key, handler: H, data: &mut Data)
         -> Result<()> {
         unsafe {
             let mut wrapper = callbacks::InteractHandlerWrapper {
@@ -474,7 +491,8 @@ impl Context {
         Ok(())
     }
 
-    pub fn interact_with_card<H: InteractHandler>(&mut self, key: &Key, handler: H,
+    #[cfg(feature = "v1_7_0")]
+    pub fn interact_with_card<H: ::InteractHandler>(&mut self, key: &Key, handler: H,
         data: &mut Data)
         -> Result<()> {
         unsafe {
@@ -567,6 +585,7 @@ impl Context {
         Ok(())
     }
 
+    #[cfg(feature = "v1_8_0")]
     pub fn clear_sender(&mut self) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_set_sender(self.0, ptr::null()));
@@ -574,6 +593,7 @@ impl Context {
         Ok(())
     }
 
+    #[cfg(feature = "v1_8_0")]
     pub fn set_sender<S: IntoNativeString>(&mut self, sender: S) -> Result<()> {
         let sender = sender.into_native();
         unsafe {
@@ -582,6 +602,7 @@ impl Context {
         Ok(())
     }
 
+    #[cfg(feature = "v1_8_0")]
     pub fn sender(&self) -> result::Result<&str, Option<Utf8Error>> {
         match self.sender_raw() {
             Some(s) => s.to_str().map_err(Some),
@@ -589,6 +610,7 @@ impl Context {
         }
     }
 
+    #[cfg(feature = "v1_8_0")]
     pub fn sender_raw(&self) -> Option<&CStr> {
         unsafe { ffi::gpgme_get_sender(self.0).as_ref().map(|s| CStr::from_ptr(s)) }
     }
@@ -1005,6 +1027,7 @@ impl<'a> Iterator for Signers<'a> {
     }
 
     #[inline]
+    #[cfg(feature = "v1_4_3")]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.current.map_or((0, Some(0)), |c| {
             let count = unsafe {
@@ -1015,6 +1038,7 @@ impl<'a> Iterator for Signers<'a> {
     }
 
     #[inline]
+    #[cfg(feature = "v1_4_3")]
     fn count(self) -> usize {
         self.size_hint().0
     }

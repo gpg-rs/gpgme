@@ -1,6 +1,8 @@
 #![warn(missing_debug_implementations, trivial_numeric_casts)]
 extern crate libc;
 #[macro_use]
+extern crate cfg_if;
+#[macro_use]
 extern crate bitflags;
 #[macro_use]
 extern crate lazy_static;
@@ -51,6 +53,7 @@ pub mod tofu;
 pub mod edit;
 
 /// Constants for use with `Token::get_dir_info`.
+#[cfg(feature = "v1_5_0")]
 pub mod info {
     pub const HOME_DIR: &'static str = "homedir";
     pub const AGENT_SOCKET: &'static str = "agent-socket";
@@ -121,6 +124,34 @@ impl fmt::Display for Validity {
     }
 }
 
+cfg_if! {
+    if #[cfg(feature = "v1_8_0")] {
+        const TARGET_VERSION: &'static [u8] = b"1.8.0\0";
+    } else if #[cfg(feature = "v1_7_1")] {
+        const TARGET_VERSION: &'static [u8] = b"1.7.1\0";
+    } else if #[cfg(feature = "v1_7_0")] {
+        const TARGET_VERSION: &'static [u8] = b"1.7.0\0";
+    } else if #[cfg(feature = "v1_6_0")] {
+        const TARGET_VERSION: &'static [u8] = b"1.6.0\0";
+    } else if #[cfg(feature = "v1_5_1")] {
+        const TARGET_VERSION: &'static [u8] = b"1.5.1\0";
+    } else if #[cfg(feature = "v1_5_0")] {
+        const TARGET_VERSION: &'static [u8] = b"1.5.0\0";
+    } else if #[cfg(feature = "v1_4_3")] {
+        const TARGET_VERSION: &'static [u8] = b"1.4.3\0";
+    } else if #[cfg(feature = "v1_4_2")] {
+        const TARGET_VERSION: &'static [u8] = b"1.4.2\0";
+    } else if #[cfg(feature = "v1_4_0")] {
+        const TARGET_VERSION: &'static [u8] = b"1.4.0\0";
+    } else if #[cfg(feature = "v1_3_1")] {
+        const TARGET_VERSION: &'static [u8] = b"1.3.1\0";
+    } else if #[cfg(feature = "v1_3_0")] {
+        const TARGET_VERSION: &'static [u8] = b"1.3.0\0";
+    } else {
+        const TARGET_VERSION: &'static [u8] = b"1.2.0\0";
+    }
+}
+
 struct TokenImp {
     version: &'static str,
     engine_info: RwLock<()>,
@@ -138,7 +169,7 @@ lazy_static! {
             let base: ffi::_gpgme_signature = mem::zeroed();
             let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
 
-            let result = ffi::gpgme_check_version_internal(b"1.2.0\0".as_ptr() as *const _,
+            let result = ffi::gpgme_check_version_internal(TARGET_VERSION.as_ptr() as *const _,
                                                            offset);
             assert!(!result.is_null(), "gpgme library could not be initialized");
             CStr::from_ptr(result).to_str().expect("gpgme version string is not valid utf-8")
@@ -193,6 +224,7 @@ impl Token {
     /// Commonly supported values for `what` are specified in [`info`](info/).
     ///
     /// This function requires a version of GPGme >= 1.5.0.
+    #[cfg(feature = "v1_5_0")]
     pub fn get_dir_info<S>(&self, what: S) -> result::Result<&'static str, Option<Utf8Error>>
     where S: IntoNativeString {
         self.get_dir_info_raw(what).map_or(Err(None), |s| s.to_str().map_err(Some))
@@ -203,6 +235,7 @@ impl Token {
     /// Commonly supported values for `what` are specified in [`info`](info/).
     ///
     /// This function requires a version of GPGme >= 1.5.0.
+    #[cfg(feature = "v1_5_0")]
     pub fn get_dir_info_raw<S: IntoNativeString>(&self, what: S) -> Option<&'static CStr> {
         let what = what.into_native();
         unsafe {

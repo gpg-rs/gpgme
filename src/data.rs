@@ -327,8 +327,8 @@ impl<'a> Data<'a> {
         Ok(())
     }
 
-    // GPGME_VERSION >= 1.4.3
     #[inline]
+    #[cfg(feature = "v1_4_3")]
     pub fn identify(&mut self) -> Type {
         unsafe { Type::from_raw(ffi::gpgme_data_identify(self.0, 0)) }
     }

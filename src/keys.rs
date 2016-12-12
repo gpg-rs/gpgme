@@ -6,7 +6,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ffi;
 
-use {Error, KeyAlgorithm, KeyListMode, Protocol, TofuInfo, Validity};
+use {Error, KeyAlgorithm, KeyListMode, Protocol, Validity};
 use notation::SignatureNotations;
 
 pub struct Key(ffi::gpgme_key_t);
@@ -71,11 +71,6 @@ impl Key {
 
     pub fn has_secret(&self) -> bool {
         unsafe { (*self.0).secret() }
-    }
-
-    #[deprecated(since = "0.5.0", note = "use `has_secret` instead")]
-    pub fn is_secret(&self) -> bool {
-        self.has_secret()
     }
 
     pub fn is_root(&self) -> bool {
@@ -147,6 +142,12 @@ impl Key {
         self.fingerprint_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    #[cfg(not(feature = "v1_7_0"))]
+    pub fn fingerprint_raw(&self) -> Option<&CStr> {
+        self.primary_key().and_then(|k| k.fingerprint_raw())
+    }
+
+    #[cfg(feature = "v1_7_0")]
     pub fn fingerprint_raw(&self) -> Option<&CStr> {
         unsafe {
             (*self.0)
@@ -283,6 +284,7 @@ impl<'a> Subkey<'a> {
         unsafe { KeyAlgorithm::from_raw((*self.0).pubkey_algo) }
     }
 
+    #[cfg(feature = "v1_7_0")]
     pub fn algorithm_name(&self) -> ::Result<String> {
         unsafe {
             match ffi::gpgme_pubkey_algo_string(self.0).as_mut() {
@@ -299,10 +301,12 @@ impl<'a> Subkey<'a> {
         }
     }
 
+    #[cfg(feature = "v1_7_0")]
     pub fn keygrip(&self) -> Result<&'a str, Option<Utf8Error>> {
         self.keygrip_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    #[cfg(feature = "v1_7_0")]
     pub fn keygrip_raw(&self) -> Option<&'a CStr> {
         unsafe { (*self.0).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
     }
@@ -319,10 +323,12 @@ impl<'a> Subkey<'a> {
         unsafe { (*self.0).card_number.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
+    #[cfg(feature = "v1_5_0")]
     pub fn curve(&self) -> Result<&'a str, Option<Utf8Error>> {
         self.curve_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    #[cfg(feature = "v1_5_0")]
     pub fn curve_raw(&self) -> Option<&'a CStr> {
         unsafe { (*self.0).curve.as_ref().map(|s| CStr::from_ptr(s)) }
     }
@@ -411,8 +417,9 @@ impl<'a> UserId<'a> {
         unsafe { Signatures::from_list((*self.0).signatures) }
     }
 
-    pub fn tofu_info(&self) -> Option<TofuInfo> {
-        unsafe { (*self.0).tofu.as_mut().map(|t| TofuInfo::from_raw(t)) }
+    #[cfg(feature = "v1_7_0")]
+    pub fn tofu_info(&self) -> Option<::TofuInfo> {
+        unsafe { (*self.0).tofu.as_mut().map(|t| ::TofuInfo::from_raw(t)) }
     }
 }
 

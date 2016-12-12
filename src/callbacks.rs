@@ -140,6 +140,21 @@ pub extern "C" fn progress_cb<H: ProgressHandler>(hook: *mut libc::c_void,
     }
 }
 
+#[cfg(feature = "v1_6_0")]
+pub struct StatusHandlerGuard {
+    pub ctx: ffi::gpgme_ctx_t,
+    pub old: (ffi::gpgme_status_cb_t, *mut libc::c_void),
+}
+
+#[cfg(feature = "v1_6_0")]
+impl Drop for StatusHandlerGuard {
+    fn drop(&mut self) {
+        unsafe {
+            ffi::gpgme_set_status_cb(self.ctx, self.old.0, self.old.1);
+        }
+    }
+}
+
 pub trait StatusHandler: 'static + Send {
     fn handle(&mut self, keyword: Option<&CStr>, args: Option<&CStr>) -> Result<(), Error>;
 }
@@ -151,19 +166,7 @@ where T: FnMut(Option<&CStr>, Option<&CStr>) -> Result<(), Error> {
     }
 }
 
-pub struct StatusHandlerGuard {
-    pub ctx: ffi::gpgme_ctx_t,
-    pub old: (ffi::gpgme_status_cb_t, *mut libc::c_void),
-}
-
-impl Drop for StatusHandlerGuard {
-    fn drop(&mut self) {
-        unsafe {
-            ffi::gpgme_set_status_cb(self.ctx, self.old.0, self.old.1);
-        }
-    }
-}
-
+#[cfg(feature = "v1_6_0")]
 pub extern "C" fn status_cb<H: StatusHandler>(hook: *mut libc::c_void,
     keyword: *const libc::c_char,
     args: *const libc::c_char)
@@ -255,11 +258,13 @@ pub trait InteractHandler: 'static + Send {
         -> Result<(), Error>;
 }
 
+#[cfg(feature = "v1_7_0")]
 pub struct InteractHandlerWrapper<'a, H: InteractHandler> {
     pub handler: H,
     pub response: *mut Data<'a>,
 }
 
+#[cfg(feature = "v1_7_0")]
 pub extern "C" fn interact_cb<H: InteractHandler>(hook: *mut libc::c_void,
     keyword: *const libc::c_char,
     args: *const libc::c_char, fd: libc::c_int)

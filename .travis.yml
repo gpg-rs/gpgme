@@ -4,21 +4,30 @@ sudo: false
 addons:
   apt:
     packages:
-    - libgpgme11-dev
-script:
-- cargo build --verbose
-- cargo test --verbose
-- cargo doc
-after_success: |
-  [ $TRAVIS_BRANCH = master ] &&
-  [ $TRAVIS_PULL_REQUEST = false ] &&
-  echo '<meta http-equiv=refresh content=0;url=gpgme/index.html>' > target/doc/index.html &&
-  pip install --user ghp-import &&
-  $HOME/.local/bin/ghp-import -n target/doc &&
-  git push -qf https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
+      - libgpg-error-dev
+      - libgpgme11-dev
+matrix:
+  include:
+    - os: linux
+      dist: precise
+      script:
+        - cargo build --verbose --no-default-features
+        - cargo test --verbose --no-default-features
+        - cargo doc --no-default-features
+      after_success:
+        - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
+        - travis-cargo doc-upload
+    - os: linux
+      dist: trusty
+      script:
+        - cargo build --verbose --no-default-features --features "v1_4_3"
+        - cargo test --verbose --no-default-features --features "v1_4_3"
+        - cargo doc --no-default-features --features "v1_4_3"
+  allow_failure:
+    - dist: trusty
 env:
   global:
-    secure: KKPYXC3dn8CR8YRPuqkBSEu9VUjt7qSTLENnPYz4B2+lFT0iI265MqZGaHFhBv3YHjV/ONjvOj6Tn1l1JFIzLyBbiJ9EeY/5u/kh+tN2fjR8AniaqPG+SZuRERZwe92T/8xr+fGdzlG9hKr7XgAXQAdB7hAlQoU+cuiwuB0+FDMBciDELnLokIRCoKzW0LSY5EvQQ2BkPHuWv3n04isd7WF11IsidqN0HMDtSaVSC6FbfpW/MdlRqVzey/VxG/BpY0FWvCkRayB7NVLEWXtr/rWyn3jY6pKqev+I0w6eIL/hvKrQUrmSP3y0RJcCgq/7asdNQDeIFXbT1emFXw3dKmA9ZdSzBnm5Z2NO18DNAb3yUQjCJztSWaCfyEbKFbrV/V6cl8I61gHzGzS8kWG8kAbC6dSQxaAtm3wrcrPI1q4bHj0JAXJ27ICKAHoxMUWX50+tMZDchv8exQjBPu35gPi+5tJGCuGeSnZ33w+XHPTdJtb1Hqt87CSEs8umJyZbjT/NpIWzgKJz/2dTX1dpvEnJ0THRMTd2W2TQra9Y9e6GxUZlV6MVI6pDSBKdee6fGTxAtfmVzgL6Bfey5vP+70RanHmLTN/FJXw/thEfZaSsZnK298XsmJ6WXksCEBo40E0wINDe6R7R4egzTzoFqUzsv/uPNu/0QXXrM8DWTo4=
+    - secure: KKPYXC3dn8CR8YRPuqkBSEu9VUjt7qSTLENnPYz4B2+lFT0iI265MqZGaHFhBv3YHjV/ONjvOj6Tn1l1JFIzLyBbiJ9EeY/5u/kh+tN2fjR8AniaqPG+SZuRERZwe92T/8xr+fGdzlG9hKr7XgAXQAdB7hAlQoU+cuiwuB0+FDMBciDELnLokIRCoKzW0LSY5EvQQ2BkPHuWv3n04isd7WF11IsidqN0HMDtSaVSC6FbfpW/MdlRqVzey/VxG/BpY0FWvCkRayB7NVLEWXtr/rWyn3jY6pKqev+I0w6eIL/hvKrQUrmSP3y0RJcCgq/7asdNQDeIFXbT1emFXw3dKmA9ZdSzBnm5Z2NO18DNAb3yUQjCJztSWaCfyEbKFbrV/V6cl8I61gHzGzS8kWG8kAbC6dSQxaAtm3wrcrPI1q4bHj0JAXJ27ICKAHoxMUWX50+tMZDchv8exQjBPu35gPi+5tJGCuGeSnZ33w+XHPTdJtb1Hqt87CSEs8umJyZbjT/NpIWzgKJz/2dTX1dpvEnJ0THRMTd2W2TQra9Y9e6GxUZlV6MVI6pDSBKdee6fGTxAtfmVzgL6Bfey5vP+70RanHmLTN/FJXw/thEfZaSsZnK298XsmJ6WXksCEBo40E0wINDe6R7R4egzTzoFqUzsv/uPNu/0QXXrM8DWTo4=
 branches:
   except:
     - /^v[0-9]/
