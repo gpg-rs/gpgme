@@ -4,9 +4,8 @@ extern crate gpgme;
 use std::io;
 use std::io::prelude::*;
 
-use gpgme::Data;
+use gpgme::{Context, Data};
 use gpgme::error::{self, ErrorCode};
-use gpgme::ops;
 
 use self::support::setup;
 
@@ -31,7 +30,7 @@ y1kvP4y+8D5a11ang0udywsA\n\
 =Crq6\n\
 -----END PGP MESSAGE-----\n";
 
-/* A message with a prepended but unsigned plaintext packet. */
+// A message with a prepended but unsigned plaintext packet.
 const DOUBLE_PLAINTEXT_SIG: &'static [u8] = b"-----BEGIN PGP MESSAGE-----\n\n\
 rDRiCmZvb2Jhci50eHRF4pxNVGhpcyBpcyBteSBzbmVha3kgcGxhaW50ZXh0IG1l\n\
 c3NhZ2UKowGbwMvMwCSoW1RzPCOz3IRxTWISa6JebnG666MFD1wzSzJSixQ81XMV\n\
@@ -41,31 +40,31 @@ UqVooWlGXHwNw/xg/fVzt9VNbtjtJ/fhUqYo0/LyCGEA\n\
 =6+AK\n\
 -----END PGP MESSAGE-----\n";
 
-fn check_result(result: ops::VerifyResult, fpr: &str, summary: ops::SignatureSummary,
-                status: ErrorCode, notations: bool) {
+fn check_result(result: gpgme::VerificationResult, fpr: &str, summary: gpgme::SignatureSummary,
+    status: ErrorCode, notations: bool) {
     assert_eq!(result.signatures().count(), 1);
 
     let signature = result.signatures().next().unwrap();
     assert_eq!(signature.summary(), summary);
     assert_eq!(signature.fingerprint(), Ok(fpr));
     assert_eq!(signature.status().err().map_or(0, |e| e.code()), status);
-    assert!(!signature.wrong_key_usage());
-    assert_eq!(signature.validity(), gpgme::VALIDITY_UNKNOWN);
-    assert_eq!(signature.validity_reason(), None);
+    assert!(!signature.is_wrong_key_usage());
+    assert_eq!(signature.validity(), gpgme::Validity::Unknown);
+    assert_eq!(signature.nonvalidity_reason(), None);
 
     if notations {
-        let mut expected = [("bar", "öäüß das waren Umlaute und \
-                             jetzt ein prozent%-Zeichen", 0),
-                            ("foobar.1", "this is a notation data with 2 lines", 0),
-                            ("", "http://www.gu.org/policy/", 0)];
+        let mut expected =
+            [("bar", "öäüß das waren Umlaute und jetzt ein prozent%-Zeichen", 0),
+             ("foobar.1", "this is a notation data with 2 lines", 0),
+             ("", "http://www.gu.org/policy/", 0)];
         for notation in signature.notations() {
             match expected.iter_mut().find(|&&mut (name, value, _)| {
-                (notation.name().unwrap_or("") == name) &&
-                (notation.value().unwrap_or("") == value)
+                (notation.name().unwrap_or("") == name) && (notation.value().unwrap_or("") == value)
             }) {
                 Some(v) => v.2 += 1,
                 None => {
-                    panic!("Unexpected notation data: {:?}: {:?}", notation.name(),
+                    panic!("Unexpected notation data: {:?}: {:?}",
+                           notation.name(),
                            notation.value());
                 }
             }
@@ -79,26 +78,36 @@ fn check_result(result: ops::VerifyResult, fpr: &str, summary: ops::SignatureSum
 #[test]
 fn test_verify() {
     let _gpghome = setup();
-    let mut ctx = fail_if_err!(gpgme::create_context());
-    fail_if_err!(ctx.set_protocol(gpgme::PROTOCOL_OPENPGP));
+    let mut ctx = fail_if_err!(Context::from_protocol(gpgme::Protocol::OpenPgp));
 
     let mut text = fail_if_err!(Data::from_buffer(TEST_TEXT1));
     let mut sig = fail_if_err!(Data::from_buffer(TEST_SIG1));
     check_result(fail_if_err!(ctx.verify_detached(&mut sig, &mut text)),
-        "A0FF4590BB6122EDEF6E3C542D727CC768697734", ops::SignatureSummary::empty(), 0, true);
+                 "A0FF4590BB6122EDEF6E3C542D727CC768697734",
+                 gpgme::SignatureSummary::empty(),
+                 0,
+                 true);
 
     text = fail_if_err!(Data::from_buffer(TEST_TEXT1F));
     sig.seek(io::SeekFrom::Start(0)).unwrap();
     check_result(fail_if_err!(ctx.verify_detached(&mut sig, &mut text)),
-        "2D727CC768697734", ops::SIGNATURE_RED, error::GPG_ERR_BAD_SIGNATURE, false);
+                 "2D727CC768697734",
+                 gpgme::SIGNATURE_RED,
+                 error::GPG_ERR_BAD_SIGNATURE,
+                 false);
 
     text = fail_if_err!(Data::new());
     sig = fail_if_err!(Data::from_buffer(TEST_SIG2));
     check_result(fail_if_err!(ctx.verify_opaque(&mut sig, &mut text)),
-        "A0FF4590BB6122EDEF6E3C542D727CC768697734", ops::SignatureSummary::empty(), 0, false);
+                 "A0FF4590BB6122EDEF6E3C542D727CC768697734",
+                 gpgme::SignatureSummary::empty(),
+                 0,
+                 false);
 
     text = fail_if_err!(Data::new());
     sig = fail_if_err!(Data::from_buffer(DOUBLE_PLAINTEXT_SIG));
-    assert_eq!(ctx.verify_opaque(&mut sig, &mut text).err()
-        .map_or(0, |err| err.code()), error::GPG_ERR_BAD_DATA);
+    assert_eq!(ctx.verify_opaque(&mut sig, &mut text)
+                   .err()
+                   .map_or(0, |err| err.code()),
+               error::GPG_ERR_BAD_DATA);
 }

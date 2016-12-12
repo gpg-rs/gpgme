@@ -10,71 +10,78 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::Data;
-use gpgme::ops;
+use gpgme::{Context, Data, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] [SIGFILE] FILE", program);
     write!(io::stderr(), "{}", opts.usage(&brief));
 }
 
-fn print_summary(summary: ops::SignatureSummary) {
-    if summary.contains(ops::SIGNATURE_VALID) {
+fn print_summary(summary: gpgme::SignatureSummary) {
+    if summary.contains(gpgme::SIGNATURE_VALID) {
         print!(" valid");
     }
-    if summary.contains(ops::SIGNATURE_GREEN) {
+    if summary.contains(gpgme::SIGNATURE_GREEN) {
         print!(" green");
     }
-    if summary.contains(ops::SIGNATURE_RED) {
+    if summary.contains(gpgme::SIGNATURE_RED) {
         print!(" red");
     }
-    if summary.contains(ops::SIGNATURE_KEY_REVOKED) {
+    if summary.contains(gpgme::SIGNATURE_KEY_REVOKED) {
         print!(" revoked");
     }
-    if summary.contains(ops::SIGNATURE_KEY_EXPIRED) {
+    if summary.contains(gpgme::SIGNATURE_KEY_EXPIRED) {
         print!(" key-expired");
     }
-    if summary.contains(ops::SIGNATURE_SIG_EXPIRED) {
+    if summary.contains(gpgme::SIGNATURE_SIG_EXPIRED) {
         print!(" sig-expired");
     }
-    if summary.contains(ops::SIGNATURE_KEY_MISSING) {
+    if summary.contains(gpgme::SIGNATURE_KEY_MISSING) {
         print!(" key-missing");
     }
-    if summary.contains(ops::SIGNATURE_CRL_MISSING) {
+    if summary.contains(gpgme::SIGNATURE_CRL_MISSING) {
         print!(" crl-missing");
     }
-    if summary.contains(ops::SIGNATURE_CRL_TOO_OLD) {
+    if summary.contains(gpgme::SIGNATURE_CRL_TOO_OLD) {
         print!(" crl-too-old");
     }
-    if summary.contains(ops::SIGNATURE_BAD_POLICY) {
+    if summary.contains(gpgme::SIGNATURE_BAD_POLICY) {
         print!(" bad-policy");
     }
-    if summary.contains(ops::SIGNATURE_SYS_ERROR) {
+    if summary.contains(gpgme::SIGNATURE_SYS_ERROR) {
         print!(" sys-error");
     }
 }
 
-fn print_result(result: &ops::VerifyResult) {
+fn print_result(result: &gpgme::VerificationResult) {
     println!("Original file name: {}",
              result.filename().unwrap_or("[none]"));
     for (i, sig) in result.signatures().enumerate() {
         println!("Signature {}", i);
         println!("  status ....: {:?}", sig.status());
-        print!  ("  summary ...:");
+        print!("  summary ...:");
         print_summary(sig.summary());
         println!("");
         println!("  fingerprint: {}", sig.fingerprint().unwrap_or("[none]"));
         println!("  created ...: {:?}", sig.creation_time());
         println!("  expires ...: {:?}", sig.expiration_time());
         println!("  validity ..: {:?}", sig.validity());
-        println!("  val.reason : {:?}", sig.validity_reason());
+        println!("  val.reason : {:?}", sig.nonvalidity_reason());
         println!("  pubkey algo: {}", sig.key_algorithm());
         println!("  digest algo: {}", sig.hash_algorithm());
         println!("  pka address: {}", sig.pka_address().unwrap_or("[none]"));
         println!("  pka trust .: {:?}", sig.pka_trust());
         println!("  other flags: {}{}",
-                 if sig.wrong_key_usage() { " wrong-key-usage" } else { "" },
-                 if sig.chain_model() { " chain-model" } else { "" });
+                 if sig.is_wrong_key_usage() {
+                     " wrong-key-usage"
+                 } else {
+                     ""
+                 },
+                 if sig.verified_by_chain() {
+                     " chain-model"
+                 } else {
+                     ""
+                 });
     }
 }
 
@@ -107,29 +114,29 @@ fn main() {
     }
 
     let proto = if matches.opt_present("cms") {
-        gpgme::PROTOCOL_CMS
+        Protocol::Cms
     } else {
-        gpgme::PROTOCOL_OPENPGP
+        Protocol::OpenPgp
     };
 
-    let mut ctx = gpgme::create_context().unwrap();
-    ctx.set_protocol(proto).unwrap();
+    let mut ctx = Context::from_protocol(proto).unwrap();
 
     let mut signature = {
         let file = match File::open(&matches.free[0]) {
             Ok(file) => file,
             Err(err) => {
-                writeln!(io::stderr(), "{}: can't open '{}': {}",
-                         program, &matches.free[0], err);
+                writeln!(io::stderr(),
+                         "{}: can't open '{}': {}",
+                         program,
+                         &matches.free[0],
+                         err);
                 exit(1);
             }
         };
         match Data::from_seekable_reader(file) {
             Ok(data) => data,
             Err(..) => {
-                writeln!(io::stderr(),
-                         "{}: error allocating data object",
-                         program);
+                writeln!(io::stderr(), "{}: error allocating data object", program);
                 exit(1);
             }
         }
@@ -139,8 +146,11 @@ fn main() {
         let file = match File::open(&matches.free[1]) {
             Ok(file) => file,
             Err(err) => {
-                writeln!(io::stderr(), "{}: can't open '{}': {}",
-                         program, &matches.free[1], err);
+                writeln!(io::stderr(),
+                         "{}: can't open '{}': {}",
+                         program,
+                         &matches.free[1],
+                         err);
                 exit(1);
             }
         };

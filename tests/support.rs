@@ -9,7 +9,7 @@ use std::process::{Command, Stdio};
 use tempdir::TempDir;
 
 use gpgme::{self, Data};
-use gpgme::context::PassphraseRequest;
+use gpgme::PassphraseRequest;
 
 #[macro_export]
 macro_rules! fail_if_err {
@@ -19,18 +19,16 @@ macro_rules! fail_if_err {
     });
 }
 
-const KEYS: [(&'static str, &'static [u8]); 5] = [
-    ("13CD0F3BDF24BE53FE192D62F18737256FF6E4FD",
-     include_bytes!("./data/13CD0F3BDF24BE53FE192D62F18737256FF6E4FD")),
-    ("76F7E2B35832976B50A27A282D9B87E44577EB66",
-     include_bytes!("./data/76F7E2B35832976B50A27A282D9B87E44577EB66")),
-    ("A0747D5F9425E6664F4FFBEED20FBCA79FDED2BD",
-     include_bytes!("./data/A0747D5F9425E6664F4FFBEED20FBCA79FDED2BD")),
-    ("13CBE3758AFE42B5E5E2AE4CED27AFA455E3F87F",
-     include_bytes!("./data/13CBE3758AFE42B5E5E2AE4CED27AFA455E3F87F")),
-    ("7A030357C0F253A5BBCD282FFC4E521B37558F5C",
-     include_bytes!("./data/7A030357C0F253A5BBCD282FFC4E521B37558F5C")),
-];
+const KEYS: [(&'static str, &'static [u8]); 5] = [("13CD0F3BDF24BE53FE192D62F18737256FF6E4FD",
+                                                   include_bytes!("./data/13CD0F3BDF24BE53FE192D62F18737256FF6E4FD")),
+                                                  ("76F7E2B35832976B50A27A282D9B87E44577EB66",
+                                                   include_bytes!("./data/76F7E2B35832976B50A27A282D9B87E44577EB66")),
+                                                  ("A0747D5F9425E6664F4FFBEED20FBCA79FDED2BD",
+                                                   include_bytes!("./data/A0747D5F9425E6664F4FFBEED20FBCA79FDED2BD")),
+                                                  ("13CBE3758AFE42B5E5E2AE4CED27AFA455E3F87F",
+                                                   include_bytes!("./data/13CBE3758AFE42B5E5E2AE4CED27AFA455E3F87F")),
+                                                  ("7A030357C0F253A5BBCD282FFC4E521B37558F5C",
+                                                   include_bytes!("./data/7A030357C0F253A5BBCD282FFC4E521B37558F5C"))];
 
 fn create_keys(dir: &Path) {
     let keydir = dir.join("private-keys-v1.d");
@@ -44,9 +42,14 @@ fn create_keys(dir: &Path) {
 
 fn import_key(key: &[u8]) {
     let gpg = env::var_os("GPG").unwrap_or("gpg".into());
-    let mut child = Command::new(&gpg).arg("--no-permission-warning")
-        .arg("--import").stdin(Stdio::piped()).stdout(Stdio::null())
-        .stderr(Stdio::null()).spawn().unwrap();
+    let mut child = Command::new(&gpg)
+        .arg("--no-permission-warning")
+        .arg("--import")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
     child.stdin.as_mut().unwrap().write_all(key).unwrap();
     assert!(child.wait().unwrap().success());
 }

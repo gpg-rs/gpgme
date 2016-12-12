@@ -12,47 +12,129 @@ macro_rules! try_opt {
     ($e:expr) => (match $e { Some(v) => v, None => return None });
 }
 
+macro_rules! count_list {
+    ($list:expr) => {
+        (|| {
+            let mut count = 0usize;
+            let mut current = $list;
+            while !current.is_null() {
+                count = try_opt!(count.checked_add(1));
+                current = (*current).next;
+            }
+            Some(count)
+        })()
+    };
+}
+
 macro_rules! list_iterator {
     ($item:ty, $constructor:path) => {
         type Item = $item;
 
+        #[inline]
         fn next(&mut self) -> Option<Self::Item> {
             unsafe {
                 self.current.as_mut().map(|c| {
                     self.current = c.next;
+                    self.left = self.left.and_then(|x| x.checked_sub(1));
                     $constructor(c)
                 })
             }
+        }
+
+        #[inline]
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (self.left.unwrap_or(usize::max_value()), self.left)
         }
     };
     ($item:ty) => (list_iterator!($item, $item::from_raw));
 }
 
 macro_rules! ffi_enum_wrapper {
-    ($(#[$Attr:meta])* pub enum $Name:ident: $T:ty {
+    ($(#[$Attr:meta])* pub enum $Name:ident($Default:ident): $T:ty {
         $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr),+
     }) => {
         #[derive(Copy, Clone, Eq, PartialEq, Hash)]
         $(#[$Attr])*
-        pub struct $Name($T);
-
-        $(pub const $Item: $Name = $Name($Value as $T);)+
+        pub enum $Name {
+            $($(#[$ItemAttr])* $Item,)+
+        }
 
         impl $Name {
+            #[inline]
             pub unsafe fn from_raw(raw: $T) -> $Name {
-                $Name(raw)
+                $(if raw == $Value {
+                    $Name::$Item
+                } else )+ {
+                    $Name::$Default
+                }
             }
 
+            #[inline]
             pub fn raw(&self) -> $T {
-                self.0
+                match *self {
+                    $($Name::$Item => $Value,)+
+                }
             }
         }
 
         impl ::std::fmt::Debug for $Name {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 match *self {
-                    $($Item => write!(f, concat!(stringify!($Item), "({:?})"), self.0),)+
-                    _ => write!(f, concat!(stringify!($Name), "({:?})"), self.0),
+                    $($Name::$Item => {
+                        write!(f, concat!(stringify!($Name), "::",
+                                          stringify!($Item), "({:?})"), self.raw())
+                    })+
+                }
+            }
+        }
+    };
+    ($(#[$Attr:meta])* pub enum $Name:ident($Default:ident): $T:ty {
+        $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr,)+
+    }) => {
+        ffi_enum_wrapper! {
+            $(#[$Attr])*
+            pub enum $Name($Default): $T {
+                $($(#[$ItemAttr])* $Item = $Value),+
+            }
+        }
+    };
+    ($(#[$Attr:meta])* pub enum $Name:ident: $T:ty {
+        $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr),+
+    }) => {
+        #[derive(Copy, Clone, Eq, PartialEq, Hash)]
+        $(#[$Attr])*
+        pub enum $Name {
+            $($(#[$ItemAttr])* $Item,)+
+            Other($T),
+        }
+
+        impl $Name {
+            #[inline]
+            pub unsafe fn from_raw(raw: $T) -> $Name {
+                $(if raw == $Value {
+                    $Name::$Item
+                } else )+ {
+                    $Name::Other(raw)
+                }
+            }
+
+            #[inline]
+            pub fn raw(&self) -> $T {
+                match *self {
+                    $($Name::$Item => $Value,)+
+                    $Name::Other(other) => other,
+                }
+            }
+        }
+
+        impl ::std::fmt::Debug for $Name {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                match *self {
+                    $($Name::$Item => {
+                        write!(f, concat!(stringify!($Name), "::",
+                                          stringify!($Item), "({:?})"), self.raw())
+                    })+
+                    _ => write!(f, concat!(stringify!($Name), "({:?})"), self.raw()),
                 }
             }
         }
@@ -70,23 +152,35 @@ macro_rules! ffi_enum_wrapper {
 }
 
 macro_rules! impl_wrapper {
-    ($Name:ident: $T:ty) => {
-        impl $Name {
-            pub unsafe fn from_raw(raw: $T) -> Self {
-                $Name(raw)
-            }
-
-            pub fn as_raw(&self) -> $T {
-                self.0
-            }
-
-            pub fn into_raw(self) -> $T {
-                let raw = self.0;
-                ::std::mem::forget(self);
-                raw
-            }
+    (@phantom $Name:ident: $T:ty) => {
+        #[inline]
+        pub unsafe fn from_raw(raw: $T) -> Self {
+            $Name(raw, PhantomData)
         }
-    }
+
+        #[inline]
+        pub fn raw(&self) -> $T {
+            self.0
+        }
+    };
+    ($Name:ident: $T:ty) => {
+        #[inline]
+        pub unsafe fn from_raw(raw: $T) -> Self {
+            $Name(raw)
+        }
+
+        #[inline]
+        pub fn as_raw(&self) -> $T {
+            self.0
+        }
+
+        #[inline]
+        pub fn into_raw(self) -> $T {
+            let raw = self.0;
+            ::std::mem::forget(self);
+            raw
+        }
+    };
 }
 
 pub trait IntoNativeString {
@@ -151,9 +245,7 @@ impl<'a> IntoNativeString for Vec<u8> {
             self.truncate(term);
         }
 
-        unsafe {
-            CString::from_vec_unchecked(self)
-        }
+        unsafe { CString::from_vec_unchecked(self) }
     }
 }
 
@@ -191,9 +283,8 @@ impl FdWriter {
 
 impl Write for FdWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let result = unsafe {
-            ffi::gpgme_io_write(self.fd, buf.as_ptr() as *const _, buf.len().into())
-        };
+        let result =
+            unsafe { ffi::gpgme_io_write(self.fd, buf.as_ptr() as *const _, buf.len().into()) };
         if result >= 0 {
             Ok(result as usize)
         } else {

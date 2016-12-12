@@ -4,30 +4,32 @@ extern crate gpgme;
 use std::io;
 use std::io::prelude::*;
 
-use gpgme::Data;
-use gpgme::notation;
-use gpgme::ops;
+use gpgme::{Context, Data};
+use gpgme::SignatureNotationFlags;
 
-use self::support::{setup, passphrase_cb};
+use self::support::{passphrase_cb, setup};
 
 #[macro_use]
 mod support;
 
-fn check_result(result: ops::VerifyResult, expected: &mut [(&str, &str, notation::Flags, u32)]) {
+fn check_result(result: gpgme::VerificationResult,
+    expected: &mut [(&str, &str, SignatureNotationFlags, u32)]) {
     assert_eq!(result.signatures().count(), 1);
     let signature = result.signatures().next().unwrap();
     for notation in signature.notations() {
         match expected.iter_mut().find(|&&mut (name, value, flags, _)| {
-            (notation.name().unwrap_or("") == name) &&
-            (notation.value().unwrap_or("") == value) &&
-            (notation.flags() == (flags & !notation::CRITICAL)) &&
-            (notation.is_human_readable() == !(flags & notation::HUMAN_READABLE).is_empty()) &&
+            (notation.name().unwrap_or("") == name) && (notation.value().unwrap_or("") == value) &&
+            (notation.flags() == (flags & !gpgme::NOTATION_CRITICAL)) &&
+            (notation.is_human_readable() ==
+             !(flags & gpgme::NOTATION_HUMAN_READABLE).is_empty()) &&
             !notation.is_critical()
         }) {
             Some(v) => v.3 += 1,
             None => {
-                panic!("Unexpected notation data: {:?}: {:?} ({:?})", notation.name(),
-                       notation.value(), notation.flags());
+                panic!("Unexpected notation data: {:?}: {:?} ({:?})",
+                       notation.name(),
+                       notation.value(),
+                       notation.flags());
             }
         }
     }
@@ -39,24 +41,25 @@ fn check_result(result: ops::VerifyResult, expected: &mut [(&str, &str, notation
 #[test]
 fn test_notations() {
     let _gpghome = setup();
-    let mut ctx = fail_if_err!(gpgme::create_context());
-    fail_if_err!(ctx.set_protocol(gpgme::PROTOCOL_OPENPGP));
-    ctx.with_passphrase_handler(passphrase_cb, |mut ctx| {
+    let mut ctx = fail_if_err!(Context::from_protocol(gpgme::Protocol::OpenPgp));
+    ctx.with_passphrase_provider(passphrase_cb, |mut ctx| {
         ctx.set_armor(true);
         ctx.set_text_mode(true);
 
-        let mut expected = [("laughing@me", "Just Squeeze Me", notation::HUMAN_READABLE, 0),
-                            ("preferred-email-encoding@pgp.com", "pgpmime",
-                             notation::HUMAN_READABLE | notation::CRITICAL, 0),
-                            ("", "http://www.gnu.org/policy/",
-                             notation::Flags::empty(), 0)];
-        ctx.clear_notations();
+        let mut expected = [("laughing@me", "Just Squeeze Me", gpgme::NOTATION_HUMAN_READABLE, 0),
+                            ("preferred-email-encoding@pgp.com",
+                             "pgpmime",
+                             gpgme::NOTATION_HUMAN_READABLE | gpgme::NOTATION_CRITICAL,
+                             0),
+                            ("", "http://www.gnu.org/policy/", SignatureNotationFlags::empty(), 0)];
+        ctx.clear_signature_notations();
         for notation in &expected {
             if !notation.0.is_empty() {
-                fail_if_err!(ctx.add_notation(notation.0, notation.1, notation.2));
+                fail_if_err!(ctx.add_signature_notation(notation.0, notation.1, notation.2));
             } else {
-                fail_if_err!(ctx.add_policy_url(notation.1, notation.2
-                                                  .contains(notation::CRITICAL)));
+                fail_if_err!(ctx.add_signature_policy_url(notation.1,
+                                                          notation.2
+                                                              .contains(gpgme::NOTATION_CRITICAL)));
             };
         }
 

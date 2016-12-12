@@ -9,7 +9,7 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::ops;
+use gpgme::{Context, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] [USERID]+", program);
@@ -46,33 +46,32 @@ fn main() {
     }
 
     let proto = if matches.opt_present("cms") {
-        gpgme::PROTOCOL_CMS
+        Protocol::Cms
     } else {
-        gpgme::PROTOCOL_OPENPGP
+        Protocol::OpenPgp
     };
 
-    let mut mode = ops::KeyListMode::empty();
+    let mut mode = gpgme::KeyListMode::empty();
     if matches.opt_present("local") {
-        mode.insert(ops::KEY_LIST_MODE_LOCAL);
+        mode.insert(gpgme::KEY_LIST_MODE_LOCAL);
     }
     if matches.opt_present("extern") {
-        mode.insert(ops::KEY_LIST_MODE_EXTERN);
+        mode.insert(gpgme::KEY_LIST_MODE_EXTERN);
     }
     if matches.opt_present("sigs") {
-        mode.insert(ops::KEY_LIST_MODE_SIGS);
+        mode.insert(gpgme::KEY_LIST_MODE_SIGS);
     }
     if matches.opt_present("sig-notations") {
-        mode.insert(ops::KEY_LIST_MODE_SIG_NOTATIONS);
+        mode.insert(gpgme::KEY_LIST_MODE_SIG_NOTATIONS);
     }
     if matches.opt_present("ephemeral") {
-        mode.insert(ops::KEY_LIST_MODE_EPHEMERAL);
+        mode.insert(gpgme::KEY_LIST_MODE_EPHEMERAL);
     }
     if matches.opt_present("validate") {
-        mode.insert(ops::KEY_LIST_MODE_VALIDATE);
+        mode.insert(gpgme::KEY_LIST_MODE_VALIDATE);
     }
 
-    let mut ctx = gpgme::create_context().unwrap();
-    ctx.set_protocol(proto).unwrap();
+    let mut ctx = Context::from_protocol(proto).unwrap();
     ctx.set_key_list_mode(mode).unwrap();
 
     let mut keys = ctx.find_keys(matches.free).unwrap();
@@ -85,22 +84,22 @@ fn main() {
                  if key.can_certify() { "c" } else { "" },
                  if key.can_authenticate() { "a" } else { "" });
         println!("flags   :{}{}{}{}{}{}",
-                 if key.is_secret() { " secret" } else { "" },
+                 if key.has_secret() { " secret" } else { "" },
                  if key.is_revoked() { " revoked" } else { "" },
                  if key.is_expired() { " expired" } else { "" },
                  if key.is_disabled() { " disabled" } else { "" },
                  if key.is_invalid() { " invalid" } else { "" },
                  if key.is_qualified() { " qualified" } else { "" });
         for (i, user) in key.user_ids().enumerate() {
-            println!("userid {}: {}", i, user.uid().unwrap_or("[none]"));
+            println!("userid {}: {}", i, user.id().unwrap_or("[none]"));
             println!("valid  {}: {:?}", i, user.validity())
         }
         println!("");
     }
 
-    if keys.finish().unwrap().truncated() {
+    if keys.finish().unwrap().is_truncated() {
         writeln!(io::stderr(),
-                "{}: key listing unexpectedly truncated",
-                program);
+                 "{}: key listing unexpectedly truncated",
+                 program);
     }
 }

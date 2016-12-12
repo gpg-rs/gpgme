@@ -9,18 +9,17 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::Data;
-use gpgme::ops;
+use gpgme::{Context, Data, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] FILENAME", program);
     write!(io::stderr(), "{}", opts.usage(&brief));
 }
 
-fn print_result(result: &ops::SignResult) {
-    for sig in result.signatures() {
+fn print_result(result: &gpgme::SigningResult) {
+    for sig in result.new_signatures() {
         println!("Key fingerprint: {}", sig.fingerprint().unwrap_or("[none]"));
-        println!("Signature type : {:?}", sig.kind());
+        println!("Signature type : {:?}", sig.mode());
         println!("Public key algo: {}", sig.key_algorithm());
         println!("Hash algo .....: {}", sig.hash_algorithm());
         println!("Creation time .: {:?}", sig.creation_time());
@@ -61,33 +60,32 @@ fn main() {
     }
 
     let proto = if matches.opt_present("cms") {
-        gpgme::PROTOCOL_CMS
+        Protocol::Cms
     } else if matches.opt_present("uiserver") {
-        gpgme::PROTOCOL_UISERVER
+        Protocol::UiServer
     } else {
-        gpgme::PROTOCOL_OPENPGP
+        Protocol::OpenPgp
     };
 
     let mode = if matches.opt_present("detach") {
-        ops::SIGN_MODE_DETACH
+        gpgme::SignMode::Detached
     } else if matches.opt_present("clear") {
-        ops::SIGN_MODE_CLEAR
+        gpgme::SignMode::Clear
     } else {
-        ops::SIGN_MODE_NORMAL
+        gpgme::SignMode::Normal
     };
 
-    let mut ctx = gpgme::create_context().unwrap();
-    ctx.set_protocol(proto).unwrap();
+    let mut ctx = Context::from_protocol(proto).unwrap();
     ctx.set_armor(true);
 
     if let Some(key) = matches.opt_str("key") {
-        if proto != gpgme::PROTOCOL_UISERVER {
+        if proto != Protocol::UiServer {
             let key = ctx.find_secret_key(key).unwrap();
             ctx.add_signer(&key).unwrap();
         } else {
             writeln!(io::stderr(),
-            "{}: ignoring --key in UI-server mode",
-            program);
+                     "{}: ignoring --key in UI-server mode",
+                     program);
         }
     }
 

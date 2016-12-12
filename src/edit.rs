@@ -1,11 +1,11 @@
+#![allow(non_camel_case_types)]
 use std::fmt;
 use std::io::prelude::*;
 
 use ffi;
 
-use error::{Error, Result};
-
-pub use context::{EditHandler, EditStatus};
+use {Error, Result};
+pub use {EditHandler, EditStatus};
 
 ffi_enum_wrapper! {
     pub enum StatusCode: ffi::gpgme_status_code_t {
@@ -114,7 +114,9 @@ ffi_enum_wrapper! {
 impl StatusCode {
     pub fn is_command(&self) -> bool {
         match *self {
-            STATUS_GET_BOOL | STATUS_GET_LINE | STATUS_GET_HIDDEN => true,
+            StatusCode::STATUS_GET_BOOL |
+            StatusCode::STATUS_GET_LINE |
+            StatusCode::STATUS_GET_HIDDEN => true,
             _ => false,
         }
     }
@@ -151,6 +153,7 @@ pub trait Editor: 'static + Send {
     fn action<W: Write>(&self, state: Self::State, out: W) -> Result<()>;
 }
 
+#[derive(Debug)]
 pub struct EditorWrapper<E: Editor> {
     editor: E,
     state: Result<E::State>,
@@ -169,10 +172,11 @@ impl<E: Editor> EditHandler for EditorWrapper<E> {
     fn handle<W: Write>(&mut self, status: EditStatus, out: Option<W>) -> Result<()> {
         self.state = E::next_state(self.state, status).and_then(|state| {
             out.map_or(Ok(()), |mut out| {
-                self.editor.action(state, &mut out).and_then(|_| {
-                    out.write_all(b"\n").map_err(Error::from)
+                    self.editor
+                        .action(state, &mut out)
+                        .and_then(|_| out.write_all(b"\n").map_err(Error::from))
                 })
-            }).and(Ok(state))
+                .and(Ok(state))
         });
         self.state.and(Ok(()))
     }

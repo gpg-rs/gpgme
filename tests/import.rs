@@ -1,8 +1,7 @@
 extern crate tempdir;
 extern crate gpgme;
 
-use gpgme::Data;
-use gpgme::ops;
+use gpgme::{Context, Data};
 
 use self::support::setup;
 
@@ -14,13 +13,13 @@ const SECKEY_1: &'static [u8] = include_bytes!("./data/seckey-1.asc");
 
 const FINGERPRINT: &'static str = "ADAB7FCC1F4DE2616ECFA402AF82244F9CD9FD55";
 
-fn check_result(result: ops::ImportResult, secret: bool) {
+fn check_result(result: gpgme::ImportResult, secret: bool) {
     if !secret {
         assert_eq!(result.considered(), 1);
     } else if result.considered() != 3 {
         assert_eq!(result.considered(), 1);
     }
-    assert_eq!(result.no_user_id(), 0);
+    assert_eq!(result.without_user_id(), 0);
     if secret {
         assert_eq!(result.imported(), 0);
     } else if result.imported() != 0 {
@@ -41,9 +40,9 @@ fn check_result(result: ops::ImportResult, secret: bool) {
     assert_eq!(result.new_revocations(), 0);
 
     if !secret {
-        assert_eq!(result.secret_read(), 0);
-    } else if result.secret_read() != 3 {
-        assert_eq!(result.secret_read(), 1);
+        assert_eq!(result.secret_considered(), 0);
+    } else if result.secret_considered() != 3 {
+        assert_eq!(result.secret_considered(), 1);
     }
     if !secret || ((result.secret_imported() != 1) && (result.secret_imported() != 2)) {
         assert_eq!(result.secret_imported(), 0);
@@ -57,9 +56,9 @@ fn check_result(result: ops::ImportResult, secret: bool) {
     }
     assert_eq!(result.not_imported(), 0);
 
-    let filter_imports = |p: &ops::ImportStatus| -> bool {
-        p.status().contains(ops::IMPORT_NEW) || p.status().contains(ops::IMPORT_SIG) ||
-            p.status().contains(ops::IMPORT_UID)
+    let filter_imports = |p: &gpgme::Import| -> bool {
+        p.status().contains(gpgme::IMPORT_NEW) || p.status().contains(gpgme::IMPORT_SIG) ||
+        p.status().contains(gpgme::IMPORT_UID)
     };
 
     let count = result.imports().filter(&filter_imports).count();
@@ -76,8 +75,7 @@ fn check_result(result: ops::ImportResult, secret: bool) {
 #[test]
 fn test_import() {
     let _gpghome = setup();
-    let mut ctx = fail_if_err!(gpgme::create_context());
-    fail_if_err!(ctx.set_protocol(gpgme::PROTOCOL_OPENPGP));
+    let mut ctx = fail_if_err!(Context::from_protocol(gpgme::Protocol::OpenPgp));
 
     let mut input = fail_if_err!(Data::from_buffer(PUBKEY_1));
     check_result(fail_if_err!(ctx.import(&mut input)), false);

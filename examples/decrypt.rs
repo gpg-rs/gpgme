@@ -9,7 +9,7 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::Data;
+use gpgme::{Context, Data, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] FILENAME", program);
@@ -45,13 +45,12 @@ fn main() {
     }
 
     let proto = if matches.opt_present("cms") {
-        gpgme::PROTOCOL_CMS
+        Protocol::Cms
     } else {
-        gpgme::PROTOCOL_OPENPGP
+        Protocol::OpenPgp
     };
 
-    let mut ctx = gpgme::create_context().unwrap();
-    ctx.set_protocol(proto).unwrap();
+    let mut ctx = Context::from_protocol(proto).unwrap();
 
     let mut input = match Data::load(matches.free[0].clone()) {
         Ok(input) => input,

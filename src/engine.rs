@@ -1,4 +1,5 @@
 use std::ffi::CStr;
+use std::fmt;
 use std::marker::PhantomData;
 use std::ptr;
 use std::result;
@@ -11,86 +12,78 @@ use {Protocol, TOKEN, Token};
 use error::Result;
 
 #[derive(Debug, Copy, Clone)]
-pub struct EngineInfo<'a, T: 'a> {
-    raw: ffi::gpgme_engine_info_t,
-    phantom: PhantomData<&'a T>,
-}
+pub struct EngineInfo<'a, T: 'a>(ffi::gpgme_engine_info_t, PhantomData<&'a T>);
 
 impl<'a, T> EngineInfo<'a, T> {
-    pub unsafe fn from_raw<'b>(raw: ffi::gpgme_engine_info_t) -> EngineInfo<'b, T> {
-        debug_assert!(!raw.is_null());
-        EngineInfo {
-            raw: raw,
-            phantom: PhantomData,
-        }
-    }
-
-    pub fn raw(&self) -> ffi::gpgme_engine_info_t {
-        self.raw
-    }
+    impl_wrapper!(@phantom EngineInfo: ffi::gpgme_engine_info_t);
 
     /// Returns the `Protocol` implemented by the engine.
+    #[inline]
     pub fn protocol(&self) -> Protocol {
-        unsafe { Protocol::from_raw((*self.raw).protocol) }
+        unsafe { Protocol::from_raw((*self.0).protocol) }
     }
 
+    #[inline]
     pub fn path(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.path_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    #[inline]
     pub fn path_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.raw).file_name.as_ref().map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.0).file_name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
+    #[inline]
     pub fn home_dir(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.home_dir_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    #[inline]
     pub fn home_dir_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.raw).home_dir.as_ref().map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.0).home_dir.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
+    #[inline]
     pub fn version(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.version_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    #[inline]
     pub fn version_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.raw).version.as_ref().map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.0).version.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
+    #[inline]
     pub fn required_version(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.required_version_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    #[inline]
     pub fn required_version_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.raw).req_version.as_ref().map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.0).req_version.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct EngineInfoIter<'a, T: 'a> {
+#[derive(Debug, Clone)]
+pub struct EngineInfos<'a, T: 'a> {
     current: ffi::gpgme_engine_info_t,
+    left: Option<usize>,
     phantom: PhantomData<&'a T>,
 }
 
-impl<'a, T> EngineInfoIter<'a, T> {
-    pub unsafe fn from_list<'b>(raw: ffi::gpgme_engine_info_t) -> EngineInfoIter<'b, T> {
-        EngineInfoIter {
-            current: raw,
+impl<'a, T> EngineInfos<'a, T> {
+    #[inline]
+    pub unsafe fn from_list<'b>(first: ffi::gpgme_engine_info_t) -> EngineInfos<'b, T> {
+        let left = count_list!(first);
+        EngineInfos {
+            current: first,
+            left: left,
             phantom: PhantomData,
         }
     }
 }
 
-impl<'a, T> Iterator for EngineInfoIter<'a, T> {
+impl<'a, T> Iterator for EngineInfos<'a, T> {
     list_iterator!(EngineInfo<'a, T>, EngineInfo::from_raw);
 }
 
@@ -106,24 +99,33 @@ impl EngineInfoGuard {
         Ok(EngineInfoGuard(lock))
     }
 
+    #[inline]
     pub fn get(&self, proto: Protocol) -> Option<EngineInfo<()>> {
         self.iter().find(|info| info.protocol() == proto)
     }
 
-    pub fn iter(&self) -> EngineInfoIter<()> {
+    #[inline]
+    pub fn iter(&self) -> EngineInfos<()> {
         unsafe {
             let mut first = ptr::null_mut();
             assert_eq!(ffi::gpgme_get_engine_info(&mut first), 0);
-            EngineInfoIter::from_list(first)
+            EngineInfos::from_list(first)
         }
     }
 }
 
 impl<'a> IntoIterator for &'a EngineInfoGuard {
     type Item = EngineInfo<'a, ()>;
-    type IntoIter = EngineInfoIter<'a, ()>;
+    type IntoIter = EngineInfos<'a, ()>;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
+    }
+}
+
+impl fmt::Debug for EngineInfoGuard {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "EngineInfoGuard(..)")
     }
 }

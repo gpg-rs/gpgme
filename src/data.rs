@@ -12,6 +12,7 @@ use std::slice;
 use std::str::Utf8Error;
 
 use libc;
+use conv::{UnwrapOrSaturate, ValueInto};
 use ffi;
 
 use IntoNativeString;
@@ -19,31 +20,31 @@ use error::{self, Error, Result};
 
 ffi_enum_wrapper! {
     pub enum Encoding: ffi::gpgme_data_encoding_t {
-        ENCODING_NONE = ffi::GPGME_DATA_ENCODING_NONE,
-        ENCODING_BINARY = ffi::GPGME_DATA_ENCODING_BINARY,
-        ENCODING_BASE64 = ffi::GPGME_DATA_ENCODING_BASE64,
-        ENCODING_ARMOR = ffi::GPGME_DATA_ENCODING_ARMOR,
-        ENCODING_URL = ffi::GPGME_DATA_ENCODING_URL,
-        ENCODING_URLESC = ffi::GPGME_DATA_ENCODING_URLESC,
-        ENCODING_URL0 = ffi::GPGME_DATA_ENCODING_URL0,
-        ENCODING_MIME = ffi::GPGME_DATA_ENCODING_MIME,
+        None = ffi::GPGME_DATA_ENCODING_NONE,
+        Binary = ffi::GPGME_DATA_ENCODING_BINARY,
+        Base64 = ffi::GPGME_DATA_ENCODING_BASE64,
+        Armor = ffi::GPGME_DATA_ENCODING_ARMOR,
+        Url = ffi::GPGME_DATA_ENCODING_URL,
+        UrlEscaped = ffi::GPGME_DATA_ENCODING_URLESC,
+        Url0 = ffi::GPGME_DATA_ENCODING_URL0,
+        Mime = ffi::GPGME_DATA_ENCODING_MIME,
     }
 }
 
 ffi_enum_wrapper! {
     pub enum Type: ffi::gpgme_data_type_t {
-        TYPE_UNKNOWN = ffi::GPGME_DATA_TYPE_UNKNOWN,
-        TYPE_INVALID = ffi::GPGME_DATA_TYPE_INVALID,
-        TYPE_PGP_SIGNED = ffi::GPGME_DATA_TYPE_PGP_SIGNED,
-        TYPE_PGP_ENCRYPTED = ffi::GPGME_DATA_TYPE_PGP_ENCRYPTED,
-        TYPE_PGP_OTHER = ffi::GPGME_DATA_TYPE_PGP_OTHER,
-        TYPE_PGP_KEY = ffi::GPGME_DATA_TYPE_PGP_KEY,
-        TYPE_PGP_SIGNATURE = ffi::GPGME_DATA_TYPE_PGP_SIGNATURE,
-        TYPE_CMS_SIGNED = ffi::GPGME_DATA_TYPE_CMS_SIGNED,
-        TYPE_CMS_ENCRYPTED = ffi::GPGME_DATA_TYPE_CMS_ENCRYPTED,
-        TYPE_CMS_OTHER = ffi::GPGME_DATA_TYPE_CMS_OTHER,
-        TYPE_X509_CERT = ffi::GPGME_DATA_TYPE_X509_CERT,
-        TYPE_PKCS12 = ffi::GPGME_DATA_TYPE_PKCS12,
+        Unknown = ffi::GPGME_DATA_TYPE_UNKNOWN,
+        Invalid = ffi::GPGME_DATA_TYPE_INVALID,
+        PgpSigned = ffi::GPGME_DATA_TYPE_PGP_SIGNED,
+        PgpEncrypted = ffi::GPGME_DATA_TYPE_PGP_ENCRYPTED,
+        PgpOther = ffi::GPGME_DATA_TYPE_PGP_OTHER,
+        PgpKey = ffi::GPGME_DATA_TYPE_PGP_KEY,
+        PgpSignature = ffi::GPGME_DATA_TYPE_PGP_SIGNATURE,
+        CmsSigned = ffi::GPGME_DATA_TYPE_CMS_SIGNED,
+        CmsEncrypted = ffi::GPGME_DATA_TYPE_CMS_ENCRYPTED,
+        CmsOther = ffi::GPGME_DATA_TYPE_CMS_OTHER,
+        X509Certificate = ffi::GPGME_DATA_TYPE_X509_CERT,
+        Pkcs12 = ffi::GPGME_DATA_TYPE_PKCS12,
     }
 }
 
@@ -78,43 +79,53 @@ impl<S> fmt::Display for WrappedError<S> {
 }
 
 #[derive(Debug)]
-pub struct Data<'a> {
-    raw: ffi::gpgme_data_t,
-    phantom: PhantomData<&'a ()>,
+pub struct Data<'a>(ffi::gpgme_data_t, PhantomData<&'a ()>);
+
+impl<'a> Drop for Data<'a> {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            ffi::gpgme_data_release(self.0);
+        }
+    }
 }
 
 impl<'a> Data<'a> {
+    #[inline]
     pub unsafe fn from_raw(raw: ffi::gpgme_data_t) -> Self {
         debug_assert!(!raw.is_null());
-        Data {
-            raw: raw,
-            phantom:  PhantomData,
-        }
+        Data(raw, PhantomData)
     }
 
+    #[inline]
     pub fn as_raw(&self) -> ffi::gpgme_data_t {
-        self.raw
+        self.0
     }
 
+    #[inline]
     pub fn into_raw(self) -> ffi::gpgme_data_t {
-        let raw = self.raw;
+        let raw = self.0;
         mem::forget(self);
         raw
     }
 
+    #[inline]
     pub fn stdin() -> Result<Data<'static>> {
         Data::from_reader(io::stdin()).map_err(|err| err.error())
     }
 
+    #[inline]
     pub fn stdout() -> Result<Data<'static>> {
         Data::from_writer(io::stdout()).map_err(|err| err.error())
     }
 
+    #[inline]
     pub fn stderr() -> Result<Data<'static>> {
         Data::from_writer(io::stderr()).map_err(|err| err.error())
     }
 
     /// Constructs an empty data object.
+    #[inline]
     pub fn new() -> Result<Data<'static>> {
         let mut data = ptr::null_mut();
         unsafe {
@@ -125,6 +136,7 @@ impl<'a> Data<'a> {
 
     /// Constructs a data object and fills it with the contents of the file
     /// referenced by `path`.
+    #[inline]
     pub fn load<P: IntoNativeString>(path: P) -> Result<Data<'static>> {
         let path = path.into_native();
         unsafe {
@@ -135,6 +147,7 @@ impl<'a> Data<'a> {
     }
 
     /// Constructs a data object and fills it with a copy of `bytes`.
+    #[inline]
     pub fn from_bytes<B: AsRef<[u8]>>(bytes: B) -> Result<Data<'static>> {
         let bytes = bytes.as_ref();
         unsafe {
@@ -146,6 +159,7 @@ impl<'a> Data<'a> {
     }
 
     /// Constructs a data object which copies from `buf` as needed.
+    #[inline]
     pub fn from_buffer<B: AsRef<[u8]> + ?Sized>(buf: &B) -> Result<Data> {
         let buf = buf.as_ref();
         unsafe {
@@ -156,6 +170,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     #[cfg(unix)]
     pub fn from_fd<T: AsRawFd + ?Sized>(file: &T) -> Result<Data> {
         unsafe {
@@ -165,6 +180,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     pub unsafe fn from_raw_file<'b>(file: *mut libc::FILE) -> Result<Data<'b>> {
         let mut data = ptr::null_mut();
         return_err!(ffi::gpgme_data_new_from_stream(&mut data, file));
@@ -188,6 +204,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    #[inline]
     pub fn from_reader<R>(r: R) -> result::Result<Data<'static>, WrappedError<R>>
     where R: Read + Send + 'static {
         let cbs = ffi::gpgme_data_cbs {
@@ -199,6 +216,7 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, r) }
     }
 
+    #[inline]
     pub fn from_seekable_reader<R>(r: R) -> result::Result<Data<'static>, WrappedError<R>>
     where R: Read + Seek + Send + 'static {
         let cbs = ffi::gpgme_data_cbs {
@@ -210,6 +228,7 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, r) }
     }
 
+    #[inline]
     pub fn from_writer<W>(w: W) -> result::Result<Data<'static>, WrappedError<W>>
     where W: Write + Send + 'static {
         let cbs = ffi::gpgme_data_cbs {
@@ -221,6 +240,7 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, w) }
     }
 
+    #[inline]
     pub fn from_seekable_writer<W>(w: W) -> result::Result<Data<'static>, WrappedError<W>>
     where W: Write + Seek + Send + 'static {
         let cbs = ffi::gpgme_data_cbs {
@@ -232,6 +252,7 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, w) }
     }
 
+    #[inline]
     pub fn from_stream<S: Send + 'static>(s: S) -> result::Result<Data<'static>, WrappedError<S>>
     where S: Read + Write {
         let cbs = ffi::gpgme_data_cbs {
@@ -243,6 +264,7 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, s) }
     }
 
+    #[inline]
     pub fn from_seekable_stream<S>(s: S) -> result::Result<Data<'static>, WrappedError<S>>
     where S: Read + Write + Seek + Send + 'static {
         let cbs = ffi::gpgme_data_cbs {
@@ -254,79 +276,80 @@ impl<'a> Data<'a> {
         unsafe { Data::from_callbacks(cbs, s) }
     }
 
+    #[inline]
     pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.filename_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    #[inline]
     pub fn filename_raw(&self) -> Option<&CStr> {
-        unsafe { ffi::gpgme_data_get_file_name(self.raw).as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { ffi::gpgme_data_get_file_name(self.0).as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
+    #[inline]
     pub fn clear_filename(&mut self) -> Result<()> {
         unsafe {
-            return_err!(ffi::gpgme_data_set_file_name(self.raw, ptr::null()));
+            return_err!(ffi::gpgme_data_set_file_name(self.0, ptr::null()));
         }
         Ok(())
     }
 
+    #[inline]
     pub fn set_filename<S: IntoNativeString>(&mut self, name: S) -> Result<()> {
         let name = name.into_native();
         unsafe {
-            return_err!(ffi::gpgme_data_set_file_name(self.raw, name.as_ref().as_ptr()));
+            return_err!(ffi::gpgme_data_set_file_name(self.0, name.as_ref().as_ptr()));
         }
         Ok(())
     }
 
+    #[inline]
     pub fn encoding(&self) -> Encoding {
-        unsafe { Encoding::from_raw(ffi::gpgme_data_get_encoding(self.raw)) }
+        unsafe { Encoding::from_raw(ffi::gpgme_data_get_encoding(self.0)) }
     }
 
+    #[inline]
     pub fn set_encoding(&mut self, enc: Encoding) -> Result<()> {
-        unsafe { return_err!(ffi::gpgme_data_set_encoding(self.raw, enc.raw())) }
+        unsafe { return_err!(ffi::gpgme_data_set_encoding(self.0, enc.raw())) }
         Ok(())
     }
 
+    #[inline]
     pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
     where S1: IntoNativeString, S2: IntoNativeString {
         let name = name.into_native();
         let value = value.into_native();
         unsafe {
-            return_err!(ffi::gpgme_data_set_flag(self.raw, name.as_ref().as_ptr(), value.as_ref().as_ptr()));
+            return_err!(ffi::gpgme_data_set_flag(self.0,
+                                                 name.as_ref().as_ptr(),
+                                                 value.as_ref().as_ptr()));
         }
         Ok(())
     }
 
     // GPGME_VERSION >= 1.4.3
+    #[inline]
     pub fn identify(&mut self) -> Type {
-        unsafe { Type::from_raw(ffi::gpgme_data_identify(self.raw, 0)) }
+        unsafe { Type::from_raw(ffi::gpgme_data_identify(self.0, 0)) }
     }
 
+    #[inline]
     pub fn try_into_bytes(self) -> Option<Vec<u8>> {
         unsafe {
             let mut len = 0;
-            let buf = ffi::gpgme_data_release_and_get_mem(self.into_raw(), &mut len);
-            if !buf.is_null() {
-                Some(slice::from_raw_parts(buf as *const _, len as usize).to_vec())
-            } else {
-                None
-            }
-        }
-    }
-}
-
-impl<'a> Drop for Data<'a> {
-    fn drop(&mut self) {
-        unsafe {
-            ffi::gpgme_data_release(self.raw);
+            ffi::gpgme_data_release_and_get_mem(self.into_raw(), &mut len)
+                .as_ref()
+                .map(|b| slice::from_raw_parts(b as *const _ as *const _, len).to_vec())
         }
     }
 }
 
 impl<'a> Read for Data<'a> {
+    #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let result = unsafe {
             let (buf, len) = (buf.as_mut_ptr() as *mut _, buf.len());
-            ffi::gpgme_data_read(self.raw, buf, len)
+            ffi::gpgme_data_read(self.0, buf, len)
         };
         if result >= 0 {
             Ok(result as usize)
@@ -337,10 +360,11 @@ impl<'a> Read for Data<'a> {
 }
 
 impl<'a> Write for Data<'a> {
+    #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let result = unsafe {
             let (buf, len) = (buf.as_ptr() as *const _, buf.len());
-            ffi::gpgme_data_write(self.raw, buf, len)
+            ffi::gpgme_data_write(self.0, buf, len)
         };
         if result >= 0 {
             Ok(result as usize)
@@ -355,13 +379,14 @@ impl<'a> Write for Data<'a> {
 }
 
 impl<'a> Seek for Data<'a> {
+    #[inline]
     fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
         let (off, whence) = match pos {
-            io::SeekFrom::Start(off) => (off as libc::off_t, libc::SEEK_SET),
-            io::SeekFrom::End(off) => (off as libc::off_t, libc::SEEK_END),
-            io::SeekFrom::Current(off) => (off as libc::off_t, libc::SEEK_CUR),
+            io::SeekFrom::Start(off) => (off.value_into().unwrap_or_saturate(), libc::SEEK_SET),
+            io::SeekFrom::End(off) => (off.value_into().unwrap_or_saturate(), libc::SEEK_END),
+            io::SeekFrom::Current(off) => (off.value_into().unwrap_or_saturate(), libc::SEEK_CUR),
         };
-        let result = unsafe { ffi::gpgme_data_seek(self.raw, off, whence) };
+        let result = unsafe { ffi::gpgme_data_seek(self.0, off, whence) };
         if result >= 0 {
             Ok(result as u64)
         } else {
@@ -375,7 +400,7 @@ extern "C" fn read_callback<S: Read>(handle: *mut libc::c_void, buffer: *mut lib
     -> libc::ssize_t {
     let handle = handle as *mut CallbackWrapper<S>;
     unsafe {
-        let slice = slice::from_raw_parts_mut(buffer as *mut u8, size as usize);
+        let slice = slice::from_raw_parts_mut(buffer as *mut u8, size);
         (*handle).inner.read(slice).map(|n| n as libc::ssize_t).unwrap_or_else(|err| {
             ffi::gpgme_err_set_errno(Error::from(err).to_errno());
             -1
@@ -388,7 +413,7 @@ extern "C" fn write_callback<S: Write>(handle: *mut libc::c_void, buffer: *const
     -> libc::ssize_t {
     let handle = handle as *mut CallbackWrapper<S>;
     unsafe {
-        let slice = slice::from_raw_parts(buffer as *const u8, size as usize);
+        let slice = slice::from_raw_parts(buffer as *const _, size);
         (*handle).inner.write(slice).map(|n| n as libc::ssize_t).unwrap_or_else(|err| {
             ffi::gpgme_err_set_errno(Error::from(err).to_errno());
             -1
@@ -401,19 +426,23 @@ extern "C" fn seek_callback<S: Seek>(handle: *mut libc::c_void, offset: libc::of
     -> libc::off_t {
     let handle = handle as *mut CallbackWrapper<S>;
     let pos = match whence {
-        libc::SEEK_SET => io::SeekFrom::Start(offset as u64),
-        libc::SEEK_END => io::SeekFrom::End(offset as i64),
-        libc::SEEK_CUR => io::SeekFrom::Current(offset as i64),
+        libc::SEEK_SET => io::SeekFrom::Start(offset.value_into().unwrap_or_saturate()),
+        libc::SEEK_END => io::SeekFrom::End(offset.value_into().unwrap_or_saturate()),
+        libc::SEEK_CUR => io::SeekFrom::Current(offset.value_into().unwrap_or_saturate()),
         _ => unsafe {
             ffi::gpgme_err_set_errno(ffi::gpgme_err_code_to_errno(error::GPG_ERR_EINVAL));
-            return -1 as libc::off_t;
+            return -1;
         },
     };
     unsafe {
-        (*handle).inner.seek(pos).map(|n| n as libc::off_t).unwrap_or_else(|err| {
-            ffi::gpgme_err_set_errno(Error::from(err).to_errno());
-            -1
-        })
+        (*handle)
+            .inner
+            .seek(pos)
+            .map(|n| n.value_into().unwrap_or_saturate())
+            .unwrap_or_else(|err| {
+                ffi::gpgme_err_set_errno(Error::from(err).to_errno());
+                -1
+            })
     }
 }
 

@@ -9,36 +9,35 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::Data;
+use gpgme::{Context, Data};
 use gpgme::data;
-use gpgme::ops;
 
-fn print_import_result(result: ops::ImportResult) {
+fn print_import_result(result: gpgme::ImportResult) {
     for import in result.imports() {
         print!("  fpr: {} err: {:?} status:",
                import.fingerprint().unwrap_or("[none]"),
                import.result().err());
         let status = import.status();
-        if status.contains(ops::IMPORT_NEW) {
+        if status.contains(gpgme::IMPORT_NEW) {
             print!(" new");
         }
-        if status.contains(ops::IMPORT_UID) {
+        if status.contains(gpgme::IMPORT_UID) {
             print!(" uid");
         }
-        if status.contains(ops::IMPORT_SIG) {
+        if status.contains(gpgme::IMPORT_SIG) {
             print!(" sig");
         }
-        if status.contains(ops::IMPORT_SUBKEY) {
+        if status.contains(gpgme::IMPORT_SUBKEY) {
             print!(" subkey");
         }
-        if status.contains(ops::IMPORT_SECRET) {
+        if status.contains(gpgme::IMPORT_SECRET) {
             print!(" secret");
         }
         println!("");
     }
     println!("key import summary:");
     println!("        considered: {}", result.considered());
-    println!("        no user id: {}", result.no_user_id());
+    println!("        no user id: {}", result.without_user_id());
     println!("          imported: {}", result.imported());
     println!("      imported rsa: {}", result.imported_rsa());
     println!("         unchanged: {}", result.unchanged());
@@ -46,7 +45,7 @@ fn print_import_result(result: ops::ImportResult) {
     println!("       new subkeys: {}", result.new_subkeys());
     println!("    new signatures: {}", result.new_signatures());
     println!("   new revocations: {}", result.new_revocations());
-    println!("       secret read: {}", result.secret_read());
+    println!("       secret read: {}", result.secret_considered());
     println!("   secret imported: {}", result.secret_imported());
     println!("  secret unchanged: {}", result.secret_unchanged());
     println!("      not imported: {}", result.not_imported());
@@ -87,16 +86,15 @@ fn main() {
 
     let mode = if matches.opt_present("url") {
         if matches.opt_present("0") {
-            Some(data::ENCODING_URL0)
+            Some(data::Encoding::Url0)
         } else {
-            Some(data::ENCODING_URL)
+            Some(data::Encoding::Url)
         }
     } else {
         None
     };
 
-    let mut ctx = gpgme::create_context().unwrap();
-    ctx.set_protocol(gpgme::PROTOCOL_OPENPGP).unwrap();
+    let mut ctx = Context::from_protocol(gpgme::Protocol::OpenPgp).unwrap();
 
     for file in matches.free {
         println!("reading file `{}'", &file);

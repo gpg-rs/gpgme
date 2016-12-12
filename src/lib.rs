@@ -1,8 +1,10 @@
+#![warn(missing_debug_implementations, trivial_numeric_casts)]
 extern crate libc;
 #[macro_use]
 extern crate bitflags;
 #[macro_use]
 extern crate lazy_static;
+extern crate conv;
 extern crate gpgme_sys as ffi;
 #[macro_use]
 pub extern crate gpg_error as error;
@@ -17,21 +19,36 @@ use std::sync::{Arc, RwLock};
 
 use self::engine::EngineInfoGuard;
 
-pub use self::error::{Error, Result};
-pub use self::context::Context;
-pub use self::data::Data;
+pub use self::flags::*;
 pub use self::utils::IntoNativeString;
+pub use self::error::{Error, Result};
+pub use self::data::Data;
+pub use self::context::Context;
+pub use self::keys::{Key, Subkey, UserId};
+pub use self::notation::SignatureNotation;
+pub use self::trust::TrustItem;
+pub use self::tofu::{TofuInfo, TofuPolicy};
+pub use self::callbacks::{EditHandler, EditStatus, InteractHandler, InteractStatus,
+                          PassphraseProvider, PassphraseRequest, ProgressHandler, ProgressInfo,
+                          StatusHandler};
+pub use self::results::{DecryptionResult, EncryptionResult, Import, ImportResult, InvalidKey,
+                        KeyGenerationResult, KeyListResult, NewSignature, PkaTrust, Recipient,
+                        Signature, SigningResult, VerificationResult};
+pub use self::engine::EngineInfo;
 
 #[macro_use]
 mod utils;
+mod callbacks;
+mod flags;
+pub mod results;
 pub mod engine;
 pub mod context;
 pub mod data;
 pub mod keys;
 pub mod trust;
 pub mod notation;
+pub mod tofu;
 pub mod edit;
-pub mod ops;
 
 /// Constants for use with `Token::get_dir_info`.
 pub mod info {
@@ -50,25 +67,27 @@ ffi_enum_wrapper! {
     #[doc="Each protocol is implemented by an engine that the library communicates with"]
     #[doc="to perform various operations."]
     pub enum Protocol: ffi::gpgme_protocol_t {
-        PROTOCOL_OPENPGP = ffi::GPGME_PROTOCOL_OpenPGP,
-        PROTOCOL_CMS = ffi::GPGME_PROTOCOL_CMS,
-        PROTOCOL_GPGCONF = ffi::GPGME_PROTOCOL_GPGCONF,
-        PROTOCOL_ASSUAN = ffi::GPGME_PROTOCOL_ASSUAN,
-        PROTOCOL_G13 = ffi::GPGME_PROTOCOL_G13,
-        PROTOCOL_UISERVER = ffi::GPGME_PROTOCOL_UISERVER,
-        PROTOCOL_SPAWN = ffi::GPGME_PROTOCOL_SPAWN,
-        PROTOCOL_DEFAULT = ffi::GPGME_PROTOCOL_DEFAULT,
-        PROTOCOL_UNKNOWN = ffi::GPGME_PROTOCOL_UNKNOWN,
+        OpenPgp = ffi::GPGME_PROTOCOL_OpenPGP,
+        Cms = ffi::GPGME_PROTOCOL_CMS,
+        GpgConf = ffi::GPGME_PROTOCOL_GPGCONF,
+        Assuan = ffi::GPGME_PROTOCOL_ASSUAN,
+        G13 = ffi::GPGME_PROTOCOL_G13,
+        UiServer = ffi::GPGME_PROTOCOL_UISERVER,
+        Spawn = ffi::GPGME_PROTOCOL_SPAWN,
+        Default = ffi::GPGME_PROTOCOL_DEFAULT,
+        Unknown = ffi::GPGME_PROTOCOL_UNKNOWN,
     }
 }
 
 impl Protocol {
+    #[inline]
     pub fn name(&self) -> result::Result<&'static str, Option<Utf8Error>> {
         self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    #[inline]
     pub fn name_raw(&self) -> Option<&'static CStr> {
-        unsafe { ffi::gpgme_get_protocol_name(self.0).as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { ffi::gpgme_get_protocol_name(self.raw()).as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }
 
@@ -79,24 +98,24 @@ impl fmt::Display for Protocol {
 }
 
 ffi_enum_wrapper! {
-    pub enum Validity: ffi::gpgme_validity_t {
-        VALIDITY_UNKNOWN = ffi::GPGME_VALIDITY_UNKNOWN,
-        VALIDITY_UNDEFINED = ffi::GPGME_VALIDITY_UNDEFINED,
-        VALIDITY_NEVER = ffi::GPGME_VALIDITY_NEVER,
-        VALIDITY_MARGINAL = ffi::GPGME_VALIDITY_MARGINAL,
-        VALIDITY_FULL = ffi::GPGME_VALIDITY_FULL,
-        VALIDITY_ULTIMATE = ffi::GPGME_VALIDITY_ULTIMATE,
+    pub enum Validity(Unknown): ffi::gpgme_validity_t {
+        Unknown = ffi::GPGME_VALIDITY_UNKNOWN,
+        Undefined = ffi::GPGME_VALIDITY_UNDEFINED,
+        Never = ffi::GPGME_VALIDITY_NEVER,
+        Marginal = ffi::GPGME_VALIDITY_MARGINAL,
+        Full = ffi::GPGME_VALIDITY_FULL,
+        Ultimate = ffi::GPGME_VALIDITY_ULTIMATE,
     }
 }
 
 impl fmt::Display for Validity {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            VALIDITY_UNDEFINED => write!(f, "q"),
-            VALIDITY_NEVER => write!(f, "n"),
-            VALIDITY_MARGINAL => write!(f, "m"),
-            VALIDITY_FULL => write!(f, "f"),
-            VALIDITY_ULTIMATE => write!(f, "u"),
+            Validity::Undefined => write!(f, "q"),
+            Validity::Never => write!(f, "n"),
+            Validity::Marginal => write!(f, "m"),
+            Validity::Full => write!(f, "f"),
+            Validity::Ultimate => write!(f, "u"),
             _ => write!(f, "?"),
         }
     }
@@ -136,19 +155,9 @@ lazy_static! {
 /// ```no_run
 /// let gpgme = gpgme::init();
 /// ```
+#[inline]
 pub fn init() -> Token {
     TOKEN.clone()
-}
-
-/// Creates a new context for cryptographic operations.
-///
-/// # Examples
-///
-/// ```no_run
-/// let mut ctx = gpgme::create_context().unwrap();
-/// ```
-pub fn create_context() -> Result<Context> {
-    Context::new(init())
 }
 
 /// A type for managing the library's configuration.
@@ -167,12 +176,14 @@ impl Token {
     /// let gpgme = gpgme::init();
     /// assert!(gpgme.check_version("1.4.0"));
     /// ```
+    #[inline]
     pub fn check_version<S: IntoNativeString>(&self, version: S) -> bool {
         let version = version.into_native();
         unsafe { !ffi::gpgme_check_version(version.as_ref().as_ptr()).is_null() }
     }
 
     /// Returns the version string for the library.
+    #[inline]
     pub fn version(&self) -> &'static str {
         self.0.version
     }
@@ -182,9 +193,21 @@ impl Token {
     /// Commonly supported values for `what` are specified in [`info`](info/).
     ///
     /// This function requires a version of GPGme >= 1.5.0.
+    pub fn get_dir_info<S>(&self, what: S) -> result::Result<&'static str, Option<Utf8Error>>
+    where S: IntoNativeString {
+        self.get_dir_info_raw(what).map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    /// Returns the default value for specified configuration option.
+    ///
+    /// Commonly supported values for `what` are specified in [`info`](info/).
+    ///
+    /// This function requires a version of GPGme >= 1.5.0.
     pub fn get_dir_info_raw<S: IntoNativeString>(&self, what: S) -> Option<&'static CStr> {
         let what = what.into_native();
-        unsafe { ffi::gpgme_get_dirinfo(what.as_ref().as_ptr()).as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            ffi::gpgme_get_dirinfo(what.as_ref().as_ptr()).as_ref().map(|s| CStr::from_ptr(s))
+        }
     }
 
     /// Checks that the engine implementing the specified protocol is supported by the library.
@@ -195,6 +218,7 @@ impl Token {
         Ok(())
     }
 
+    #[inline]
     pub fn engine_info(&self) -> Result<EngineInfoGuard> {
         EngineInfoGuard::new(&TOKEN)
     }
@@ -204,7 +228,9 @@ impl Token {
         let path = path.into_native();
         unsafe {
             let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
-            return_err!(ffi::gpgme_set_engine_info(proto.raw(), path.as_ref().as_ptr(), ptr::null()));
+            return_err!(ffi::gpgme_set_engine_info(proto.raw(),
+                                                   path.as_ref().as_ptr(),
+                                                   ptr::null()));
         }
         Ok(())
     }
@@ -214,7 +240,9 @@ impl Token {
         let home_dir = home_dir.into_native();
         unsafe {
             let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
-            return_err!(ffi::gpgme_set_engine_info(proto.raw(), ptr::null(), home_dir.as_ref().as_ptr()));
+            return_err!(ffi::gpgme_set_engine_info(proto.raw(),
+                                                   ptr::null(),
+                                                   home_dir.as_ref().as_ptr()));
         }
         Ok(())
     }
@@ -233,15 +261,6 @@ impl Token {
     }
 }
 
-pub unsafe trait Wrapper {
-    type Raw: Copy;
-
-    unsafe fn from_raw(raw: Self::Raw) -> Self;
-    fn as_raw(&self) -> Self::Raw;
-    fn into_raw(self) -> Self::Raw
-    where Self: Sized {
-        let result = self.as_raw();
-        mem::forget(self);
-        result
-    }
+unsafe trait OpResult: Clone {
+    fn from_context(ctx: &Context) -> Option<Self>;
 }

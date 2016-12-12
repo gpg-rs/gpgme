@@ -3,11 +3,11 @@ extern crate gpgme;
 
 use std::io::prelude::*;
 
-use gpgme::{Data, Error, Result};
+use gpgme::{Context, Data, Error, Result};
 use gpgme::error;
-use gpgme::edit::{self, Editor, EditStatus};
+use gpgme::edit::{self, EditStatus, Editor};
 
-use self::support::{setup, passphrase_cb};
+use self::support::{passphrase_cb, setup};
 
 #[macro_use]
 mod support;
@@ -48,7 +48,8 @@ impl Editor for TestEditor {
                 Ok(State::Valid) => Ok(State::Uid),
                 Ok(State::Uid) => Ok(State::Primary),
                 Ok(State::Quit) => state,
-                Ok(State::Primary) | Err(_) => Ok(State::Quit),
+                Ok(State::Primary) |
+                Err(_) => Ok(State::Quit),
                 _ => Err(Error::from_code(error::GPG_ERR_GENERAL)),
             }
         } else if (status.args() == Ok(edit::KEY_VALID)) && (state == Ok(State::Expire)) {
@@ -84,9 +85,8 @@ fn test_edit() {
         return;
     }
 
-    let mut ctx = fail_if_err!(gpgme::create_context());
-    fail_if_err!(ctx.set_protocol(gpgme::PROTOCOL_OPENPGP));
-    ctx.with_passphrase_handler(passphrase_cb, |mut ctx| {
+    let mut ctx = fail_if_err!(Context::from_protocol(gpgme::Protocol::OpenPgp));
+    ctx.with_passphrase_provider(passphrase_cb, |mut ctx| {
         let key = fail_if_err!(ctx.find_keys(Some("Alpha"))).next().unwrap().unwrap();
         let mut output = fail_if_err!(Data::new());
         fail_if_err!(ctx.edit_key_with(&key, TestEditor, &mut output));

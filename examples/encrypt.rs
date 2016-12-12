@@ -9,8 +9,7 @@ use std::process::exit;
 
 use getopts::{HasArg, Occur, Options};
 
-use gpgme::Data;
-use gpgme::ops;
+use gpgme::{Context, Data, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] FILENAME", program);
@@ -25,7 +24,12 @@ fn main() {
     opts.optflag("h", "help", "display this help message");
     opts.optflag("", "openpgp", "use the OpenPGP protocol (default)");
     opts.optflag("", "cms", "use the CMS protocol");
-    opts.opt("r", "recipient", "encrypt message for NAME", "NAME", HasArg::Yes, Occur::Multi);
+    opts.opt("r",
+             "recipient",
+             "encrypt message for NAME",
+             "NAME",
+             HasArg::Yes,
+             Occur::Multi);
 
     let matches = match opts.parse(&args[1..]) {
         Ok(matches) => matches,
@@ -47,22 +51,21 @@ fn main() {
     }
 
     let proto = if matches.opt_present("cms") {
-        gpgme::PROTOCOL_CMS
+        Protocol::Cms
     } else {
-        gpgme::PROTOCOL_OPENPGP
+        Protocol::OpenPgp
     };
 
-    let mut ctx = gpgme::create_context().unwrap();
-    ctx.set_protocol(proto).unwrap();
+    let mut ctx = Context::from_protocol(proto).unwrap();
     ctx.set_armor(true);
 
     let recipients = matches.opt_strs("r");
     let keys = if !recipients.is_empty() {
         ctx.find_keys(recipients)
-           .unwrap()
-           .filter_map(Result::ok)
-           .filter(|k| k.can_encrypt())
-           .collect()
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|k| k.can_encrypt())
+            .collect()
     } else {
         Vec::new()
     };
@@ -80,7 +83,7 @@ fn main() {
     };
 
     let mut output = Data::new().unwrap();
-    match ctx.encrypt(&keys, ops::EncryptFlags::empty(), &mut input, &mut output) {
+    match ctx.encrypt(&keys, &mut input, &mut output) {
         Ok(..) => (),
         Err(err) => {
             writeln!(io::stderr(), "{}: encrypting failed: {}", program, err);

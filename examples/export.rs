@@ -9,8 +9,7 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::Data;
-use gpgme::ops;
+use gpgme::{Context, Data};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] USERID+", program);
@@ -45,13 +44,12 @@ fn main() {
     }
 
     let mode = if matches.opt_present("extern") {
-        ops::EXPORT_EXTERN
+        gpgme::EXPORT_EXTERN
     } else {
-        ops::ExportMode::empty()
+        gpgme::ExportMode::empty()
     };
 
-    let mut ctx = gpgme::create_context().unwrap();
-    ctx.set_protocol(gpgme::PROTOCOL_OPENPGP).unwrap();
+    let mut ctx = Context::from_protocol(gpgme::Protocol::OpenPgp).unwrap();
     ctx.set_armor(true);
 
     let keys = {
@@ -62,7 +60,7 @@ fn main() {
                      key.id().unwrap_or("?"),
                      key.fingerprint().unwrap_or("?"));
         }
-        if key_iter.finish().unwrap().truncated() {
+        if key_iter.finish().unwrap().is_truncated() {
             writeln!(io::stderr(),
                      "{}: key listing unexpectedly truncated",
                      program);
@@ -71,7 +69,7 @@ fn main() {
         keys
     };
 
-    if mode.contains(ops::EXPORT_EXTERN) {
+    if mode.contains(gpgme::EXPORT_EXTERN) {
         println!("sending keys to keyserver");
         if let Err(err) = ctx.export_keys(&keys, mode, None) {
             writeln!(io::stderr(), "{}: export failed: {}", program, err);

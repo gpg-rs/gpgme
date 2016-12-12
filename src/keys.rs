@@ -6,152 +6,117 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ffi;
 
-use {Protocol, Validity, Wrapper};
-use error::Error;
-use ops::KeyListMode;
-use notation::SignatureNotationIter;
+use {Error, KeyAlgorithm, KeyListMode, Protocol, TofuInfo, Validity};
+use notation::SignatureNotations;
 
-ffi_enum_wrapper! {
-    pub enum KeyAlgorithm: ffi::gpgme_pubkey_algo_t {
-        PK_RSA = ffi::GPGME_PK_RSA,
-        PK_RSA_ENCRYPT = ffi::GPGME_PK_RSA_E,
-        PK_RSA_SIGN = ffi::GPGME_PK_RSA_S,
-        PK_ELGAMAL_ENCRYPT = ffi::GPGME_PK_ELG_E,
-        PK_DSA = ffi::GPGME_PK_DSA,
-        PK_ECC = ffi::GPGME_PK_ECC,
-        PK_ELGAMAL = ffi::GPGME_PK_ELG,
-        PK_ECDSA = ffi::GPGME_PK_ECDSA,
-        PK_ECDH = ffi::GPGME_PK_ECDH,
-        PK_EDDSA = ffi::GPGME_PK_EDDSA,
-    }
-}
-
-impl KeyAlgorithm {
-    pub fn name(&self) -> Result<&'static str, Option<Utf8Error>> {
-        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
-
-    pub fn name_raw(&self) -> Option<&'static CStr> {
-        unsafe { ffi::gpgme_pubkey_algo_name(self.0).as_ref().map(|s| CStr::from_ptr(s)) }
-    }
-}
-
-impl fmt::Display for KeyAlgorithm {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.name().unwrap_or("Unknown"))
-    }
-}
-
-ffi_enum_wrapper! {
-    pub enum HashAlgorithm: ffi::gpgme_hash_algo_t {
-        HASH_NONE = ffi::GPGME_MD_NONE,
-        HASH_MD2 = ffi::GPGME_MD_MD2,
-        HASH_MD4 = ffi::GPGME_MD_MD4,
-        HASH_MD5 = ffi::GPGME_MD_MD5,
-        HASH_SHA1 = ffi::GPGME_MD_SHA1,
-        HASH_SHA256 = ffi::GPGME_MD_SHA256,
-        HASH_SHA384 = ffi::GPGME_MD_SHA384,
-        HASH_SHA512 = ffi::GPGME_MD_SHA512,
-        HASH_SHA224 = ffi::GPGME_MD_SHA224,
-        HASH_RMD160 = ffi::GPGME_MD_RMD160,
-        HASH_TIGER = ffi::GPGME_MD_TIGER,
-        HASH_HAVAL = ffi::GPGME_MD_HAVAL,
-        HASH_CRC32 = ffi::GPGME_MD_CRC32,
-        HASH_CRC32_RFC1510 = ffi::GPGME_MD_CRC32_RFC1510,
-        HASH_CRC24_RFC2440 = ffi::GPGME_MD_CRC24_RFC2440,
-    }
-}
-
-impl HashAlgorithm {
-    pub fn name(&self) -> Result<&'static str, Option<Utf8Error>> {
-        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
-
-    pub fn name_raw(&self) -> Option<&'static CStr> {
-        unsafe { ffi::gpgme_hash_algo_name(self.0).as_ref().map(|s| CStr::from_ptr(s)) }
-    }
-}
-
-impl fmt::Display for HashAlgorithm {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.name().unwrap_or("Unknown"))
-    }
-}
-
-#[derive(Debug)]
-pub struct Key {
-    raw: ffi::gpgme_key_t,
-}
+pub struct Key(ffi::gpgme_key_t);
 
 impl Drop for Key {
+    #[inline]
     fn drop(&mut self) {
         unsafe {
-            ffi::gpgme_key_unref(self.raw);
+            ffi::gpgme_key_unref(self.0);
         }
     }
 }
 
 impl Clone for Key {
+    #[inline]
     fn clone(&self) -> Key {
         unsafe {
-            ffi::gpgme_key_ref(self.raw);
-            Key { raw: self.raw }
+            ffi::gpgme_key_ref(self.0);
+            Key(self.0)
         }
     }
 }
 
-unsafe impl Wrapper for Key {
-    type Raw = ffi::gpgme_key_t;
-
-    unsafe fn from_raw(raw: ffi::gpgme_key_t) -> Key {
-        debug_assert!(!raw.is_null());
-        Key { raw: raw }
-    }
-
-    fn as_raw(&self) -> ffi::gpgme_key_t {
-        self.raw
-    }
-}
-
 impl Key {
-    pub fn is_secret(&self) -> bool {
-        unsafe { (*self.raw).secret() }
-    }
-
-    pub fn is_qualified(&self) -> bool {
-        unsafe { (*self.raw).is_qualified() }
-    }
-
-    pub fn is_invalid(&self) -> bool {
-        unsafe { (*self.raw).invalid() }
-    }
-
-    pub fn is_disabled(&self) -> bool {
-        unsafe { (*self.raw).disabled() }
-    }
+    impl_wrapper!(Key: ffi::gpgme_key_t);
 
     pub fn is_revoked(&self) -> bool {
-        unsafe { (*self.raw).revoked() }
+        unsafe { (*self.0).revoked() }
     }
 
     pub fn is_expired(&self) -> bool {
-        unsafe { (*self.raw).expired() }
+        unsafe { (*self.0).expired() }
+    }
+
+    pub fn is_disabled(&self) -> bool {
+        unsafe { (*self.0).disabled() }
+    }
+
+    pub fn is_invalid(&self) -> bool {
+        unsafe { (*self.0).invalid() }
     }
 
     pub fn can_encrypt(&self) -> bool {
-        unsafe { (*self.raw).can_encrypt() }
+        unsafe { (*self.0).can_encrypt() }
     }
 
     pub fn can_sign(&self) -> bool {
-        unsafe { (*self.raw).can_sign() }
+        unsafe { (*self.0).can_sign() }
     }
 
     pub fn can_certify(&self) -> bool {
-        unsafe { (*self.raw).can_certify() }
+        unsafe { (*self.0).can_certify() }
     }
 
     pub fn can_authenticate(&self) -> bool {
-        unsafe { (*self.raw).can_authenticate() }
+        unsafe { (*self.0).can_authenticate() }
+    }
+
+    pub fn is_qualified(&self) -> bool {
+        unsafe { (*self.0).is_qualified() }
+    }
+
+    pub fn has_secret(&self) -> bool {
+        unsafe { (*self.0).secret() }
+    }
+
+    #[deprecated(since = "0.5.0", note = "use `has_secret` instead")]
+    pub fn is_secret(&self) -> bool {
+        self.has_secret()
+    }
+
+    pub fn is_root(&self) -> bool {
+        use std::ascii::AsciiExt;
+        if let (Some(fpr), Some(chain_id)) = (self.fingerprint_raw(), self.chain_id_raw()) {
+            fpr.to_bytes().eq_ignore_ascii_case(chain_id.to_bytes())
+        } else {
+            false
+        }
+    }
+
+    pub fn owner_trust(&self) -> Validity {
+        unsafe { Validity::from_raw((*self.0).owner_trust) }
+    }
+
+    pub fn protocol(&self) -> Protocol {
+        unsafe { Protocol::from_raw((*self.0).protocol) }
+    }
+
+    pub fn issuer_serial(&self) -> Result<&str, Option<Utf8Error>> {
+        self.issuer_serial_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn issuer_serial_raw(&self) -> Option<&CStr> {
+        unsafe { (*self.0).issuer_serial.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn issuer_name(&self) -> Result<&str, Option<Utf8Error>> {
+        self.issuer_name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn issuer_name_raw(&self) -> Option<&CStr> {
+        unsafe { (*self.0).issuer_name.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn chain_id(&self) -> Result<&str, Option<Utf8Error>> {
+        self.chain_id_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn chain_id_raw(&self) -> Option<&CStr> {
+        unsafe { (*self.0).chain_id.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn id(&self) -> Result<&str, Option<Utf8Error>> {
@@ -162,140 +127,82 @@ impl Key {
         self.primary_key().and_then(|k| k.id_raw())
     }
 
+    pub fn short_id(&self) -> Result<&str, Option<Utf8Error>> {
+        self.id().map(|s| if s.len() >= 8 { &s[(s.len() - 8)..] } else { s })
+    }
+
+    pub fn short_id_raw(&self) -> Option<&CStr> {
+        self.id_raw().map(|s| {
+            let bytes = s.to_bytes_with_nul();
+            if bytes.len() >= 9 {
+                // One extra for the null terminator
+                unsafe { CStr::from_bytes_with_nul_unchecked(&bytes[(bytes.len() - 9)..]) }
+            } else {
+                s
+            }
+        })
+    }
+
     pub fn fingerprint(&self) -> Result<&str, Option<Utf8Error>> {
-        self.primary_key().map_or(Err(None), |k| k.fingerprint())
+        self.fingerprint_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     pub fn fingerprint_raw(&self) -> Option<&CStr> {
-        self.primary_key().and_then(|k| k.fingerprint_raw())
+        unsafe {
+            (*self.0)
+                .fpr
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+                .or_else(|| self.primary_key().and_then(|k| k.fingerprint_raw()))
+        }
     }
 
     pub fn key_list_mode(&self) -> KeyListMode {
-        unsafe { KeyListMode::from_bits_truncate((*self.raw).keylist_mode) }
+        unsafe { KeyListMode::from_bits_truncate((*self.0).keylist_mode) }
     }
 
-    pub fn protocol(&self) -> Protocol {
-        unsafe { Protocol::from_raw((*self.raw).protocol) }
-    }
-
-    pub fn owner_trust(&self) -> Validity {
-        unsafe { Validity::from_raw((*self.raw).owner_trust) }
-    }
-
-    pub fn issuer_serial(&self) -> Result<&str, Option<Utf8Error>> {
-        self.issuer_serial_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
-
-    pub fn issuer_serial_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.raw).issuer_serial.as_ref().map(|s| CStr::from_ptr(s)) }
-    }
-
-    pub fn issuer_name(&self) -> Result<&str, Option<Utf8Error>> {
-        self.issuer_name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
-
-    pub fn issuer_name_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.raw).issuer_name.as_ref().map(|s| CStr::from_ptr(s)) }
-    }
-
-    pub fn chain_id(&self) -> Result<&str, Option<Utf8Error>> {
-        self.chain_id_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
-
-    pub fn chain_id_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.raw).chain_id.as_ref().map(|s| CStr::from_ptr(s)) }
-    }
-
-    pub fn primary_key(&self) -> Option<SubKey> {
+    pub fn primary_key(&self) -> Option<Subkey> {
         self.subkeys().next()
     }
 
-    pub fn user_ids(&self) -> UserIdIter {
-        unsafe { UserIdIter::from_list((*self.raw).uids) }
+    pub fn user_ids(&self) -> UserIds {
+        unsafe { UserIds::from_list((*self.0).uids) }
     }
 
-    pub fn subkeys(&self) -> SubKeyIter {
-        unsafe { SubKeyIter::from_list((*self.raw).subkeys) }
+    pub fn subkeys(&self) -> Subkeys {
+        unsafe { Subkeys::from_list((*self.0).subkeys) }
+    }
+}
+
+impl fmt::Debug for Key {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Key")
+            .field("protocol", &self.protocol().name().unwrap_or("<null>"))
+            .field("owner_trust", &self.owner_trust().to_string())
+            .field("issuer", &self.issuer_name().unwrap_or("<null>"))
+            .field("fingerprint", &self.fingerprint().unwrap_or("<null>"))
+            .field("list_mode", &self.key_list_mode())
+            .field("can_sign", &self.can_sign())
+            .field("can_encrypt", &self.can_encrypt())
+            .field("can_certify", &self.can_certify())
+            .field("can_auth", &self.can_authenticate())
+            .field("raw", &self.0)
+            .finish()
     }
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct SubKey<'a> {
-    raw: ffi::gpgme_subkey_t,
-    phantom: PhantomData<&'a Key>,
-}
+pub struct Subkey<'a>(ffi::gpgme_subkey_t, PhantomData<&'a Key>);
 
-impl<'a> SubKey<'a> {
-    pub unsafe fn from_raw<'b>(raw: ffi::gpgme_subkey_t) -> SubKey<'b> {
-        debug_assert!(!raw.is_null());
-        SubKey {
-            raw: raw,
-            phantom: PhantomData,
-        }
-    }
-
-    pub fn raw(&self) -> ffi::gpgme_subkey_t {
-        self.raw
-    }
-
-    pub fn is_secret(&self) -> bool {
-        unsafe { (*self.raw).secret() }
-    }
-
-    pub fn is_cardkey(&self) -> bool {
-        unsafe { (*self.raw).is_cardkey() }
-    }
-
-    pub fn is_qualified(&self) -> bool {
-        unsafe { (*self.raw).is_qualified() }
-    }
-
-    pub fn is_invalid(&self) -> bool {
-        unsafe { (*self.raw).invalid() }
-    }
-
-    pub fn is_disabled(&self) -> bool {
-        unsafe { (*self.raw).disabled() }
-    }
-
-    pub fn is_revoked(&self) -> bool {
-        unsafe { (*self.raw).revoked() }
-    }
-
-    pub fn is_expired(&self) -> bool {
-        unsafe { (*self.raw).expired() }
-    }
-
-    pub fn can_encrypt(&self) -> bool {
-        unsafe { (*self.raw).can_encrypt() }
-    }
-
-    pub fn can_sign(&self) -> bool {
-        unsafe { (*self.raw).can_sign() }
-    }
-
-    pub fn can_certify(&self) -> bool {
-        unsafe { (*self.raw).can_certify() }
-    }
-
-    pub fn can_authenticate(&self) -> bool {
-        unsafe { (*self.raw).can_authenticate() }
-    }
+impl<'a> Subkey<'a> {
+    impl_wrapper!(@phantom Subkey: ffi::gpgme_subkey_t);
 
     pub fn id(&self) -> Result<&'a str, Option<Utf8Error>> {
         self.id_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     pub fn id_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
-    }
-
-    pub fn keygrip(&self) -> Result<&'a str, Option<Utf8Error>> {
-        self.keygrip_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
-
-    pub fn keygrip_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.0).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn fingerprint(&self) -> Result<&'a str, Option<Utf8Error>> {
@@ -303,19 +210,87 @@ impl<'a> SubKey<'a> {
     }
 
     pub fn fingerprint_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.0).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn creation_time(&self) -> Option<SystemTime> {
+        let timestamp = unsafe { (*self.0).timestamp };
+        if timestamp > 0 {
+            Some(UNIX_EPOCH + Duration::from_secs(timestamp as u64))
+        } else {
+            None
+        }
+    }
+
+    pub fn expiration_time(&self) -> Option<SystemTime> {
+        let expires = unsafe { (*self.0).expires };
+        if expires > 0 {
+            Some(UNIX_EPOCH + Duration::from_secs(expires as u64))
+        } else {
+            None
+        }
+    }
+
+    pub fn never_expires(&self) -> bool {
+        self.expiration_time().is_none()
+    }
+
+    pub fn is_revoked(&self) -> bool {
+        unsafe { (*self.0).revoked() }
+    }
+
+    pub fn is_expired(&self) -> bool {
+        unsafe { (*self.0).expired() }
+    }
+
+    pub fn is_invalid(&self) -> bool {
+        unsafe { (*self.0).invalid() }
+    }
+
+    pub fn is_disabled(&self) -> bool {
+        unsafe { (*self.0).disabled() }
+    }
+
+    pub fn can_encrypt(&self) -> bool {
+        unsafe { (*self.0).can_encrypt() }
+    }
+
+    pub fn can_sign(&self) -> bool {
+        unsafe { (*self.0).can_sign() }
+    }
+
+    pub fn can_certify(&self) -> bool {
+        unsafe { (*self.0).can_certify() }
+    }
+
+    pub fn can_authenticate(&self) -> bool {
+        unsafe { (*self.0).can_authenticate() }
+    }
+
+    pub fn is_qualified(&self) -> bool {
+        unsafe { (*self.0).is_qualified() }
+    }
+
+    pub fn is_card_key(&self) -> bool {
+        unsafe { (*self.0).is_cardkey() }
+    }
+
+    pub fn is_secret(&self) -> bool {
+        unsafe { (*self.0).secret() }
     }
 
     pub fn algorithm(&self) -> KeyAlgorithm {
-        unsafe { KeyAlgorithm::from_raw((*self.raw).pubkey_algo) }
+        unsafe { KeyAlgorithm::from_raw((*self.0).pubkey_algo) }
     }
 
-    pub fn algorithm_string(&self) -> ::Result<String> {
+    pub fn algorithm_name(&self) -> ::Result<String> {
         unsafe {
-            match ffi::gpgme_pubkey_algo_string(self.raw).as_mut() {
+            match ffi::gpgme_pubkey_algo_string(self.0).as_mut() {
                 Some(raw) => {
-                    let result = CStr::from_ptr(raw).to_str().expect("algorithm string is not valid
-                                                                 ascii").to_owned();
+                    let result = CStr::from_ptr(raw)
+                        .to_str()
+                        .expect("algorithm name is not valid utf-8")
+                        .to_owned();
                     ffi::gpgme_free(raw as *mut _ as *mut _);
                     Ok(result)
                 }
@@ -324,38 +299,24 @@ impl<'a> SubKey<'a> {
         }
     }
 
+    pub fn keygrip(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.keygrip_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn keygrip_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.0).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
     pub fn length(&self) -> usize {
-        unsafe { (*self.raw).length as usize }
+        unsafe { (*self.0).length as usize }
     }
 
-    pub fn never_expires(&self) -> bool {
-        self.expiration_time().is_none()
+    pub fn card_serial_number(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.card_serial_number_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    pub fn creation_time(&self) -> Option<SystemTime> {
-        let timestamp = unsafe { (*self.raw).timestamp };
-        if timestamp > 0 {
-            Some(UNIX_EPOCH + Duration::from_secs(timestamp as u64))
-        } else {
-            None
-        }
-    }
-
-    pub fn expiration_time(&self) -> Option<SystemTime> {
-        let expires = unsafe { (*self.raw).expires };
-        if expires > 0 {
-            Some(UNIX_EPOCH + Duration::from_secs(expires as u64))
-        } else {
-            None
-        }
-    }
-
-    pub fn card_number(&self) -> Result<&'a str, Option<Utf8Error>> {
-        self.card_number_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
-
-    pub fn card_number_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).card_number.as_ref().map(|s| CStr::from_ptr(s)) }
+    pub fn card_serial_number_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.0).card_number.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn curve(&self) -> Result<&'a str, Option<Utf8Error>> {
@@ -363,62 +324,43 @@ impl<'a> SubKey<'a> {
     }
 
     pub fn curve_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).curve.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.0).curve.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct SubKeyIter<'a> {
+#[derive(Debug, Clone)]
+pub struct Subkeys<'a> {
     current: ffi::gpgme_subkey_t,
+    left: Option<usize>,
     phantom: PhantomData<&'a Key>,
 }
 
-impl<'a> SubKeyIter<'a> {
-    pub unsafe fn from_list<'b>(raw: ffi::gpgme_subkey_t) -> SubKeyIter<'b> {
-        SubKeyIter {
-            current: raw,
+impl<'a> Subkeys<'a> {
+    pub unsafe fn from_list(first: ffi::gpgme_subkey_t) -> Self {
+        Subkeys {
+            current: first,
+            left: count_list!(first),
             phantom: PhantomData,
         }
     }
 }
 
-impl<'a> Iterator for SubKeyIter<'a> {
-    list_iterator!(SubKey<'a>, SubKey::from_raw);
+impl<'a> Iterator for Subkeys<'a> {
+    list_iterator!(Subkey<'a>, Subkey::from_raw);
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct UserId<'a> {
-    raw: ffi::gpgme_user_id_t,
-    phantom: PhantomData<&'a Key>,
-}
+#[derive(Copy, Clone)]
+pub struct UserId<'a>(ffi::gpgme_user_id_t, PhantomData<&'a Key>);
 
 impl<'a> UserId<'a> {
-    pub unsafe fn from_raw<'b>(raw: ffi::gpgme_user_id_t) -> UserId<'b> {
-        debug_assert!(!raw.is_null());
-        UserId {
-            raw: raw,
-            phantom: PhantomData,
-        }
+    impl_wrapper!(@phantom UserId: ffi::gpgme_user_id_t);
+
+    pub fn id(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.id_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    pub fn raw(&self) -> ffi::gpgme_user_id_t {
-        self.raw
-    }
-
-    pub fn is_revoked(&self) -> bool {
-        unsafe { (*self.raw).revoked() }
-    }
-
-    pub fn is_invalid(&self) -> bool {
-        unsafe { (*self.raw).invalid() }
-    }
-
-    pub fn uid(&self) -> Result<&'a str, Option<Utf8Error>> {
-        self.uid_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
-
-    pub fn uid_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).uid.as_ref().map(|s| CStr::from_ptr(s)) }
+    pub fn id_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.0).uid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn name(&self) -> Result<&'a str, Option<Utf8Error>> {
@@ -426,7 +368,7 @@ impl<'a> UserId<'a> {
     }
 
     pub fn name_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).name.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.0).name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn email(&self) -> Result<&'a str, Option<Utf8Error>> {
@@ -434,7 +376,7 @@ impl<'a> UserId<'a> {
     }
 
     pub fn email_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).email.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.0).email.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn comment(&self) -> Result<&'a str, Option<Utf8Error>> {
@@ -442,7 +384,7 @@ impl<'a> UserId<'a> {
     }
 
     pub fn comment_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).comment.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.0).comment.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn address(&self) -> Result<&'a str, Option<Utf8Error>> {
@@ -450,129 +392,92 @@ impl<'a> UserId<'a> {
     }
 
     pub fn address_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).address.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.0).address.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn validity(&self) -> Validity {
-        unsafe { Validity::from_raw((*self.raw).validity) }
+        unsafe { Validity::from_raw((*self.0).validity) }
     }
 
-    pub fn signatures(&self) -> KeySignatureIter {
-        unsafe { KeySignatureIter::from_list((*self.raw).signatures) }
+    pub fn is_revoked(&self) -> bool {
+        unsafe { (*self.0).revoked() }
     }
 
-    pub fn tofu_info(&self) -> TofuInfoIter {
-        unsafe { TofuInfoIter::from_list((*self.raw).tofu) }
+    pub fn is_invalid(&self) -> bool {
+        unsafe { (*self.0).invalid() }
+    }
+
+    pub fn signatures(&self) -> Signatures {
+        unsafe { Signatures::from_list((*self.0).signatures) }
+    }
+
+    pub fn tofu_info(&self) -> Option<TofuInfo> {
+        unsafe { (*self.0).tofu.as_mut().map(|t| TofuInfo::from_raw(t)) }
+    }
+}
+
+impl<'a> fmt::Debug for UserId<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("UserId")
+            .field("name", &self.name().unwrap_or("<null>"))
+            .field("email", &self.email().unwrap_or("<null>"))
+            .field("comment", &self.comment().unwrap_or("<null>"))
+            .field("validity", &self.validity().to_string())
+            .field("revoked", &self.is_revoked())
+            .field("invalid", &self.is_invalid())
+            .field("raw", &self.0)
+            .finish()
     }
 }
 
 impl<'a> fmt::Display for UserId<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let uid = self.uid_raw().map(|s| s.to_string_lossy()).unwrap_or("".into());
+        let uid = self.id_raw().map(|s| s.to_string_lossy()).unwrap_or("".into());
         write!(f, "{}", uid)
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct UserIdIter<'a> {
+#[derive(Debug, Clone)]
+pub struct UserIds<'a> {
     current: ffi::gpgme_user_id_t,
+    left: Option<usize>,
     phantom: PhantomData<&'a Key>,
 }
 
-impl<'a> UserIdIter<'a> {
-    pub unsafe fn from_list<'b>(raw: ffi::gpgme_user_id_t) -> UserIdIter<'b> {
-        UserIdIter {
-            current: raw,
+impl<'a> UserIds<'a> {
+    pub unsafe fn from_list(first: ffi::gpgme_user_id_t) -> Self {
+        UserIds {
+            current: first,
+            left: count_list!(first),
             phantom: PhantomData,
         }
     }
 }
 
-impl<'a> Iterator for UserIdIter<'a> {
+impl<'a> Iterator for UserIds<'a> {
     list_iterator!(UserId<'a>, UserId::from_raw);
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct KeySignature<'a> {
-    raw: ffi::gpgme_key_sig_t,
-    phantom: PhantomData<&'a Key>,
-}
+pub struct Signature<'a>(ffi::gpgme_key_sig_t, PhantomData<&'a Key>);
 
-impl<'a> KeySignature<'a> {
-    pub unsafe fn from_raw<'b>(raw: ffi::gpgme_key_sig_t) -> KeySignature<'b> {
-        debug_assert!(!raw.is_null());
-        KeySignature {
-            raw: raw,
-            phantom: PhantomData,
-        }
+impl<'a> Signature<'a> {
+    impl_wrapper!(@phantom Signature: ffi::gpgme_key_sig_t);
+
+    pub fn signer_key_id(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.signer_key_id_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    pub fn raw(&self) -> ffi::gpgme_key_sig_t {
-        self.raw
+    pub fn signer_key_id_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.0).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
-    pub fn is_revoked(&self) -> bool {
-        unsafe { (*self.raw).revoked() }
-    }
-
-    pub fn is_expired(&self) -> bool {
-        unsafe { (*self.raw).expired() }
-    }
-
-    pub fn is_invalid(&self) -> bool {
-        unsafe { (*self.raw).invalid() }
-    }
-
-    pub fn is_exportable(&self) -> bool {
-        unsafe { (*self.raw).exportable() }
-    }
-
-    pub fn key_id(&self) -> Result<&'a str, Option<Utf8Error>> {
-        self.key_id_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
-
-    pub fn key_id_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
-    }
-
-    pub fn uid(&self) -> Result<&'a str, Option<Utf8Error>> {
-        self.uid_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
-
-    pub fn uid_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).uid.as_ref().map(|s| CStr::from_ptr(s)) }
-    }
-
-    pub fn name(&self) -> Result<&'a str, Option<Utf8Error>> {
-        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
-
-    pub fn name_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).name.as_ref().map(|s| CStr::from_ptr(s)) }
-    }
-
-    pub fn email(&self) -> Result<&'a str, Option<Utf8Error>> {
-        self.email_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
-
-    pub fn email_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).email.as_ref().map(|s| CStr::from_ptr(s)) }
-    }
-
-    pub fn comment(&self) -> Result<&'a str, Option<Utf8Error>> {
-        self.comment_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
-
-    pub fn comment_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.raw).comment.as_ref().map(|s| CStr::from_ptr(s)) }
-    }
-
-    pub fn never_expires(&self) -> bool {
-        self.expiration_time().is_none()
+    pub fn algorithm(&self) -> KeyAlgorithm {
+        unsafe { KeyAlgorithm::from_raw((*self.0).pubkey_algo) }
     }
 
     pub fn creation_time(&self) -> Option<SystemTime> {
-        let timestamp = unsafe { (*self.raw).timestamp };
+        let timestamp = unsafe { (*self.0).timestamp };
         if timestamp > 0 {
             Some(UNIX_EPOCH + Duration::from_secs(timestamp as u64))
         } else {
@@ -581,7 +486,7 @@ impl<'a> KeySignature<'a> {
     }
 
     pub fn expiration_time(&self) -> Option<SystemTime> {
-        let expires = unsafe { (*self.raw).expires };
+        let expires = unsafe { (*self.0).expires };
         if expires > 0 {
             Some(UNIX_EPOCH + Duration::from_secs(expires as u64))
         } else {
@@ -589,143 +494,105 @@ impl<'a> KeySignature<'a> {
         }
     }
 
-    pub fn key_algorithm(&self) -> KeyAlgorithm {
-        unsafe { KeyAlgorithm::from_raw((*self.raw).pubkey_algo) }
+    pub fn never_expires(&self) -> bool {
+        self.expiration_time().is_none()
     }
 
-    pub fn class(&self) -> u32 {
-        unsafe { (*self.raw).sig_class as u32 }
+    pub fn is_revokation(&self) -> bool {
+        unsafe { (*self.0).revoked() }
+    }
+
+    pub fn is_invalid(&self) -> bool {
+        unsafe { (*self.0).invalid() }
+    }
+
+    pub fn is_expired(&self) -> bool {
+        unsafe { (*self.0).expired() }
+    }
+
+    pub fn is_exportable(&self) -> bool {
+        unsafe { (*self.0).exportable() }
+    }
+
+    pub fn signer_user_id(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.signer_user_id_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn signer_user_id_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.0).uid.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn signer_name(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.signer_name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn signer_name_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.0).name.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn signer_email(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.signer_email_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn signer_email_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.0).email.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn signer_comment(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.signer_comment_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn signer_comment_raw(&self) -> Option<&'a CStr> {
+        unsafe { (*self.0).comment.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    pub fn cert_class(&self) -> u64 {
+        unsafe { (*self.0).sig_class.into() }
     }
 
     pub fn status(&self) -> Error {
-        unsafe { Error::new((*self.raw).status) }
+        unsafe { Error::new((*self.0).status) }
     }
 
-    pub fn notations(&self) -> SignatureNotationIter<'a, Key> {
-        unsafe { SignatureNotationIter::from_list((*self.raw).notations) }
+    pub fn policy_url(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.policy_url_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    pub fn policy_url_raw(&self) -> Option<&'a CStr> {
+        unsafe {
+            let mut notation = (*self.0).notations;
+            while !notation.is_null() {
+                if (*notation).name.is_null() {
+                    return (*notation).value.as_ref().map(|s| CStr::from_ptr(s));
+                }
+                notation = (*notation).next;
+            }
+            None
+        }
+    }
+
+    pub fn notations(&self) -> SignatureNotations<'a, Key> {
+        unsafe { SignatureNotations::from_list((*self.0).notations) }
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct KeySignatureIter<'a> {
+#[derive(Debug, Clone)]
+pub struct Signatures<'a> {
     current: ffi::gpgme_key_sig_t,
+    left: Option<usize>,
     phantom: PhantomData<&'a Key>,
 }
 
-impl<'a> KeySignatureIter<'a> {
-    pub unsafe fn from_list<'b>(raw: ffi::gpgme_key_sig_t) -> KeySignatureIter<'b> {
-        KeySignatureIter {
-            current: raw,
+impl<'a> Signatures<'a> {
+    pub unsafe fn from_list(first: ffi::gpgme_key_sig_t) -> Self {
+        Signatures {
+            current: first,
+            left: count_list!(first),
             phantom: PhantomData,
         }
     }
 }
 
-impl<'a> Iterator for KeySignatureIter<'a> {
-    list_iterator!(KeySignature<'a>, KeySignature::from_raw);
-}
-
-ffi_enum_wrapper! {
-    pub enum TofuPolicy: ffi::gpgme_tofu_policy_t {
-        TOFU_POLICY_NONE = ffi::GPGME_TOFU_POLICY_NONE,
-        TOFU_POLICY_AUTO = ffi::GPGME_TOFU_POLICY_AUTO,
-        TOFU_POLICY_GOOD = ffi::GPGME_TOFU_POLICY_GOOD,
-        TOFU_POLICY_UNKNOWN = ffi::GPGME_TOFU_POLICY_UNKNOWN,
-        TOFU_POLICY_BAD = ffi::GPGME_TOFU_POLICY_BAD,
-        TOFU_POLICY_ASK = ffi::GPGME_TOFU_POLICY_ASK,
-    }
-}
-
-pub struct TofuInfo<'a> {
-    raw: ffi::gpgme_tofu_info_t,
-    _phantom: PhantomData<&'a ()>,
-}
-
-impl<'a> TofuInfo<'a> {
-    pub unsafe fn from_raw(raw: ffi::gpgme_tofu_info_t) -> Self {
-        debug_assert!(!raw.is_null());
-        TofuInfo {
-            raw: raw,
-            _phantom: PhantomData,
-        }
-    }
-
-    pub fn raw(&self) -> ffi::gpgme_tofu_info_t {
-        self.raw
-    }
-
-    pub fn validity(&self) -> u32 {
-        unsafe { (*self.raw).validity() }
-    }
-
-    pub fn policy(&self) -> TofuPolicy {
-        unsafe {
-            TofuPolicy::from_raw((*self.raw).policy())
-        }
-    }
-
-    pub fn sign_count(&self) -> u64 {
-        unsafe {
-            (*self.raw).signcount.into()
-        }
-    }
-
-    pub fn encr_count(&self) -> u64 {
-        unsafe {
-            (*self.raw).encrcount.into()
-        }
-    }
-
-    pub fn sign_first(&self) -> u64 {
-        unsafe {
-            (*self.raw).signfirst.into()
-        }
-    }
-
-    pub fn sign_last(&self) -> u64 {
-        unsafe {
-            (*self.raw).signlast.into()
-        }
-    }
-
-    pub fn encr_first(&self) -> u64 {
-        unsafe {
-            (*self.raw).encrfirst.into()
-        }
-    }
-
-    pub fn encr_last(&self) -> u64 {
-        unsafe {
-            (*self.raw).encrlast.into()
-        }
-    }
-
-    pub fn description(&self) -> Result<&'a str, Option<Utf8Error>> {
-        self.description_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
-
-    pub fn description_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.raw).description.as_ref().map(|s| CStr::from_ptr(s))
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct TofuInfoIter<'a> {
-    current: ffi::gpgme_tofu_info_t,
-    _phantom: PhantomData<&'a Key>,
-}
-
-impl<'a> TofuInfoIter<'a> {
-    pub unsafe fn from_list<'b>(raw: ffi::gpgme_tofu_info_t) -> TofuInfoIter<'b> {
-        TofuInfoIter {
-            current: raw,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<'a> Iterator for TofuInfoIter<'a> {
-    list_iterator!(TofuInfo<'a>, TofuInfo::from_raw);
+impl<'a> Iterator for Signatures<'a> {
+    list_iterator!(Signature<'a>, Signature::from_raw);
 }
