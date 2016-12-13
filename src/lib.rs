@@ -30,7 +30,7 @@ pub use self::keys::{Key, Subkey, UserId};
 pub use self::notation::SignatureNotation;
 pub use self::trust::TrustItem;
 pub use self::tofu::{TofuInfo, TofuPolicy};
-pub use self::callbacks::{EditHandler, EditStatus, InteractHandler, InteractStatus,
+pub use self::callbacks::{EditInteractionStatus, EditInteractor, InteractionStatus, Interactor,
                           PassphraseProvider, PassphraseRequest, ProgressHandler, ProgressInfo,
                           StatusHandler};
 pub use self::results::{DecryptionResult, EncryptionResult, Import, ImportResult, InvalidKey,

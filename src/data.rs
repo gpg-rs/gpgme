@@ -315,6 +315,7 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
+    #[cfg(feature = "v1_7_0")]
     pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
     where S1: IntoNativeString, S2: IntoNativeString {
         let name = name.into_native();

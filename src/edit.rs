@@ -1,11 +1,12 @@
 #![allow(non_camel_case_types)]
 use std::fmt;
 use std::io::prelude::*;
+use std::panic::UnwindSafe;
 
 use ffi;
 
 use {Error, Result};
-pub use {EditHandler, EditStatus};
+pub use {EditInteractionStatus, EditInteractor};
 
 ffi_enum_wrapper! {
     pub enum StatusCode: ffi::gpgme_status_code_t {
@@ -144,12 +145,13 @@ pub const KEY_ALGORITHM: &'static str = "keygen.algo";
 pub const KEY_UID_COMMAND: &'static str = "keygen.userid.cmd";
 pub const KEY_CURVE: &'static str = "keygen.curve";
 
-pub trait Editor: 'static + Send {
-    type State: 'static + Send + Copy + Eq + fmt::Debug;
+pub trait Editor: UnwindSafe + Send {
+    type State: UnwindSafe + Send + Copy + Eq + fmt::Debug;
 
     fn start() -> Self::State;
 
-    fn next_state(state: Result<Self::State>, status: EditStatus) -> Result<Self::State>;
+    fn next_state(state: Result<Self::State>, status: EditInteractionStatus)
+        -> Result<Self::State>;
     fn action<W: Write>(&self, state: Self::State, out: W) -> Result<()>;
 }
 
@@ -168,8 +170,8 @@ impl<E: Editor> EditorWrapper<E> {
     }
 }
 
-impl<E: Editor> EditHandler for EditorWrapper<E> {
-    fn handle<W: Write>(&mut self, status: EditStatus, out: Option<W>) -> Result<()> {
+impl<E: Editor> EditInteractor for EditorWrapper<E> {
+    fn interact<W: Write>(&mut self, status: EditInteractionStatus, out: Option<W>) -> Result<()> {
         self.state = E::next_state(self.state, status).and_then(|state| {
             out.map_or(Ok(()), |mut out| {
                     self.editor

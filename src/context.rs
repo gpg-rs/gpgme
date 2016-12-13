@@ -10,7 +10,7 @@ use conv::ValueInto;
 use conv::UnwrapOrSaturate;
 use ffi;
 
-use {Data, EditHandler, Error, IntoNativeString, Key, KeyListMode, PassphraseProvider,
+use {Data, EditInteractor, Error, IntoNativeString, Key, KeyListMode, PassphraseProvider,
      ProgressHandler, Protocol, Result, SignMode, TrustItem};
 use {callbacks, edit, error};
 use engine::EngineInfo;
@@ -160,9 +160,7 @@ impl Context {
 
     #[cfg(feature = "v1_4_0")]
     pub fn pinentry_mode(self) -> ::PinentryMode {
-        unsafe {
-            ::PinentryMode::from_raw(ffi::gpgme_get_pinentry_mode(self.0))
-        }
+        unsafe { ::PinentryMode::from_raw(ffi::gpgme_get_pinentry_mode(self.0)) }
     }
 
     #[cfg(feature = "v1_4_0")]
@@ -191,51 +189,54 @@ impl Context {
     ///     // Do something with ctx requiring a passphrase, for example decryption
     /// });
     /// ```
-    pub fn with_passphrase_provider<P, F, R>(&mut self, mut provider: P, f: F) -> R
+    pub fn with_passphrase_provider<P, F, R>(&mut self, provider: P, f: F) -> R
     where P: PassphraseProvider, F: FnOnce(&mut Context) -> R {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_passphrase_cb(self.0, &mut old.0, &mut old.1);
-            ffi::gpgme_set_passphrase_cb(self.0,
-                                         Some(callbacks::passphrase_cb::<P>),
-                                         (&mut provider as *mut _) as *mut _);
-            let _guard = callbacks::PassphraseProviderGuard {
+            let mut wrapper = callbacks::PassphraseProviderWrapper {
                 ctx: self.0,
                 old: old,
+                state: Some(Ok(provider)),
             };
+            ffi::gpgme_set_passphrase_cb(self.0,
+                                         Some(callbacks::passphrase_cb::<P>),
+                                         (&mut wrapper as *mut _) as *mut _);
             f(self)
         }
     }
 
-    pub fn with_progress_handler<H, F, R>(&mut self, mut handler: H, f: F) -> R
+    pub fn with_progress_handler<H, F, R>(&mut self, handler: H, f: F) -> R
     where H: ProgressHandler, F: FnOnce(&mut Context) -> R {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_progress_cb(self.0, &mut old.0, &mut old.1);
-            ffi::gpgme_set_progress_cb(self.0,
-                                       Some(callbacks::progress_cb::<H>),
-                                       (&mut handler as *mut _) as *mut _);
-            let _guard = callbacks::ProgressHandlerGuard {
+            let mut wrapper = callbacks::ProgressHandlerWrapper {
                 ctx: self.0,
                 old: old,
+                state: Some(Ok(handler)),
             };
+            ffi::gpgme_set_progress_cb(self.0,
+                                       Some(callbacks::progress_cb::<H>),
+                                       (&mut wrapper as *mut _) as *mut _);
             f(self)
         }
     }
 
     #[cfg(feature = "v1_6_0")]
-    pub fn with_status_handler<H, F, R>(&mut self, mut handler: H, f: F) -> R
+    pub fn with_status_handler<H, F, R>(&mut self, handler: H, f: F) -> R
     where H: ::StatusHandler, F: FnOnce(&mut Context) -> R {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_status_cb(self.0, &mut old.0, &mut old.1);
-            ffi::gpgme_set_status_cb(self.0,
-                                     Some(callbacks::status_cb::<H>),
-                                     (&mut handler as *mut _) as *mut _);
-            let _guard = callbacks::StatusHandlerGuard {
+            let mut wrapper = callbacks::StatusHandlerWrapper {
                 ctx: self.0,
                 old: old,
+                state: Some(Ok(handler)),
             };
+            ffi::gpgme_set_status_cb(self.0,
+                                     Some(callbacks::status_cb::<H>),
+                                     (&mut wrapper as *mut _) as *mut _);
             f(self)
         }
     }
@@ -462,11 +463,11 @@ impl Context {
         Ok(())
     }
 
-    pub fn edit_key<E: EditHandler>(&mut self, key: &Key, handler: E, data: &mut Data)
+    pub fn edit_key<E: EditInteractor>(&mut self, key: &Key, interactor: E, data: &mut Data)
         -> Result<()> {
         unsafe {
-            let mut wrapper = callbacks::EditHandlerWrapper {
-                handler: handler,
+            let mut wrapper = callbacks::EditInteractorWrapper {
+                state: Some(Ok(interactor)),
                 response: data,
             };
             return_err!(ffi::gpgme_op_edit(self.0,
@@ -478,11 +479,11 @@ impl Context {
         Ok(())
     }
 
-    pub fn edit_card_key<E: EditHandler>(&mut self, key: &Key, handler: E, data: &mut Data)
+    pub fn edit_card_key<E: EditInteractor>(&mut self, key: &Key, interactor: E, data: &mut Data)
         -> Result<()> {
         unsafe {
-            let mut wrapper = callbacks::EditHandlerWrapper {
-                handler: handler,
+            let mut wrapper = callbacks::EditInteractorWrapper {
+                state: Some(Ok(interactor)),
                 response: data,
             };
             return_err!(ffi::gpgme_op_card_edit(self.0,
@@ -505,17 +506,17 @@ impl Context {
     }
 
     #[cfg(feature = "v1_7_0")]
-    pub fn interact<H: ::InteractHandler>(&mut self, key: &Key, handler: H, data: &mut Data)
+    pub fn interact<I: ::Interactor>(&mut self, key: &Key, interactor: I, data: &mut Data)
         -> Result<()> {
         unsafe {
-            let mut wrapper = callbacks::InteractHandlerWrapper {
-                handler: handler,
+            let mut wrapper = callbacks::InteractorWrapper {
+                state: Some(Ok(interactor)),
                 response: data,
             };
             return_err!(ffi::gpgme_op_interact(self.0,
                                                key.as_raw(),
                                                0,
-                                               Some(callbacks::interact_cb::<H>),
+                                               Some(callbacks::interact_cb::<I>),
                                                &mut wrapper as *mut _ as *mut _,
                                                data.as_raw()));
         }
@@ -523,18 +524,18 @@ impl Context {
     }
 
     #[cfg(feature = "v1_7_0")]
-    pub fn interact_with_card<H: ::InteractHandler>(&mut self, key: &Key, handler: H,
+    pub fn interact_with_card<I: ::Interactor>(&mut self, key: &Key, interactor: I,
         data: &mut Data)
         -> Result<()> {
         unsafe {
-            let mut wrapper = callbacks::InteractHandlerWrapper {
-                handler: handler,
+            let mut wrapper = callbacks::InteractorWrapper {
+                state: Some(Ok(interactor)),
                 response: data,
             };
             return_err!(ffi::gpgme_op_interact(self.0,
                                                key.as_raw(),
                                                ffi::GPGME_INTERACT_CARD,
-                                               Some(callbacks::interact_cb::<H>),
+                                               Some(callbacks::interact_cb::<I>),
                                                &mut wrapper as *mut _ as *mut _,
                                                data.as_raw()));
         }
