@@ -43,39 +43,9 @@ test = false
 name = "keylist"
 
 [[test]]
-name = "edit"
-
-[[test]]
-name = "symmetric"
-
-[[test]]
 name = "encrypt"
 
 [[test]]
-name = "decrypt"
-
-[[test]]
-name = "sign"
-
-[[test]]
-name = "signers"
-
-[[test]]
-name = "notations"
-
-[[test]]
 name = "verify"
-
-[[test]]
-name = "encrypt_sign"
-
-[[test]]
-name = "decrypt_verify"
-
-[[test]]
-name = "import"
-
-[[test]]
-name = "export"
 
 [workspace]

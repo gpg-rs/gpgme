@@ -181,15 +181,15 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    pub unsafe fn from_raw_file<'b>(file: *mut libc::FILE) -> Result<Data<'b>> {
+    pub unsafe fn from_raw_file(file: *mut libc::FILE) -> Result<Self> {
         let mut data = ptr::null_mut();
         return_err!(ffi::gpgme_data_new_from_stream(&mut data, file));
         Ok(Data::from_raw(data))
     }
 
     unsafe fn from_callbacks<S>(cbs: ffi::gpgme_data_cbs, src: S)
-        -> result::Result<Data<'static>, WrappedError<S>>
-    where S: Send + 'static {
+        -> result::Result<Self, WrappedError<S>>
+    where S: Send + 'a {
         let src = Box::into_raw(Box::new(CallbackWrapper {
             cbs: cbs,
             inner: src,
@@ -205,8 +205,8 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    pub fn from_reader<R>(r: R) -> result::Result<Data<'static>, WrappedError<R>>
-    where R: Read + Send + 'static {
+    pub fn from_reader<R>(r: R) -> result::Result<Self, WrappedError<R>>
+    where R: Read + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -217,8 +217,8 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    pub fn from_seekable_reader<R>(r: R) -> result::Result<Data<'static>, WrappedError<R>>
-    where R: Read + Seek + Send + 'static {
+    pub fn from_seekable_reader<R>(r: R) -> result::Result<Self, WrappedError<R>>
+    where R: Read + Seek + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -229,8 +229,8 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    pub fn from_writer<W>(w: W) -> result::Result<Data<'static>, WrappedError<W>>
-    where W: Write + Send + 'static {
+    pub fn from_writer<W>(w: W) -> result::Result<Self, WrappedError<W>>
+    where W: Write + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -241,8 +241,8 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    pub fn from_seekable_writer<W>(w: W) -> result::Result<Data<'static>, WrappedError<W>>
-    where W: Write + Seek + Send + 'static {
+    pub fn from_seekable_writer<W>(w: W) -> result::Result<Self, WrappedError<W>>
+    where W: Write + Seek + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -253,8 +253,8 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    pub fn from_stream<S: Send + 'static>(s: S) -> result::Result<Data<'static>, WrappedError<S>>
-    where S: Read + Write {
+    pub fn from_stream<S: Send>(s: S) -> result::Result<Self, WrappedError<S>>
+    where S: Read + Write + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -265,8 +265,8 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    pub fn from_seekable_stream<S>(s: S) -> result::Result<Data<'static>, WrappedError<S>>
-    where S: Read + Write + Seek + Send + 'static {
+    pub fn from_seekable_stream<S>(s: S) -> result::Result<Self, WrappedError<S>>
+    where S: Read + Write + Seek + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),

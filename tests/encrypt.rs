@@ -1,28 +1,69 @@
+#[macro_use]
+extern crate lazy_static;
 extern crate tempdir;
 extern crate gpgme;
 
-use gpgme::{Context, Data};
+use gpgme::Data;
 
-use self::support::setup;
+use self::support::passphrase_cb;
 
 #[macro_use]
 mod support;
 
-#[test]
-fn test_encrypt() {
-    let _gpghome = setup();
-    let mut ctx = fail_if_err!(Context::from_protocol(gpgme::Protocol::OpenPgp));
+test_case! {
+    test_simple_encrypt_decrypt(test) {
+        let mut ctx = test.create_context();
 
-    let mut input = fail_if_err!(Data::from_buffer(b"Hallo Leute\n"));
-    let mut output = fail_if_err!(Data::new());
+        let key = fail_if_err!(ctx.find_keys(Some("alfa@example.net"))).nth(0).unwrap().unwrap();
 
-    let key1 = fail_if_err!(ctx.find_key("A0FF4590BB6122EDEF6E3C542D727CC768697734"));
-    let key2 = fail_if_err!(ctx.find_key("D695676BDCEDCC2CDD6152BCFE180B1DA9E3B0B2"));
-    let result = fail_if_err!(ctx.encrypt_with_flags(&[key1, key2],
-                                                     gpgme::ENCRYPT_ALWAYS_TRUST,
-                                                     &mut input,
-                                                     &mut output));
-    if let Some(recp) = result.invalid_recipients().next() {
-        panic!("Invalid recipient encountered: {:?}", recp.fingerprint());
-    }
+        ctx.set_armor(true);
+        ctx.set_text_mode(true);
+
+        let mut ciphertext = Vec::new();
+        {
+            let mut input = fail_if_err!(Data::from_buffer(b"Hello World"));
+            let mut output = fail_if_err!(Data::from_writer(&mut ciphertext));
+
+            fail_if_err!(ctx.encrypt_with_flags(Some(&key),
+            gpgme::ENCRYPT_ALWAYS_TRUST,
+            &mut input,
+            &mut output));
+        }
+        assert!(ciphertext.starts_with(b"-----BEGIN PGP MESSAGE-----"));
+        drop(ctx);
+
+        let mut plaintext = Vec::new();
+        test.create_context().with_passphrase_provider(passphrase_cb, |mut ctx| {
+            let mut input = fail_if_err!(Data::from_buffer(&ciphertext));
+            let mut output = fail_if_err!(Data::from_writer(&mut plaintext));
+
+            fail_if_err!(ctx.decrypt(&mut input, &mut output));
+        });
+        assert_eq!(plaintext, b"Hello World");
+    },
+    test_symmetric_encrypt_decrypt(test) {
+        let mut ctx = test.create_context();
+
+        ctx.set_armor(true);
+        ctx.set_text_mode(true);
+
+        let mut ciphertext = Vec::new();
+        {
+            let mut input = fail_if_err!(Data::from_buffer(b"Hello World"));
+            let mut output = fail_if_err!(Data::from_writer(&mut ciphertext));
+
+            fail_if_err!(ctx.encrypt_symmetric(&mut input, &mut output));
+        }
+        assert!(ciphertext.starts_with(b"-----BEGIN PGP MESSAGE-----"));
+        drop(ctx);
+
+        let mut plaintext = Vec::new();
+        test.create_context().with_passphrase_provider(passphrase_cb, |mut ctx| {
+            let mut input = fail_if_err!(Data::from_buffer(&ciphertext));
+            let mut output = fail_if_err!(Data::from_writer(&mut plaintext));
+
+            fail_if_err!(ctx.decrypt(&mut input, &mut output));
+        });
+        assert_eq!(plaintext, b"Hello World");
+    },
 }

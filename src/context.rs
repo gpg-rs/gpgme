@@ -280,6 +280,22 @@ impl Context {
         Keys::new(self, None::<String>, true)
     }
 
+    pub fn get_key(&mut self, key: &Key) -> Result<Key> {
+        if let Some(fpr) = key.fingerprint_raw() {
+            self.find_key(fpr)
+        } else {
+            Err(Error::new(error::GPG_ERR_AMBIGUOUS_NAME))
+        }
+    }
+
+    pub fn get_secret_key(&mut self, key: &Key) -> Result<Key> {
+        if let Some(fpr) = key.fingerprint_raw() {
+            self.find_secret_key(fpr)
+        } else {
+            Err(Error::new(error::GPG_ERR_AMBIGUOUS_NAME))
+        }
+    }
+
     /// Returns the public key with the specified fingerprint, if such a key can
     /// be found. Otherwise, an error is returned.
     pub fn find_key<S: IntoNativeString>(&self, fingerprint: S) -> Result<Key> {

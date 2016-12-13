@@ -173,6 +173,20 @@ impl Key {
     pub fn subkeys(&self) -> Subkeys {
         unsafe { Subkeys::from_list((*self.0).subkeys) }
     }
+
+    pub fn updated(&self) -> ::Result<Key> {
+        let mut ctx = try!(::Context::from_protocol(self.protocol()));
+        let _ = ctx.set_key_list_mode(::KEY_LIST_MODE_LOCAL |
+                                      ::KEY_LIST_MODE_SIGS |
+                                      ::KEY_LIST_MODE_SIG_NOTATIONS |
+                                      ::KEY_LIST_MODE_VALIDATE |
+                                      ::KEY_LIST_MODE_WITH_TOFU);
+        if self.has_secret() {
+            ctx.get_key(self)
+        } else {
+            ctx.get_secret_key(self)
+        }
+    }
 }
 
 impl fmt::Debug for Key {
