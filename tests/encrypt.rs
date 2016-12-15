@@ -48,12 +48,12 @@ test_case! {
         ctx.set_text_mode(true);
 
         let mut ciphertext = Vec::new();
-        {
+        ctx.with_passphrase_provider(passphrase_cb, |mut ctx| {
             let mut input = fail_if_err!(Data::from_buffer(b"Hello World"));
             let mut output = fail_if_err!(Data::from_writer(&mut ciphertext));
 
             fail_if_err!(ctx.encrypt_symmetric(&mut input, &mut output));
-        }
+        });
         assert!(ciphertext.starts_with(b"-----BEGIN PGP MESSAGE-----"));
         drop(ctx);
 

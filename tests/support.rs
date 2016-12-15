@@ -63,7 +63,7 @@ const KEYS: [(&'static str, &'static [u8]); 5] = [("13CD0F3BDF24BE53FE192D62F187
                                                    include_bytes!("./data/7A030357C0F253A5BBCD282FFC4E521B37558F5C"))];
 
 pub fn passphrase_cb(_req: PassphraseRequest, out: &mut Write) -> gpgme::Result<()> {
-    try!(out.write_all(b"abc\n"));
+    try!(out.write_all(b"abc"));
     Ok(())
 }
 

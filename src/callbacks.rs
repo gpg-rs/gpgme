@@ -2,16 +2,14 @@ use std::ffi::CStr;
 use std::io;
 use std::io::prelude::*;
 use std::panic::{self, UnwindSafe};
-use std::slice;
 use std::str::Utf8Error;
 use std::thread;
 
 use libc;
-use conv::{ValueInto, UnwrapOrSaturate};
 use ffi;
 
 use {Data, Error};
-use {edit, error};
+use edit;
 use utils::FdWriter;
 
 #[derive(Debug, Copy, Clone)]
