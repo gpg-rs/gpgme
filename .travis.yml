@@ -16,21 +16,34 @@ matrix:
         - travis-cargo build -- --no-default-features
         - travis-cargo test -- --no-default-features --color always | tee
     - os: linux
-      dist: trusty
-      rust: stable
-      script:
-        - travis-cargo build
-        - travis-cargo test -- --color always
-        - travis-cargo doc
-      after_success:
-        - travis-cargo --only stable doc-upload
-    - os: linux
-      dist: trusty
+      dist: precise
       rust: nightly
+      addons:
+        apt:
+          packages:
+            - libgpg-error-dev
+            - libgpgme11-dev
       script:
-        - travis-cargo build
-        - travis-cargo test -- --color always
-        - travis-cargo doc
+        - export GPG_ERROR_CONFIG=/usr/bin/gpg-error-config
+        - export GPGME_CONFIG=/usr/bin/gpgme-config
+        - travis-cargo build -- --no-default-features
+        - travis-cargo test -- --no-default-features --color always | tee
+    # - os: linux
+    #   dist: trusty
+    #   rust: stable
+    #   script:
+    #     - travis-cargo build
+    #     - travis-cargo test -- --color always
+    #     - travis-cargo doc
+    #   after_success:
+    #     - travis-cargo --only stable doc-upload
+    # - os: linux
+    #   dist: trusty
+    #   rust: nightly
+    #   script:
+    #     - travis-cargo build
+    #     - travis-cargo test -- --color always
+    #     - travis-cargo doc
 before_script:
   - gpg --version || true
   - gpg2 --version || true
