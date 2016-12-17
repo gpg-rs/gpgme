@@ -94,10 +94,19 @@ fn import_key(key: &[u8]) {
 pub fn setup_agent(dir: &Path) {
     env::set_var("GNUPGHOME", dir);
     env::set_var("GPG_AGENT_INFO", "");
-    let mut pinentry = env::current_exe().unwrap();
-    pinentry.pop();
-    pinentry.push("pinentry");
-    pinentry.set_extension(env::consts::EXE_EXTENSION);
+    let pinentry = {
+        let mut path = env::current_exe().unwrap();
+        path.pop();
+        if path.ends_with("deps") {
+            path.pop();
+        }
+        path.push("pinentry");
+        path.set_extension(env::consts::EXE_EXTENSION);
+        path
+    };
+    if !pinentry.exists() {
+        panic!("Unable to find pinentry program");
+    }
 
     let agent_conf = dir.join("gpg-agent.conf");
     let mut agent_conf = File::create(agent_conf).unwrap();
@@ -122,7 +131,6 @@ impl TestCase {
         create_keys(dir.path());
         import_key(include_bytes!("./data/pubdemo.asc"));
         import_key(include_bytes!("./data/secdemo.asc"));
-        println!("count: {}", count);
         TestCase {
             count: AtomicUsize::new(count),
             homedir: RwLock::new(Some(dir)),
