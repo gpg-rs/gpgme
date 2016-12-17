@@ -33,10 +33,10 @@ macro_rules! list_iterator {
         #[inline]
         fn next(&mut self) -> Option<Self::Item> {
             unsafe {
-                self.current.as_mut().map(|c| {
-                    self.current = c.next;
+                self.current.take().map(|c| {
+                    self.current = (*c.as_raw()).next.as_mut().map(|r| $constructor(r));
                     self.left = self.left.and_then(|x| x.checked_sub(1));
-                    $constructor(c)
+                    c
                 })
             }
         }
@@ -47,6 +47,40 @@ macro_rules! list_iterator {
         }
     };
     ($item:ty) => (list_iterator!($item, $item::from_raw));
+}
+
+macro_rules! impl_wrapper {
+    (@phantom $Name:ident: $T:ty) => {
+        #[inline]
+        pub unsafe fn from_raw(raw: $T) -> Self {
+            debug_assert!(!raw.is_null());
+            $Name(NonZero::new(raw), PhantomData)
+        }
+
+        #[inline]
+        pub fn as_raw(&self) -> $T {
+            *self.0
+        }
+    };
+    ($Name:ident: $T:ty) => {
+        #[inline]
+        pub unsafe fn from_raw(raw: $T) -> Self {
+            debug_assert!(!raw.is_null());
+            $Name(NonZero::new(raw))
+        }
+
+        #[inline]
+        pub fn as_raw(&self) -> $T {
+            *self.0
+        }
+
+        #[inline]
+        pub fn into_raw(self) -> $T {
+            let raw = *self.0;
+            ::std::mem::forget(self);
+            raw
+        }
+    };
 }
 
 macro_rules! ffi_enum_wrapper {
@@ -147,38 +181,6 @@ macro_rules! ffi_enum_wrapper {
             pub enum $Name: $T {
                 $($(#[$ItemAttr])* $Item = $Value),+
             }
-        }
-    };
-}
-
-macro_rules! impl_wrapper {
-    (@phantom $Name:ident: $T:ty) => {
-        #[inline]
-        pub unsafe fn from_raw(raw: $T) -> Self {
-            $Name(raw, PhantomData)
-        }
-
-        #[inline]
-        pub fn raw(&self) -> $T {
-            self.0
-        }
-    };
-    ($Name:ident: $T:ty) => {
-        #[inline]
-        pub unsafe fn from_raw(raw: $T) -> Self {
-            $Name(raw)
-        }
-
-        #[inline]
-        pub fn as_raw(&self) -> $T {
-            self.0
-        }
-
-        #[inline]
-        pub fn into_raw(self) -> $T {
-            let raw = self.0;
-            ::std::mem::forget(self);
-            raw
         }
     };
 }
@@ -294,5 +296,29 @@ impl Write for FdWriter {
 
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+}
+
+cfg_if! {
+    if #[cfg(any(nightly, feature = "nightly"))] {
+        pub type NonZero<T> = ::core::nonzero::NonZero<T>;
+    } else {
+        #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+        pub struct NonZero<T>(T);
+
+        impl<T> NonZero<T> {
+            #[inline(always)]
+            pub unsafe fn new(inner: T) -> NonZero<T> {
+                NonZero(inner)
+            }
+        }
+
+        impl<T> ::std::ops::Deref for NonZero<T> {
+            type Target = T;
+
+            fn deref(&self) -> &T {
+                &self.0
+            }
+        }
     }
 }

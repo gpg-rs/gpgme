@@ -21,6 +21,7 @@ v1_6_0 = ["v1_5_1", "gpgme-sys/v1_6_0"]
 v1_7_0 = ["v1_6_0", "gpgme-sys/v1_7_0"]
 v1_7_1 = ["v1_7_0", "gpgme-sys/v1_7_1"]
 v1_8_0 = ["v1_7_1", "gpgme-sys/v1_8_0"]
+nightly = ["lazy_static/nightly"]
 
 [dependencies]
 libc = "0.2"
@@ -29,7 +30,7 @@ bitflags = "0.7"
 lazy_static = "0.2"
 conv = "0.3"
 gpg-error = "0.1"
-gpgme-sys = {path = "gpgme-sys", version = "0.2.0", default-features = false }
+gpgme-sys = { path = "gpgme-sys", version = "0.2.0", default-features = false }
 
 [dev-dependencies]
 getopts = "0.2"

@@ -10,7 +10,7 @@ use conv::ValueInto;
 use conv::UnwrapOrSaturate;
 use ffi;
 
-use {Data, EditInteractor, Error, IntoNativeString, Key, KeyListMode, PassphraseProvider,
+use {Data, EditInteractor, Error, IntoNativeString, Key, KeyListMode, NonZero, PassphraseProvider,
      ProgressHandler, Protocol, Result, SignMode, TrustItem};
 use {callbacks, edit, error};
 use engine::EngineInfo;
@@ -19,17 +19,19 @@ use results;
 
 /// A context for cryptographic operations
 #[derive(Debug)]
-pub struct Context(ffi::gpgme_ctx_t);
+pub struct Context(NonZero<ffi::gpgme_ctx_t>);
 
 impl Drop for Context {
+    #[inline]
     fn drop(&mut self) {
-        unsafe { ffi::gpgme_release(self.0) }
+        unsafe { ffi::gpgme_release(self.as_raw()) }
     }
 }
 
 impl Context {
     impl_wrapper!(Context: ffi::gpgme_ctx_t);
 
+    #[inline]
     fn new() -> Result<Self> {
         ::init();
         unsafe {
@@ -48,38 +50,38 @@ impl Context {
     }
 
     pub fn protocol(&self) -> Protocol {
-        unsafe { Protocol::from_raw(ffi::gpgme_get_protocol(self.0)) }
+        unsafe { Protocol::from_raw(ffi::gpgme_get_protocol(self.as_raw())) }
     }
 
     pub fn armor(&self) -> bool {
-        unsafe { ffi::gpgme_get_armor(self.0) != 0 }
+        unsafe { ffi::gpgme_get_armor(self.as_raw()) != 0 }
     }
 
     pub fn set_armor(&mut self, enabled: bool) {
         unsafe {
-            ffi::gpgme_set_armor(self.0, if enabled { 1 } else { 0 });
+            ffi::gpgme_set_armor(self.as_raw(), if enabled { 1 } else { 0 });
         }
     }
 
     pub fn text_mode(&self) -> bool {
-        unsafe { ffi::gpgme_get_textmode(self.0) != 0 }
+        unsafe { ffi::gpgme_get_textmode(self.as_raw()) != 0 }
     }
 
     pub fn set_text_mode(&mut self, enabled: bool) {
         unsafe {
-            ffi::gpgme_set_textmode(self.0, if enabled { 1 } else { 0 });
+            ffi::gpgme_set_textmode(self.as_raw(), if enabled { 1 } else { 0 });
         }
     }
 
     #[cfg(feature = "v1_6_0")]
     pub fn offline(&self) -> bool {
-        unsafe { ffi::gpgme_get_offline(self.0) != 0 }
+        unsafe { ffi::gpgme_get_offline(self.as_raw()) != 0 }
     }
 
     #[cfg(feature = "v1_6_0")]
     pub fn set_offline(&mut self, enabled: bool) {
         unsafe {
-            ffi::gpgme_set_offline(self.0, if enabled { 1 } else { 0 });
+            ffi::gpgme_set_offline(self.as_raw(), if enabled { 1 } else { 0 });
         }
     }
 
@@ -93,7 +95,7 @@ impl Context {
     pub fn get_flag_raw<S>(&self, name: S) -> Option<&CStr> where S: IntoNativeString {
         let name = name.into_native();
         unsafe {
-            ffi::gpgme_get_ctx_flag(self.0, name.as_ref().as_ptr())
+            ffi::gpgme_get_ctx_flag(self.as_raw(), name.as_ref().as_ptr())
                 .as_ref()
                 .map(|s| CStr::from_ptr(s))
         }
@@ -105,7 +107,7 @@ impl Context {
         let name = name.into_native();
         let value = value.into_native();
         unsafe {
-            return_err!(ffi::gpgme_set_ctx_flag(self.0,
+            return_err!(ffi::gpgme_set_ctx_flag(self.as_raw(),
                                                 name.as_ref().as_ptr(),
                                                 value.as_ref().as_ptr()));
         }
@@ -113,7 +115,7 @@ impl Context {
     }
 
     pub fn engine_info(&self) -> EngineInfo<Context> {
-        unsafe { EngineInfo::from_raw(ffi::gpgme_ctx_get_engine_info(self.0)) }
+        unsafe { EngineInfo::from_raw(ffi::gpgme_ctx_get_engine_info(self.as_raw())) }
     }
 
     pub fn set_engine_path<S>(&self, path: S) -> Result<()> where S: IntoNativeString {
@@ -123,7 +125,7 @@ impl Context {
             .map(|s| s.as_ptr())
             .unwrap_or(ptr::null());
         unsafe {
-            return_err!(ffi::gpgme_ctx_set_engine_info(self.0,
+            return_err!(ffi::gpgme_ctx_set_engine_info(self.as_raw(),
                                                        self.protocol().raw(),
                                                        path.as_ref().as_ptr(),
                                                        home_dir));
@@ -135,7 +137,7 @@ impl Context {
         let path = self.engine_info().path_raw().map(|s| s.as_ptr()).unwrap_or(ptr::null());
         let home_dir = home_dir.into_native();
         unsafe {
-            return_err!(ffi::gpgme_ctx_set_engine_info(self.0,
+            return_err!(ffi::gpgme_ctx_set_engine_info(self.as_raw(),
                                                        self.protocol().raw(),
                                                        path,
                                                        home_dir.as_ref().as_ptr()));
@@ -150,7 +152,7 @@ impl Context {
         unsafe {
             let path = path.as_ref().as_ptr();
             let home_dir = home_dir.as_ref().as_ptr();
-            return_err!(ffi::gpgme_ctx_set_engine_info(self.0,
+            return_err!(ffi::gpgme_ctx_set_engine_info(self.as_raw(),
                                                        self.protocol().raw(),
                                                        path,
                                                        home_dir));
@@ -160,13 +162,13 @@ impl Context {
 
     #[cfg(feature = "v1_4_0")]
     pub fn pinentry_mode(self) -> ::PinentryMode {
-        unsafe { ::PinentryMode::from_raw(ffi::gpgme_get_pinentry_mode(self.0)) }
+        unsafe { ::PinentryMode::from_raw(ffi::gpgme_get_pinentry_mode(self.as_raw())) }
     }
 
     #[cfg(feature = "v1_4_0")]
     pub fn set_pinentry_mode(&mut self, mode: ::PinentryMode) -> Result<()> {
         unsafe {
-            return_err!(ffi::gpgme_set_pinentry_mode(self.0, mode.raw()));
+            return_err!(ffi::gpgme_set_pinentry_mode(self.as_raw(), mode.raw()));
         }
         Ok(())
     }
@@ -193,13 +195,13 @@ impl Context {
     where P: PassphraseProvider, F: FnOnce(&mut Context) -> R {
         unsafe {
             let mut old = (None, ptr::null_mut());
-            ffi::gpgme_get_passphrase_cb(self.0, &mut old.0, &mut old.1);
+            ffi::gpgme_get_passphrase_cb(self.as_raw(), &mut old.0, &mut old.1);
             let mut wrapper = callbacks::PassphraseProviderWrapper {
-                ctx: self.0,
+                ctx: self.as_raw(),
                 old: old,
                 state: Some(Ok(provider)),
             };
-            ffi::gpgme_set_passphrase_cb(self.0,
+            ffi::gpgme_set_passphrase_cb(self.as_raw(),
                                          Some(callbacks::passphrase_cb::<P>),
                                          (&mut wrapper as *mut _) as *mut _);
             f(self)
@@ -210,13 +212,13 @@ impl Context {
     where H: ProgressHandler, F: FnOnce(&mut Context) -> R {
         unsafe {
             let mut old = (None, ptr::null_mut());
-            ffi::gpgme_get_progress_cb(self.0, &mut old.0, &mut old.1);
+            ffi::gpgme_get_progress_cb(self.as_raw(), &mut old.0, &mut old.1);
             let mut wrapper = callbacks::ProgressHandlerWrapper {
-                ctx: self.0,
+                ctx: self.as_raw(),
                 old: old,
                 state: Some(Ok(handler)),
             };
-            ffi::gpgme_set_progress_cb(self.0,
+            ffi::gpgme_set_progress_cb(self.as_raw(),
                                        Some(callbacks::progress_cb::<H>),
                                        (&mut wrapper as *mut _) as *mut _);
             f(self)
@@ -228,13 +230,13 @@ impl Context {
     where H: ::StatusHandler, F: FnOnce(&mut Context) -> R {
         unsafe {
             let mut old = (None, ptr::null_mut());
-            ffi::gpgme_get_status_cb(self.0, &mut old.0, &mut old.1);
+            ffi::gpgme_get_status_cb(self.as_raw(), &mut old.0, &mut old.1);
             let mut wrapper = callbacks::StatusHandlerWrapper {
-                ctx: self.0,
+                ctx: self.as_raw(),
                 old: old,
                 state: Some(Ok(handler)),
             };
-            ffi::gpgme_set_status_cb(self.0,
+            ffi::gpgme_set_status_cb(self.as_raw(),
                                      Some(callbacks::status_cb::<H>),
                                      (&mut wrapper as *mut _) as *mut _);
             f(self)
@@ -245,7 +247,7 @@ impl Context {
         -> Result<TrustItems> {
         let pattern = pattern.into_native();
         unsafe {
-            return_err!(ffi::gpgme_op_trustlist_start(self.0,
+            return_err!(ffi::gpgme_op_trustlist_start(self.as_raw(),
                                                       pattern.as_ref().as_ptr(),
                                                       max_level.into()));
         }
@@ -253,13 +255,13 @@ impl Context {
     }
 
     pub fn key_list_mode(&self) -> KeyListMode {
-        unsafe { ::KeyListMode::from_bits_truncate(ffi::gpgme_get_keylist_mode(self.0)) }
+        unsafe { ::KeyListMode::from_bits_truncate(ffi::gpgme_get_keylist_mode(self.as_raw())) }
     }
 
     pub fn add_key_list_mode(&mut self, mask: KeyListMode) -> Result<()> {
         unsafe {
-            let old = ffi::gpgme_get_keylist_mode(self.0);
-            return_err!(ffi::gpgme_set_keylist_mode(self.0,
+            let old = ffi::gpgme_get_keylist_mode(self.as_raw());
+            return_err!(ffi::gpgme_set_keylist_mode(self.as_raw(),
                                                     mask.bits() |
                                                     (old & !KeyListMode::all().bits())));
         }
@@ -268,7 +270,7 @@ impl Context {
 
     pub fn set_key_list_mode(&mut self, mode: KeyListMode) -> Result<()> {
         unsafe {
-            return_err!(ffi::gpgme_set_keylist_mode(self.0, mode.bits()));
+            return_err!(ffi::gpgme_set_keylist_mode(self.as_raw(), mode.bits()));
         }
         Ok(())
     }
@@ -303,7 +305,10 @@ impl Context {
         let fingerprint = fingerprint.into_native();
         unsafe {
             let mut key = ptr::null_mut();
-            return_err!(ffi::gpgme_get_key(self.0, fingerprint.as_ref().as_ptr(), &mut key, 0));
+            return_err!(ffi::gpgme_get_key(self.as_raw(),
+                                           fingerprint.as_ref().as_ptr(),
+                                           &mut key,
+                                           0));
             Ok(Key::from_raw(key))
         }
     }
@@ -314,7 +319,10 @@ impl Context {
         let fingerprint = fingerprint.into_native();
         unsafe {
             let mut key = ptr::null_mut();
-            return_err!(ffi::gpgme_get_key(self.0, fingerprint.as_ref().as_ptr(), &mut key, 1));
+            return_err!(ffi::gpgme_get_key(self.as_raw(),
+                                           fingerprint.as_ref().as_ptr(),
+                                           &mut key,
+                                           1));
             Ok(Key::from_raw(key))
         }
     }
@@ -341,7 +349,10 @@ impl Context {
         let public = public.map_or(ptr::null_mut(), |d| d.as_raw());
         let secret = secret.map_or(ptr::null_mut(), |d| d.as_raw());
         unsafe {
-            return_err!(ffi::gpgme_op_genkey(self.0, params.as_ref().as_ptr(), public, secret));
+            return_err!(ffi::gpgme_op_genkey(self.as_raw(),
+                                             params.as_ref().as_ptr(),
+                                             public,
+                                             secret));
         }
         Ok(self.get_result().unwrap())
     }
@@ -357,7 +368,7 @@ impl Context {
             .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
 
         unsafe {
-            return_err!(ffi::gpgme_op_createkey(self.0,
+            return_err!(ffi::gpgme_op_createkey(self.as_raw(),
                                                 userid.as_ref().as_ptr(),
                                                 algo.as_ref().as_ptr(),
                                                 0,
@@ -378,7 +389,7 @@ impl Context {
             .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
 
         unsafe {
-            return_err!(ffi::gpgme_op_createsubkey(self.0,
+            return_err!(ffi::gpgme_op_createsubkey(self.as_raw(),
                                                    key.as_raw(),
                                                    algo.as_ref().as_ptr(),
                                                    0,
@@ -392,7 +403,10 @@ impl Context {
     pub fn add_uid<S>(&mut self, key: &Key, userid: S) -> Result<()> where S: IntoNativeString {
         let userid = userid.into_native();
         unsafe {
-            return_err!(ffi::gpgme_op_adduid(self.0, key.as_raw(), userid.as_ref().as_ptr(), 0));
+            return_err!(ffi::gpgme_op_adduid(self.as_raw(),
+                                             key.as_raw(),
+                                             userid.as_ref().as_ptr(),
+                                             0));
         }
         Ok(())
     }
@@ -401,7 +415,10 @@ impl Context {
     pub fn revoke_uid<S>(&mut self, key: &Key, userid: S) -> Result<()> where S: IntoNativeString {
         let userid = userid.into_native();
         unsafe {
-            return_err!(ffi::gpgme_op_revuid(self.0, key.as_raw(), userid.as_ref().as_ptr(), 0));
+            return_err!(ffi::gpgme_op_revuid(self.as_raw(),
+                                             key.as_raw(),
+                                             userid.as_ref().as_ptr(),
+                                             0));
         }
         Ok(())
     }
@@ -437,7 +454,7 @@ impl Context {
         let expires = expires.and_then(|e| e.duration_since(UNIX_EPOCH).ok())
             .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
         unsafe {
-            return_err!(ffi::gpgme_op_keysign(self.0,
+            return_err!(ffi::gpgme_op_keysign(self.as_raw(),
                                               key.as_raw(),
                                               userids.as_ref().as_ptr(),
                                               expires,
@@ -449,7 +466,7 @@ impl Context {
     #[cfg(feature = "v1_7_0")]
     pub fn change_key_tofu_policy(&mut self, key: &Key, policy: ::TofuPolicy) -> Result<()> {
         unsafe {
-            return_err!(ffi::gpgme_op_tofu_policy(self.0, key.as_raw(), policy.raw()));
+            return_err!(ffi::gpgme_op_tofu_policy(self.as_raw(), key.as_raw(), policy.raw()));
         }
         Ok(())
     }
@@ -458,7 +475,7 @@ impl Context {
     #[cfg(feature = "v1_3_0")]
     pub fn change_key_passphrase(&mut self, key: &Key) -> Result<()> {
         unsafe {
-            return_err!(ffi::gpgme_op_passwd(self.0, key.as_raw(), 0));
+            return_err!(ffi::gpgme_op_passwd(self.as_raw(), key.as_raw(), 0));
         }
         Ok(())
     }
@@ -470,7 +487,7 @@ impl Context {
                 state: Some(Ok(interactor)),
                 response: data,
             };
-            return_err!(ffi::gpgme_op_edit(self.0,
+            return_err!(ffi::gpgme_op_edit(self.as_raw(),
                                            key.as_raw(),
                                            Some(callbacks::edit_cb::<E>),
                                            (&mut wrapper as *mut _) as *mut _,
@@ -486,7 +503,7 @@ impl Context {
                 state: Some(Ok(interactor)),
                 response: data,
             };
-            return_err!(ffi::gpgme_op_card_edit(self.0,
+            return_err!(ffi::gpgme_op_card_edit(self.as_raw(),
                                                 key.as_raw(),
                                                 Some(callbacks::edit_cb::<E>),
                                                 (&mut wrapper as *mut _) as *mut _,
@@ -513,7 +530,7 @@ impl Context {
                 state: Some(Ok(interactor)),
                 response: data,
             };
-            return_err!(ffi::gpgme_op_interact(self.0,
+            return_err!(ffi::gpgme_op_interact(self.as_raw(),
                                                key.as_raw(),
                                                0,
                                                Some(callbacks::interact_cb::<I>),
@@ -532,7 +549,7 @@ impl Context {
                 state: Some(Ok(interactor)),
                 response: data,
             };
-            return_err!(ffi::gpgme_op_interact(self.0,
+            return_err!(ffi::gpgme_op_interact(self.as_raw(),
                                                key.as_raw(),
                                                ffi::GPGME_INTERACT_CARD,
                                                Some(callbacks::interact_cb::<I>),
@@ -544,21 +561,21 @@ impl Context {
 
     pub fn delete_key(&mut self, key: &Key) -> Result<()> {
         unsafe {
-            return_err!(ffi::gpgme_op_delete(self.0, key.as_raw(), 0));
+            return_err!(ffi::gpgme_op_delete(self.as_raw(), key.as_raw(), 0));
         }
         Ok(())
     }
 
     pub fn delete_secret_key(&mut self, key: &Key) -> Result<()> {
         unsafe {
-            return_err!(ffi::gpgme_op_delete(self.0, key.as_raw(), 1));
+            return_err!(ffi::gpgme_op_delete(self.as_raw(), key.as_raw(), 1));
         }
         Ok(())
     }
 
     pub fn import(&mut self, key_data: &mut Data) -> Result<results::ImportResult> {
         unsafe {
-            return_err!(ffi::gpgme_op_import(self.0, key_data.as_raw()));
+            return_err!(ffi::gpgme_op_import(self.as_raw(), key_data.as_raw()));
         }
         Ok(self.get_result().unwrap())
     }
@@ -573,7 +590,7 @@ impl Context {
             ptr::null_mut()
         };
         unsafe {
-            return_err!(ffi::gpgme_op_import_keys(self.0, keys));
+            return_err!(ffi::gpgme_op_import_keys(self.as_raw(), keys));
         }
         Ok(self.get_result().unwrap())
     }
@@ -595,7 +612,7 @@ impl Context {
             ptr::null_mut()
         };
         unsafe {
-            return_err!(ffi::gpgme_op_export_ext(self.0, ptr, mode.bits(), data));
+            return_err!(ffi::gpgme_op_export_ext(self.as_raw(), ptr, mode.bits(), data));
         }
         Ok(())
     }
@@ -612,7 +629,7 @@ impl Context {
             ptr::null_mut()
         };
         unsafe {
-            return_err!(ffi::gpgme_op_export_keys(self.0, keys, mode.bits(), data));
+            return_err!(ffi::gpgme_op_export_keys(self.as_raw(), keys, mode.bits(), data));
         }
         Ok(())
     }
@@ -620,7 +637,7 @@ impl Context {
     #[cfg(feature = "v1_8_0")]
     pub fn clear_sender(&mut self) -> Result<()> {
         unsafe {
-            return_err!(ffi::gpgme_set_sender(self.0, ptr::null()));
+            return_err!(ffi::gpgme_set_sender(self.as_raw(), ptr::null()));
         }
         Ok(())
     }
@@ -629,7 +646,7 @@ impl Context {
     pub fn set_sender<S: IntoNativeString>(&mut self, sender: S) -> Result<()> {
         let sender = sender.into_native();
         unsafe {
-            return_err!(ffi::gpgme_set_sender(self.0, sender.as_ref().as_ptr()));
+            return_err!(ffi::gpgme_set_sender(self.as_raw(), sender.as_ref().as_ptr()));
         }
         Ok(())
     }
@@ -644,16 +661,16 @@ impl Context {
 
     #[cfg(feature = "v1_8_0")]
     pub fn sender_raw(&self) -> Option<&CStr> {
-        unsafe { ffi::gpgme_get_sender(self.0).as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { ffi::gpgme_get_sender(self.as_raw()).as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     pub fn clear_signers(&mut self) {
-        unsafe { ffi::gpgme_signers_clear(self.0) }
+        unsafe { ffi::gpgme_signers_clear(self.as_raw()) }
     }
 
     pub fn add_signer(&mut self, key: &Key) -> Result<()> {
         unsafe {
-            return_err!(ffi::gpgme_signers_add(self.0, key.as_raw()));
+            return_err!(ffi::gpgme_signers_add(self.as_raw(), key.as_raw()));
         }
         Ok(())
     }
@@ -667,7 +684,7 @@ impl Context {
 
     pub fn clear_signature_notations(&mut self) {
         unsafe {
-            ffi::gpgme_sig_notation_clear(self.0);
+            ffi::gpgme_sig_notation_clear(self.as_raw());
         }
     }
 
@@ -678,7 +695,7 @@ impl Context {
         let name = name.into_native();
         let value = value.into_native();
         unsafe {
-            return_err!(ffi::gpgme_sig_notation_add(self.0,
+            return_err!(ffi::gpgme_sig_notation_add(self.as_raw(),
                                                     name.as_ref().as_ptr(),
                                                     value.as_ref().as_ptr(),
                                                     flags.bits()));
@@ -695,7 +712,7 @@ impl Context {
             } else {
                 0
             };
-            return_err!(ffi::gpgme_sig_notation_add(self.0,
+            return_err!(ffi::gpgme_sig_notation_add(self.as_raw(),
                                                     ptr::null(),
                                                     url.as_ref().as_ptr(),
                                                     critical));
@@ -709,7 +726,7 @@ impl Context {
 
     pub fn signature_policy_url_raw(&self) -> Option<&CStr> {
         unsafe {
-            let mut notation = ffi::gpgme_sig_notation_get(self.0);
+            let mut notation = ffi::gpgme_sig_notation_get(self.as_raw());
             while !notation.is_null() {
                 if (*notation).name.is_null() {
                     return (*notation).value.as_ref().map(|s| CStr::from_ptr(s));
@@ -721,13 +738,16 @@ impl Context {
     }
 
     pub fn signature_notations(&self) -> SignatureNotations<Context> {
-        unsafe { SignatureNotations::from_list(ffi::gpgme_sig_notation_get(self.0)) }
+        unsafe { SignatureNotations::from_list(ffi::gpgme_sig_notation_get(self.as_raw())) }
     }
 
     pub fn sign(&mut self, mode: ::SignMode, plain: &mut Data, signature: &mut Data)
         -> Result<results::SigningResult> {
         unsafe {
-            return_err!(ffi::gpgme_op_sign(self.0, plain.as_raw(), signature.as_raw(), mode.raw()));
+            return_err!(ffi::gpgme_op_sign(self.as_raw(),
+                                           plain.as_raw(),
+                                           signature.as_raw(),
+                                           mode.raw()));
         }
         Ok(self.get_result().unwrap())
     }
@@ -753,7 +773,7 @@ impl Context {
         let signed = signed.map_or(ptr::null_mut(), |d| d.as_raw());
         let plain = plain.map_or(ptr::null_mut(), |d| d.as_raw());
         unsafe {
-            return_err!(ffi::gpgme_op_verify(self.0, signature.as_raw(), signed, plain));
+            return_err!(ffi::gpgme_op_verify(self.as_raw(), signature.as_raw(), signed, plain));
         }
         Ok(self.get_result().unwrap())
     }
@@ -798,7 +818,7 @@ impl Context {
             ptr::null_mut()
         };
         unsafe {
-            return_err!(ffi::gpgme_op_encrypt(self.0,
+            return_err!(ffi::gpgme_op_encrypt(self.as_raw(),
                                               keys,
                                               flags.bits(),
                                               plaintext.as_raw(),
@@ -815,7 +835,7 @@ impl Context {
         ciphertext: &mut Data)
         -> Result<()> {
         unsafe {
-            return_err!(ffi::gpgme_op_encrypt(self.0,
+            return_err!(ffi::gpgme_op_encrypt(self.as_raw(),
                                               ptr::null_mut(),
                                               flags.bits(),
                                               plaintext.as_raw(),
@@ -855,7 +875,7 @@ impl Context {
             ptr::null_mut()
         };
         unsafe {
-            return_err!(ffi::gpgme_op_encrypt_sign(self.0,
+            return_err!(ffi::gpgme_op_encrypt_sign(self.as_raw(),
                                                    keys,
                                                    flags.bits(),
                                                    plaintext.as_raw(),
@@ -879,7 +899,9 @@ impl Context {
     pub fn decrypt(&mut self, ciphertext: &mut Data, plaintext: &mut Data)
         -> Result<results::DecryptionResult> {
         unsafe {
-            return_err!(ffi::gpgme_op_decrypt(self.0, ciphertext.as_raw(), plaintext.as_raw()));
+            return_err!(ffi::gpgme_op_decrypt(self.as_raw(),
+                                              ciphertext.as_raw(),
+                                              plaintext.as_raw()));
         }
         Ok(self.get_result().unwrap())
     }
@@ -900,7 +922,7 @@ impl Context {
         &mut self, ciphertext: &mut Data, plaintext: &mut Data)
         -> Result<(results::DecryptionResult, results::VerificationResult)> {
         unsafe {
-            return_err!(ffi::gpgme_op_decrypt_verify(self.0,
+            return_err!(ffi::gpgme_op_decrypt_verify(self.as_raw(),
                                                      ciphertext.as_raw(),
                                                      plaintext.as_raw()))
         }

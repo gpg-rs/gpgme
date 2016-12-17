@@ -15,7 +15,7 @@ use libc;
 use conv::{UnwrapOrSaturate, ValueInto};
 use ffi;
 
-use IntoNativeString;
+use {IntoNativeString, NonZero};
 use error::{self, Error, Result};
 
 ffi_enum_wrapper! {
@@ -79,13 +79,15 @@ impl<S> fmt::Display for WrappedError<S> {
 }
 
 #[derive(Debug)]
-pub struct Data<'a>(ffi::gpgme_data_t, PhantomData<&'a ()>);
+pub struct Data<'a>(NonZero<ffi::gpgme_data_t>, PhantomData<&'a ()>);
+
+unsafe impl<'a> Send for Data<'a> {}
 
 impl<'a> Drop for Data<'a> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            ffi::gpgme_data_release(self.0);
+            ffi::gpgme_data_release(self.as_raw());
         }
     }
 }
@@ -94,17 +96,17 @@ impl<'a> Data<'a> {
     #[inline]
     pub unsafe fn from_raw(raw: ffi::gpgme_data_t) -> Self {
         debug_assert!(!raw.is_null());
-        Data(raw, PhantomData)
+        Data(NonZero::new(raw), PhantomData)
     }
 
     #[inline]
     pub fn as_raw(&self) -> ffi::gpgme_data_t {
-        self.0
+        *self.0
     }
 
     #[inline]
     pub fn into_raw(self) -> ffi::gpgme_data_t {
-        let raw = self.0;
+        let raw = *self.0;
         mem::forget(self);
         raw
     }
@@ -127,8 +129,8 @@ impl<'a> Data<'a> {
     /// Constructs an empty data object.
     #[inline]
     pub fn new() -> Result<Data<'static>> {
-        let mut data = ptr::null_mut();
         unsafe {
+            let mut data = ptr::null_mut();
             return_err!(ffi::gpgme_data_new(&mut data));
             Ok(Data::from_raw(data))
         }
@@ -282,13 +284,13 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn filename_raw(&self) -> Option<&CStr> {
-        unsafe { ffi::gpgme_data_get_file_name(self.0).as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { ffi::gpgme_data_get_file_name(self.as_raw()).as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
     pub fn clear_filename(&mut self) -> Result<()> {
         unsafe {
-            return_err!(ffi::gpgme_data_set_file_name(self.0, ptr::null()));
+            return_err!(ffi::gpgme_data_set_file_name(self.as_raw(), ptr::null()));
         }
         Ok(())
     }
@@ -297,19 +299,19 @@ impl<'a> Data<'a> {
     pub fn set_filename<S: IntoNativeString>(&mut self, name: S) -> Result<()> {
         let name = name.into_native();
         unsafe {
-            return_err!(ffi::gpgme_data_set_file_name(self.0, name.as_ref().as_ptr()));
+            return_err!(ffi::gpgme_data_set_file_name(self.as_raw(), name.as_ref().as_ptr()));
         }
         Ok(())
     }
 
     #[inline]
     pub fn encoding(&self) -> Encoding {
-        unsafe { Encoding::from_raw(ffi::gpgme_data_get_encoding(self.0)) }
+        unsafe { Encoding::from_raw(ffi::gpgme_data_get_encoding(self.as_raw())) }
     }
 
     #[inline]
     pub fn set_encoding(&mut self, enc: Encoding) -> Result<()> {
-        unsafe { return_err!(ffi::gpgme_data_set_encoding(self.0, enc.raw())) }
+        unsafe { return_err!(ffi::gpgme_data_set_encoding(self.as_raw(), enc.raw())) }
         Ok(())
     }
 
@@ -320,7 +322,7 @@ impl<'a> Data<'a> {
         let name = name.into_native();
         let value = value.into_native();
         unsafe {
-            return_err!(ffi::gpgme_data_set_flag(self.0,
+            return_err!(ffi::gpgme_data_set_flag(self.as_raw(),
                                                  name.as_ref().as_ptr(),
                                                  value.as_ref().as_ptr()));
         }
@@ -330,7 +332,7 @@ impl<'a> Data<'a> {
     #[inline]
     #[cfg(feature = "v1_4_3")]
     pub fn identify(&mut self) -> Type {
-        unsafe { Type::from_raw(ffi::gpgme_data_identify(self.0, 0)) }
+        unsafe { Type::from_raw(ffi::gpgme_data_identify(self.as_raw(), 0)) }
     }
 
     #[inline]
@@ -349,7 +351,7 @@ impl<'a> Read for Data<'a> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let result = unsafe {
             let (buf, len) = (buf.as_mut_ptr() as *mut _, buf.len());
-            ffi::gpgme_data_read(self.0, buf, len)
+            ffi::gpgme_data_read(self.as_raw(), buf, len)
         };
         if result >= 0 {
             Ok(result as usize)
@@ -364,7 +366,7 @@ impl<'a> Write for Data<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let result = unsafe {
             let (buf, len) = (buf.as_ptr() as *const _, buf.len());
-            ffi::gpgme_data_write(self.0, buf, len)
+            ffi::gpgme_data_write(self.as_raw(), buf, len)
         };
         if result >= 0 {
             Ok(result as usize)
@@ -373,6 +375,7 @@ impl<'a> Write for Data<'a> {
         }
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -386,7 +389,7 @@ impl<'a> Seek for Data<'a> {
             io::SeekFrom::End(off) => (off.value_into().unwrap_or_saturate(), libc::SEEK_END),
             io::SeekFrom::Current(off) => (off.value_into().unwrap_or_saturate(), libc::SEEK_CUR),
         };
-        let result = unsafe { ffi::gpgme_data_seek(self.0, off, whence) };
+        let result = unsafe { ffi::gpgme_data_seek(self.as_raw(), off, whence) };
         if result >= 0 {
             Ok(result as u64)
         } else {

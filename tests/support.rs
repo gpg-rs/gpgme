@@ -154,21 +154,24 @@ impl TestCase {
             .stderr(Stdio::null())
             .spawn() {
             Ok(child) => child,
-            Err(_) => return,
+            Err(err) => {
+                println!("Unable to kill agent: {}", err);
+                return;
+            },
         };
         if let Some(ref mut stdin) = child.stdin {
             let _ = stdin.write_all(b"KILLAGENT\nBYE\n");
             let _ = stdin.flush();
         }
-        let _ = child.wait();
+        if let Err(err) = child.wait() {
+            println!("Unable to kill agent: {}", err);
+        }
     }
 
     fn drop(&self) {
         if self.count.fetch_sub(1, Ordering::SeqCst) == 1 {
             self.kill_agent();
-            if let Some(dir) = self.homedir.write().unwrap().take() {
-                drop(dir);
-            }
+            self.homedir.write().unwrap().take();
         }
     }
 }

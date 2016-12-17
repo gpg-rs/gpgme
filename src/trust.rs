@@ -3,13 +3,18 @@ use std::str::Utf8Error;
 
 use ffi;
 
+use NonZero;
+
 #[derive(Debug)]
-pub struct TrustItem(ffi::gpgme_trust_item_t);
+pub struct TrustItem(NonZero<ffi::gpgme_trust_item_t>);
+
+unsafe impl Send for TrustItem {}
+unsafe impl Sync for TrustItem {}
 
 impl Drop for TrustItem {
     #[inline]
     fn drop(&mut self) {
-        unsafe { ffi::gpgme_trust_item_unref(self.0) }
+        unsafe { ffi::gpgme_trust_item_unref(self.as_raw()) }
     }
 }
 
@@ -17,7 +22,7 @@ impl Clone for TrustItem {
     #[inline]
     fn clone(&self) -> TrustItem {
         unsafe {
-            ffi::gpgme_trust_item_ref(self.0);
+            ffi::gpgme_trust_item_ref(self.as_raw());
             TrustItem(self.0)
         }
     }
@@ -28,7 +33,7 @@ impl TrustItem {
 
     #[inline]
     pub fn trust_level(&self) -> i32 {
-        unsafe { (*self.0).level.into() }
+        unsafe { (*self.as_raw()).level.into() }
     }
 
     #[inline]
@@ -38,7 +43,7 @@ impl TrustItem {
 
     #[inline]
     pub fn key_id_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.0).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -48,7 +53,7 @@ impl TrustItem {
 
     #[inline]
     pub fn user_id_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.0).name.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -58,7 +63,7 @@ impl TrustItem {
 
     #[inline]
     pub fn owner_trust_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.0).owner_trust.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).owner_trust.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -68,6 +73,6 @@ impl TrustItem {
 
     #[inline]
     pub fn validity_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.0).validity.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).validity.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }

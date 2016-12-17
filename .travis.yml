@@ -1,37 +1,28 @@
 language: rust
-rust: stable
+rust:
+  - stable
+  - nightly
 sudo: false
 addons:
   apt:
     packages:
       - libgpg-error-dev
       - libgpgme11-dev
-matrix:
-  include:
-    - os: linux
-      dist: precise
-      script:
-        - cargo build --verbose --no-default-features
-        - cargo test --verbose --no-default-features --color always | tee
-        - cargo doc --no-default-features
-      after_success:
-        - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
-        - travis-cargo doc-upload
-    - os: linux
-      dist: trusty
-      script:
-        - cargo build --verbose --no-default-features --features "v1_4_3"
-        - cargo test --verbose --no-default-features --features "v1_4_3" --color always | tee
-        - cargo doc --no-default-features --features "v1_4_3"
-  allow_failure:
-    - dist: trusty
 before_script:
-  - export GPGME_DEBUG=9
   - gpg --version || true
   - gpg2 --version || true
   - gpg-agent --version || true
+  - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
+script:
+  - travis-cargo build -- --no-default-features
+  - travis-cargo test -- --no-default-features --color always | tee
+  - travis-cargo doc -- --no-default-features
+after_success:
+  - travis-cargo --only stable doc-upload
 env:
   global:
+    - GPGME_DEBUG=9
+    - TRAVIS_CARGO_NIGHTLY_FEATURE=nightly
     - secure: KKPYXC3dn8CR8YRPuqkBSEu9VUjt7qSTLENnPYz4B2+lFT0iI265MqZGaHFhBv3YHjV/ONjvOj6Tn1l1JFIzLyBbiJ9EeY/5u/kh+tN2fjR8AniaqPG+SZuRERZwe92T/8xr+fGdzlG9hKr7XgAXQAdB7hAlQoU+cuiwuB0+FDMBciDELnLokIRCoKzW0LSY5EvQQ2BkPHuWv3n04isd7WF11IsidqN0HMDtSaVSC6FbfpW/MdlRqVzey/VxG/BpY0FWvCkRayB7NVLEWXtr/rWyn3jY6pKqev+I0w6eIL/hvKrQUrmSP3y0RJcCgq/7asdNQDeIFXbT1emFXw3dKmA9ZdSzBnm5Z2NO18DNAb3yUQjCJztSWaCfyEbKFbrV/V6cl8I61gHzGzS8kWG8kAbC6dSQxaAtm3wrcrPI1q4bHj0JAXJ27ICKAHoxMUWX50+tMZDchv8exQjBPu35gPi+5tJGCuGeSnZ33w+XHPTdJtb1Hqt87CSEs8umJyZbjT/NpIWzgKJz/2dTX1dpvEnJ0THRMTd2W2TQra9Y9e6GxUZlV6MVI6pDSBKdee6fGTxAtfmVzgL6Bfey5vP+70RanHmLTN/FJXw/thEfZaSsZnK298XsmJ6WXksCEBo40E0wINDe6R7R4egzTzoFqUzsv/uPNu/0QXXrM8DWTo4=
 branches:
   except:

@@ -8,21 +8,24 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use libc;
 use ffi;
 
-use {Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm, OpResult, Result, SignMode,
-     SignatureSummary, Validity};
+use {Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm, NonZero, OpResult, Result,
+     SignMode, SignatureSummary, Validity};
 use error;
 use notation::SignatureNotations;
 
 macro_rules! impl_result {
     ($Name:ident: $T:ty = $Constructor:path) => {
         #[derive(Debug)]
-        pub struct $Name($T);
+        pub struct $Name(NonZero<$T>);
+
+        unsafe impl Send for $Name {}
+        unsafe impl Sync for $Name {}
 
         impl Drop for $Name {
             #[inline]
             fn drop(&mut self) {
                 unsafe {
-                    ffi::gpgme_result_unref(self.0 as *mut libc::c_void);
+                    ffi::gpgme_result_unref(self.as_raw() as *mut libc::c_void);
                 }
             }
         }
@@ -31,7 +34,7 @@ macro_rules! impl_result {
             #[inline]
             fn clone(&self) -> $Name {
                 unsafe {
-                    ffi::gpgme_result_ref(self.0 as *mut libc::c_void);
+                    ffi::gpgme_result_ref(self.as_raw() as *mut libc::c_void);
                     $Name(self.0)
                 }
             }
@@ -57,7 +60,10 @@ macro_rules! impl_result {
 macro_rules! impl_subresult {
     ($Name:ident: $T:ty, $IterName:ident, $Owner:ty) => {
         #[derive(Debug, Copy, Clone)]
-        pub struct $Name<'a>($T, PhantomData<&'a $Owner>);
+        pub struct $Name<'a>(NonZero<$T>, PhantomData<&'a $Owner>);
+
+        unsafe impl<'a> Send for $Name<'a> {}
+        unsafe impl<'a> Sync for $Name<'a> {}
 
         impl<'a> $Name<'a> {
             impl_wrapper!(@phantom $Name: $T);
@@ -65,15 +71,16 @@ macro_rules! impl_subresult {
 
         #[derive(Debug, Copy, Clone)]
         pub struct $IterName<'a> {
-            current: $T,
+            current: Option<$Name<'a>>,
             left: Option<usize>,
-            phantom: PhantomData<&'a $Owner>,
         }
 
         impl<'a> $IterName<'a> {
             pub unsafe fn from_list(first: $T) -> Self {
-                let left = count_list!(first);
-                $IterName { current: first, left: left, phantom: PhantomData }
+                $IterName {
+                    current: first.as_mut().map(|r| $Name::from_raw(r)),
+                    left: count_list!(first),
+                }
             }
         }
 
@@ -93,13 +100,13 @@ impl<'a> InvalidKey<'a> {
 
     #[inline]
     pub fn fingerprint_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.0).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
     pub fn reason(&self) -> Option<Error> {
         unsafe {
-            match (*self.0).reason {
+            match (*self.as_raw()).reason {
                 error::GPG_ERR_NO_ERROR => None,
                 e => Some(Error::new(e)),
             }
@@ -110,7 +117,7 @@ impl<'a> InvalidKey<'a> {
 impl_result!(KeyListResult: ffi::gpgme_keylist_result_t = ffi::gpgme_op_keylist_result);
 impl KeyListResult {
     pub fn is_truncated(&self) -> bool {
-        unsafe { (*self.0).truncated() }
+        unsafe { (*self.as_raw()).truncated() }
     }
 }
 
@@ -118,17 +125,17 @@ impl_result!(KeyGenerationResult: ffi::gpgme_genkey_result_t = ffi::gpgme_op_gen
 impl KeyGenerationResult {
     #[inline]
     pub fn has_primary_key(&self) -> bool {
-        unsafe { (*self.0).primary() }
+        unsafe { (*self.as_raw()).primary() }
     }
 
     #[inline]
     pub fn has_sub_key(&self) -> bool {
-        unsafe { (*self.0).sub() }
+        unsafe { (*self.as_raw()).sub() }
     }
 
     #[inline]
     pub fn has_uid(&self) -> bool {
-        unsafe { (*self.0).uid() }
+        unsafe { (*self.as_raw()).uid() }
     }
 
     #[inline]
@@ -138,7 +145,7 @@ impl KeyGenerationResult {
 
     #[inline]
     pub fn fingerprint_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.0).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }
 
@@ -147,72 +154,72 @@ impl_result!(ImportResult: ffi::gpgme_import_result_t = ffi::gpgme_op_import_res
 impl ImportResult {
     #[inline]
     pub fn considered(&self) -> u32 {
-        unsafe { (*self.0).considered as u32 }
+        unsafe { (*self.as_raw()).considered as u32 }
     }
 
     #[inline]
     pub fn without_user_id(&self) -> u32 {
-        unsafe { (*self.0).no_user_id as u32 }
+        unsafe { (*self.as_raw()).no_user_id as u32 }
     }
 
     #[inline]
     pub fn imported(&self) -> u32 {
-        unsafe { (*self.0).imported as u32 }
+        unsafe { (*self.as_raw()).imported as u32 }
     }
 
     #[inline]
     pub fn imported_rsa(&self) -> u32 {
-        unsafe { (*self.0).imported_rsa as u32 }
+        unsafe { (*self.as_raw()).imported_rsa as u32 }
     }
 
     #[inline]
     pub fn unchanged(&self) -> u32 {
-        unsafe { (*self.0).unchanged as u32 }
+        unsafe { (*self.as_raw()).unchanged as u32 }
     }
 
     #[inline]
     pub fn new_user_ids(&self) -> u32 {
-        unsafe { (*self.0).new_user_ids as u32 }
+        unsafe { (*self.as_raw()).new_user_ids as u32 }
     }
 
     #[inline]
     pub fn new_subkeys(&self) -> u32 {
-        unsafe { (*self.0).new_sub_keys as u32 }
+        unsafe { (*self.as_raw()).new_sub_keys as u32 }
     }
 
     #[inline]
     pub fn new_signatures(&self) -> u32 {
-        unsafe { (*self.0).new_signatures as u32 }
+        unsafe { (*self.as_raw()).new_signatures as u32 }
     }
 
     #[inline]
     pub fn new_revocations(&self) -> u32 {
-        unsafe { (*self.0).new_revocations as u32 }
+        unsafe { (*self.as_raw()).new_revocations as u32 }
     }
 
     #[inline]
     pub fn secret_considered(&self) -> u32 {
-        unsafe { (*self.0).secret_read as u32 }
+        unsafe { (*self.as_raw()).secret_read as u32 }
     }
 
     #[inline]
     pub fn secret_imported(&self) -> u32 {
-        unsafe { (*self.0).secret_imported as u32 }
+        unsafe { (*self.as_raw()).secret_imported as u32 }
     }
 
     #[inline]
     pub fn secret_unchanged(&self) -> u32 {
-        unsafe { (*self.0).secret_unchanged as u32 }
+        unsafe { (*self.as_raw()).secret_unchanged as u32 }
     }
 
     #[inline]
     pub fn not_imported(&self) -> u32 {
-        unsafe { (*self.0).not_imported as u32 }
+        unsafe { (*self.as_raw()).not_imported as u32 }
     }
 
     #[inline]
     pub fn imports(&self) -> Imports {
-        unsafe { Imports::from_list((*self.0).imports) }
+        unsafe { Imports::from_list((*self.as_raw()).imports) }
     }
 }
 
@@ -225,20 +232,20 @@ impl<'a> Import<'a> {
 
     #[inline]
     pub fn fingerprint_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.0).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
     pub fn result(&self) -> Result<()> {
         unsafe {
-            return_err!((*self.0).result);
+            return_err!((*self.as_raw()).result);
             Ok(())
         }
     }
 
     #[inline]
     pub fn status(&self) -> ImportFlags {
-        unsafe { ImportFlags::from_bits_truncate((*self.0).status) }
+        unsafe { ImportFlags::from_bits_truncate((*self.as_raw()).status) }
     }
 }
 
@@ -246,7 +253,7 @@ impl_result!(EncryptionResult: ffi::gpgme_encrypt_result_t = ffi::gpgme_op_encry
 impl EncryptionResult {
     #[inline]
     pub fn invalid_recipients(&self) -> InvalidKeys {
-        unsafe { InvalidKeys::from_list((*self.0).invalid_recipients) }
+        unsafe { InvalidKeys::from_list((*self.as_raw()).invalid_recipients) }
     }
 }
 impl_result!(DecryptionResult: ffi::gpgme_decrypt_result_t = ffi::gpgme_op_decrypt_result);
@@ -258,12 +265,12 @@ impl DecryptionResult {
 
     #[inline]
     pub fn unsupported_algorithm_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.0).unsupported_algorithm.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).unsupported_algorithm.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
     pub fn is_wrong_key_usage(&self) -> bool {
-        unsafe { (*self.0).wrong_key_usage() }
+        unsafe { (*self.as_raw()).wrong_key_usage() }
     }
 
     #[inline]
@@ -273,12 +280,12 @@ impl DecryptionResult {
 
     #[inline]
     pub fn filename_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.0).file_name.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).file_name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
     pub fn recipients(&self) -> Recipients {
-        unsafe { Recipients::from_list((*self.0).recipients) }
+        unsafe { Recipients::from_list((*self.as_raw()).recipients) }
     }
 }
 
@@ -293,18 +300,18 @@ impl<'a> Recipient<'a> {
 
     #[inline]
     pub fn key_id_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.0).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
     pub fn algorithm(&self) -> KeyAlgorithm {
-        unsafe { KeyAlgorithm::from_raw((*self.0).pubkey_algo) }
+        unsafe { KeyAlgorithm::from_raw((*self.as_raw()).pubkey_algo) }
     }
 
     #[inline]
     pub fn status(&self) -> Result<()> {
         unsafe {
-            return_err!((*self.0).status);
+            return_err!((*self.as_raw()).status);
             Ok(())
         }
     }
@@ -314,12 +321,12 @@ impl_result!(SigningResult: ffi::gpgme_sign_result_t = ffi::gpgme_op_sign_result
 impl SigningResult {
     #[inline]
     pub fn invalid_signers(&self) -> InvalidKeys {
-        unsafe { InvalidKeys::from_list((*self.0).invalid_signers) }
+        unsafe { InvalidKeys::from_list((*self.as_raw()).invalid_signers) }
     }
 
     #[inline]
     pub fn new_signatures(&self) -> NewSignatures {
-        unsafe { NewSignatures::from_list((*self.0).signatures) }
+        unsafe { NewSignatures::from_list((*self.as_raw()).signatures) }
     }
 }
 
@@ -334,33 +341,33 @@ impl<'a> NewSignature<'a> {
 
     #[inline]
     pub fn fingerprint_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.0).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
     pub fn creation_time(&self) -> SystemTime {
-        let timestamp = unsafe { (*self.0).timestamp };
+        let timestamp = unsafe { (*self.as_raw()).timestamp };
         UNIX_EPOCH + Duration::from_secs(timestamp as u64)
     }
 
     #[inline]
     pub fn mode(&self) -> SignMode {
-        unsafe { SignMode::from_raw((*self.0).sig_type) }
+        unsafe { SignMode::from_raw((*self.as_raw()).sig_type) }
     }
 
     #[inline]
     pub fn key_algorithm(&self) -> KeyAlgorithm {
-        unsafe { KeyAlgorithm::from_raw((*self.0).pubkey_algo) }
+        unsafe { KeyAlgorithm::from_raw((*self.as_raw()).pubkey_algo) }
     }
 
     #[inline]
     pub fn hash_algorithm(&self) -> HashAlgorithm {
-        unsafe { HashAlgorithm::from_raw((*self.0).hash_algo) }
+        unsafe { HashAlgorithm::from_raw((*self.as_raw()).hash_algo) }
     }
 
     #[inline]
     pub fn signature_class(&self) -> u32 {
-        unsafe { (*self.0).sig_class as u32 }
+        unsafe { (*self.as_raw()).sig_class as u32 }
     }
 }
 
@@ -373,12 +380,12 @@ impl VerificationResult {
 
     #[inline]
     pub fn filename_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.0).file_name.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).file_name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
     pub fn signatures(&self) -> Signatures {
-        unsafe { Signatures::from_list((*self.0).signatures) }
+        unsafe { Signatures::from_list((*self.as_raw()).signatures) }
     }
 }
 
@@ -396,7 +403,7 @@ impl_subresult!(Signature: ffi::gpgme_signature_t,
 impl<'a> Signature<'a> {
     #[inline]
     pub fn summary(&self) -> SignatureSummary {
-        unsafe { SignatureSummary::from_bits_truncate((*self.0).summary as u32) }
+        unsafe { SignatureSummary::from_bits_truncate((*self.as_raw()).summary as u32) }
     }
 
     #[inline]
@@ -406,20 +413,20 @@ impl<'a> Signature<'a> {
 
     #[inline]
     pub fn fingerprint_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.0).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
     pub fn status(&self) -> Result<()> {
         unsafe {
-            return_err!((*self.0).status);
+            return_err!((*self.as_raw()).status);
             Ok(())
         }
     }
 
     #[inline]
     pub fn creation_time(&self) -> Option<SystemTime> {
-        let timestamp = unsafe { (*self.0).timestamp };
+        let timestamp = unsafe { (*self.as_raw()).timestamp };
         if timestamp > 0 {
             Some(UNIX_EPOCH + Duration::from_secs(timestamp.into()))
         } else {
@@ -429,7 +436,7 @@ impl<'a> Signature<'a> {
 
     #[inline]
     pub fn expiration_time(&self) -> Option<SystemTime> {
-        let expires = unsafe { (*self.0).exp_timestamp };
+        let expires = unsafe { (*self.as_raw()).exp_timestamp };
         if expires > 0 {
             Some(UNIX_EPOCH + Duration::from_secs(expires.into()))
         } else {
@@ -444,17 +451,17 @@ impl<'a> Signature<'a> {
 
     #[inline]
     pub fn is_wrong_key_usage(&self) -> bool {
-        unsafe { (*self.0).wrong_key_usage() }
+        unsafe { (*self.as_raw()).wrong_key_usage() }
     }
 
     #[inline]
     pub fn verified_by_chain(&self) -> bool {
-        unsafe { (*self.0).chain_model() }
+        unsafe { (*self.as_raw()).chain_model() }
     }
 
     #[inline]
     pub fn pka_trust(&self) -> PkaTrust {
-        unsafe { PkaTrust::from_raw((*self.0).pka_trust()) }
+        unsafe { PkaTrust::from_raw((*self.as_raw()).pka_trust()) }
     }
 
     #[inline]
@@ -464,18 +471,18 @@ impl<'a> Signature<'a> {
 
     #[inline]
     pub fn pka_address_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.0).pka_address.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).pka_address.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
     pub fn validity(&self) -> Validity {
-        unsafe { Validity::from_raw((*self.0).validity) }
+        unsafe { Validity::from_raw((*self.as_raw()).validity) }
     }
 
     #[inline]
     pub fn nonvalidity_reason(&self) -> Option<Error> {
         unsafe {
-            let reason = (*self.0).validity_reason;
+            let reason = (*self.as_raw()).validity_reason;
             if reason != error::GPG_ERR_NO_ERROR {
                 Some(Error::new(reason))
             } else {
@@ -486,12 +493,12 @@ impl<'a> Signature<'a> {
 
     #[inline]
     pub fn key_algorithm(&self) -> KeyAlgorithm {
-        unsafe { KeyAlgorithm::from_raw((*self.0).pubkey_algo) }
+        unsafe { KeyAlgorithm::from_raw((*self.as_raw()).pubkey_algo) }
     }
 
     #[inline]
     pub fn hash_algorithm(&self) -> HashAlgorithm {
-        unsafe { HashAlgorithm::from_raw((*self.0).hash_algo) }
+        unsafe { HashAlgorithm::from_raw((*self.as_raw()).hash_algo) }
     }
 
     #[inline]
@@ -502,7 +509,7 @@ impl<'a> Signature<'a> {
     #[inline]
     pub fn policy_url_raw(&self) -> Option<&'a CStr> {
         unsafe {
-            let mut notation = (*self.0).notations;
+            let mut notation = (*self.as_raw()).notations;
             while !notation.is_null() {
                 if (*notation).name.is_null() {
                     return (*notation).value.as_ref().map(|s| CStr::from_ptr(s));
@@ -515,14 +522,14 @@ impl<'a> Signature<'a> {
 
     #[inline]
     pub fn notations(&self) -> SignatureNotations<'a, VerificationResult> {
-        unsafe { SignatureNotations::from_list((*self.0).notations) }
+        unsafe { SignatureNotations::from_list((*self.as_raw()).notations) }
     }
 
     #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn key(&self) -> Option<::Key> {
         unsafe {
-            (*self.0).key.as_mut().map(|k| {
+            (*self.as_raw()).key.as_mut().map(|k| {
                 ffi::gpgme_key_ref(k);
                 ::Key::from_raw(k)
             })

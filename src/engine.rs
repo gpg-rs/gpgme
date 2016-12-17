@@ -8,11 +8,14 @@ use std::sync::RwLockReadGuard;
 
 use ffi;
 
-use {Protocol, TOKEN, Token};
+use {NonZero, Protocol, TOKEN, Token};
 use error::Result;
 
 #[derive(Debug, Copy, Clone)]
-pub struct EngineInfo<'a, T: 'a>(ffi::gpgme_engine_info_t, PhantomData<&'a T>);
+pub struct EngineInfo<'a, T: 'a>(NonZero<ffi::gpgme_engine_info_t>, PhantomData<&'a T>);
+
+unsafe impl<'a, T> Send for EngineInfo<'a, T> {}
+unsafe impl<'a, T> Sync for EngineInfo<'a, T> {}
 
 impl<'a, T> EngineInfo<'a, T> {
     impl_wrapper!(@phantom EngineInfo: ffi::gpgme_engine_info_t);
@@ -20,7 +23,7 @@ impl<'a, T> EngineInfo<'a, T> {
     /// Returns the `Protocol` implemented by the engine.
     #[inline]
     pub fn protocol(&self) -> Protocol {
-        unsafe { Protocol::from_raw((*self.0).protocol) }
+        unsafe { Protocol::from_raw((*self.as_raw()).protocol) }
     }
 
     #[inline]
@@ -30,7 +33,7 @@ impl<'a, T> EngineInfo<'a, T> {
 
     #[inline]
     pub fn path_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.0).file_name.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).file_name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -40,7 +43,7 @@ impl<'a, T> EngineInfo<'a, T> {
 
     #[inline]
     pub fn home_dir_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.0).home_dir.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).home_dir.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -50,7 +53,7 @@ impl<'a, T> EngineInfo<'a, T> {
 
     #[inline]
     pub fn version_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.0).version.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).version.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -60,25 +63,22 @@ impl<'a, T> EngineInfo<'a, T> {
 
     #[inline]
     pub fn required_version_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.0).req_version.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { (*self.as_raw()).req_version.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct EngineInfos<'a, T: 'a> {
-    current: ffi::gpgme_engine_info_t,
+    current: Option<EngineInfo<'a, T>>,
     left: Option<usize>,
-    phantom: PhantomData<&'a T>,
 }
 
 impl<'a, T> EngineInfos<'a, T> {
     #[inline]
-    pub unsafe fn from_list<'b>(first: ffi::gpgme_engine_info_t) -> EngineInfos<'b, T> {
-        let left = count_list!(first);
+    pub unsafe fn from_list(first: ffi::gpgme_engine_info_t) -> Self {
         EngineInfos {
-            current: first,
-            left: left,
-            phantom: PhantomData,
+            current: first.as_mut().map(|r| EngineInfo::from_raw(r)),
+            left: count_list!(first),
         }
     }
 }

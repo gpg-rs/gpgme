@@ -1,4 +1,6 @@
 #![warn(missing_debug_implementations, trivial_numeric_casts)]
+#![cfg_attr(any(nightly, feature="nightly"), feature(nonzero))]
+extern crate core;
 extern crate libc;
 #[macro_use]
 extern crate cfg_if;
@@ -26,7 +28,7 @@ pub use self::utils::IntoNativeString;
 pub use self::error::{Error, Result};
 pub use self::data::Data;
 pub use self::context::Context;
-pub use self::keys::{Key, Subkey, UserId};
+pub use self::keys::{Key, Subkey, UserId, UserIdSignature};
 pub use self::notation::SignatureNotation;
 pub use self::trust::TrustItem;
 pub use self::tofu::{TofuInfo, TofuPolicy};
@@ -298,3 +300,5 @@ impl Token {
 unsafe trait OpResult: Clone {
     fn from_context(ctx: &Context) -> Option<Self>;
 }
+
+type NonZero<T> = utils::NonZero<T>;
