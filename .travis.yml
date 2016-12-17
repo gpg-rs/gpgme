@@ -11,8 +11,6 @@ matrix:
             - libgpg-error-dev
             - libgpgme11-dev
       script:
-        - export GPG_ERROR_CONFIG=/usr/bin/gpg-error-config
-        - export GPGME_CONFIG=/usr/bin/gpgme-config
         - travis-cargo build -- --no-default-features
         - travis-cargo test -- --no-default-features --color always | tee
     - os: linux
@@ -24,8 +22,6 @@ matrix:
             - libgpg-error-dev
             - libgpgme11-dev
       script:
-        - export GPG_ERROR_CONFIG=/usr/bin/gpg-error-config
-        - export GPGME_CONFIG=/usr/bin/gpgme-config
         - travis-cargo build -- --no-default-features
         - travis-cargo test -- --no-default-features --color always | tee
     # - os: linux
