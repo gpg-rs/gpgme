@@ -205,8 +205,7 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    pub fn from_reader<R>(r: R) -> result::Result<Self, WrappedError<R>>
-    where R: Read + Send + 'a {
+    pub fn from_reader<R>(r: R) -> result::Result<Self, WrappedError<R>> where R: Read + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,

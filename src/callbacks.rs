@@ -301,10 +301,13 @@ pub extern "C" fn edit_cb<E: EditInteractor>(hook: *mut libc::c_void,
             response: &mut *response,
         };
         let result = if fd < 0 {
-            interactor.interact(status, None::<&mut io::Write>)
-        } else {
-            interactor.interact(status, Some(FdWriter::new(fd)))
-        }.err().map(|err| err.raw()).unwrap_or(0);
+                interactor.interact(status, None::<&mut io::Write>)
+            } else {
+                interactor.interact(status, Some(FdWriter::new(fd)))
+            }
+            .err()
+            .map(|err| err.raw())
+            .unwrap_or(0);
         (interactor, result)
     }) {
         Ok((interactor, result)) => {
@@ -385,10 +388,13 @@ pub extern "C" fn interact_cb<H: InteractHandler>(hook: *mut libc::c_void,
             response: &mut *response,
         };
         let result = if fd < 0 {
-            interactor.interact(status, None::<&mut io::Write>)
-        } else {
-            interactor.interact(status, Some(FdWriter::new(fd)))
-        }.err().map(|err| err.raw()).unwrap_or(0);
+                interactor.interact(status, None::<&mut io::Write>)
+            } else {
+                interactor.interact(status, Some(FdWriter::new(fd)))
+            }
+            .err()
+            .map(|err| err.raw())
+            .unwrap_or(0);
         (interactor, result)
     }) {
         Ok((interactor, result)) => {

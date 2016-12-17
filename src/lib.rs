@@ -126,29 +126,29 @@ impl fmt::Display for Validity {
 
 cfg_if! {
     if #[cfg(feature = "v1_8_0")] {
-        const TARGET_VERSION: &'static [u8] = b"1.8.0\0";
+        const TARGET_VERSION: &'static str = "1.8.0\0";
     } else if #[cfg(feature = "v1_7_1")] {
-        const TARGET_VERSION: &'static [u8] = b"1.7.1\0";
+        const TARGET_VERSION: &'static str = "1.7.1\0";
     } else if #[cfg(feature = "v1_7_0")] {
-        const TARGET_VERSION: &'static [u8] = b"1.7.0\0";
+        const TARGET_VERSION: &'static str = "1.7.0\0";
     } else if #[cfg(feature = "v1_6_0")] {
-        const TARGET_VERSION: &'static [u8] = b"1.6.0\0";
+        const TARGET_VERSION: &'static str = "1.6.0\0";
     } else if #[cfg(feature = "v1_5_1")] {
-        const TARGET_VERSION: &'static [u8] = b"1.5.1\0";
+        const TARGET_VERSION: &'static str = "1.5.1\0";
     } else if #[cfg(feature = "v1_5_0")] {
-        const TARGET_VERSION: &'static [u8] = b"1.5.0\0";
+        const TARGET_VERSION: &'static str = "1.5.0\0";
     } else if #[cfg(feature = "v1_4_3")] {
-        const TARGET_VERSION: &'static [u8] = b"1.4.3\0";
+        const TARGET_VERSION: &'static str = "1.4.3\0";
     } else if #[cfg(feature = "v1_4_2")] {
-        const TARGET_VERSION: &'static [u8] = b"1.4.2\0";
+        const TARGET_VERSION: &'static str = "1.4.2\0";
     } else if #[cfg(feature = "v1_4_0")] {
-        const TARGET_VERSION: &'static [u8] = b"1.4.0\0";
+        const TARGET_VERSION: &'static str = "1.4.0\0";
     } else if #[cfg(feature = "v1_3_1")] {
-        const TARGET_VERSION: &'static [u8] = b"1.3.1\0";
+        const TARGET_VERSION: &'static str = "1.3.1\0";
     } else if #[cfg(feature = "v1_3_0")] {
-        const TARGET_VERSION: &'static [u8] = b"1.3.0\0";
+        const TARGET_VERSION: &'static str = "1.3.0\0";
     } else {
-        const TARGET_VERSION: &'static [u8] = b"1.2.0\0";
+        const TARGET_VERSION: &'static str = "1.2.0\0";
     }
 }
 
@@ -171,7 +171,8 @@ lazy_static! {
 
             let result = ffi::gpgme_check_version_internal(TARGET_VERSION.as_ptr() as *const _,
                                                            offset);
-            assert!(!result.is_null(), "gpgme library could not be initialized");
+            assert!(!result.is_null(), "gpgme library could not be initialized for version: {}",
+                    TARGET_VERSION);
             CStr::from_ptr(result).to_str().expect("gpgme version string is not valid utf-8")
         };
         Token(Arc::new(TokenImp { version: version, engine_info: RwLock::new(()) }))
