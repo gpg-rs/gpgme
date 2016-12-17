@@ -1,0 +1,6 @@
+[submodule "gpgme-sys/gpgme"]
+	path = gpgme-sys/gpgme
+	url = git://git.gnupg.org/gpgme.git
+[submodule "gpgme-sys/libassuan"]
+	path = gpgme-sys/libassuan
+	url = git://git.gnupg.org/libassuan.git

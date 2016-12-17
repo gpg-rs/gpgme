@@ -32,6 +32,10 @@ conv = "0.3"
 gpg-error = "0.1"
 gpgme-sys = { path = "gpgme-sys", version = "0.2.0", default-features = false }
 
+[replace]
+"gpg-error:0.1.5" = { git = "https://github.com/johnschug/rust-gpg-error.git" }
+"libgpg-error-sys:0.1.5" = { git = "https://github.com/johnschug/rust-gpg-error.git" }
+
 [dev-dependencies]
 getopts = "0.2"
 tempdir = "0.3"

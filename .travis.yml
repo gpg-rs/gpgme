@@ -3,20 +3,15 @@ rust:
   - stable
   - nightly
 sudo: false
-addons:
-  apt:
-    packages:
-      - libgpg-error-dev
-      - libgpgme11-dev
 before_script:
   - gpg --version || true
   - gpg2 --version || true
   - gpg-agent --version || true
   - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
 script:
-  - travis-cargo build -- --no-default-features
-  - travis-cargo test -- --no-default-features --color always | tee
-  - travis-cargo doc -- --no-default-features
+  - travis-cargo build
+  - travis-cargo test -- --color always | tee
+  - travis-cargo doc
 after_success:
   - travis-cargo --only stable doc-upload
 env:

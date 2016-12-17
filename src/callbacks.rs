@@ -346,7 +346,7 @@ impl<'a> InteractionStatus<'a> {
     }
 }
 
-pub trait Interactor: 'static + Send {
+pub trait Interactor: UnwindSafe + Send + 'static {
     fn interact<W: io::Write>(&mut self, status: InteractionStatus, out: Option<W>)
         -> Result<(), Error>;
 }
@@ -367,11 +367,11 @@ impl<'a, I> Drop for InteractorWrapper<'a, I> {
 }
 
 #[cfg(feature = "v1_7_0")]
-pub extern "C" fn interact_cb<H: InteractHandler>(hook: *mut libc::c_void,
+pub extern "C" fn interact_cb<I: Interactor>(hook: *mut libc::c_void,
     keyword: *const libc::c_char,
     args: *const libc::c_char, fd: libc::c_int)
     -> ffi::gpgme_error_t {
-    let wrapper = unsafe { &mut *(hook as *mut EditInteractorWrapper<E>) };
+    let wrapper = unsafe { &mut *(hook as *mut InteractorWrapper<I>) };
     let response = wrapper.response;
     let mut interactor = match wrapper.state.take() {
         Some(Ok(interactor)) => interactor,
@@ -382,7 +382,7 @@ pub extern "C" fn interact_cb<H: InteractHandler>(hook: *mut libc::c_void,
     };
 
     match panic::catch_unwind(move || unsafe {
-        let status = EditInteractionStatus {
+        let status = InteractionStatus {
             keyword: keyword.as_ref().map(|s| CStr::from_ptr(s)),
             args: args.as_ref().map(|s| CStr::from_ptr(s)),
             response: &mut *response,

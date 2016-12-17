@@ -357,7 +357,7 @@ impl<'a> Subkey<'a> {
     #[inline]
     pub fn algorithm_name(&self) -> ::Result<String> {
         unsafe {
-            match ffi::gpgme_pubkey_algo_string(self.0).as_mut() {
+            match ffi::gpgme_pubkey_algo_string(self.as_raw()).as_mut() {
                 Some(raw) => {
                     let result = CStr::from_ptr(raw)
                         .to_str()
