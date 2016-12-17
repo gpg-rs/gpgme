@@ -29,12 +29,8 @@ cfg-if = "0.1"
 bitflags = "0.7"
 lazy_static = "0.2"
 conv = "0.3"
-gpg-error = "0.1"
+gpg-error = { git = "https://github.com/johnschug/rust-gpg-error.git" }
 gpgme-sys = { path = "gpgme-sys", version = "0.2.0", default-features = false }
-
-[replace]
-"gpg-error:0.1.5" = { git = "https://github.com/johnschug/rust-gpg-error.git" }
-"libgpg-error-sys:0.1.5" = { git = "https://github.com/johnschug/rust-gpg-error.git" }
 
 [dev-dependencies]
 getopts = "0.2"
