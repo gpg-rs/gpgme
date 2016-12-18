@@ -141,7 +141,6 @@ fn try_build() -> bool {
                 &host, "--host", &target,
                 "--enable-static",
                 "--disable-shared",
-                "--with-pic",
                 &format!("--with-libgpg-error-prefix={}", &gpgerror_root),
                 &format!("--prefix={}", &dst)])) {
         return false;
@@ -175,7 +174,6 @@ fn try_build() -> bool {
                 "--enable-static",
                 "--disable-shared",
                 "--disable-languages",
-                "--with-pic",
                 &format!("--with-libgpg-error-prefix={}", &gpgerror_root),
                 &format!("--with-libassuan-prefix={}", &dst),
                 &format!("--prefix={}", &dst)])) {
