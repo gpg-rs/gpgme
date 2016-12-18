@@ -136,11 +136,11 @@ fn try_build() -> bool {
         .env("CC", compiler.path())
         .env("CFLAGS", &cflags)
         .arg(src.join("configure"))
-        .args(&["--enable-maintainer-mode",
-                "--build",
-                &host, "--host", &target,
+        .args(&["--build", &host,
+                "--host", &target,
                 "--enable-static",
                 "--disable-shared",
+                "--disable-doc",
                 &format!("--with-libgpg-error-prefix={}", &gpgerror_root),
                 &format!("--prefix={}", &dst)])) {
         return false;
@@ -168,12 +168,12 @@ fn try_build() -> bool {
         .env("CC", compiler.path())
         .env("CFLAGS", &cflags)
         .arg(src.join("configure"))
-        .args(&["--enable-maintainer-mode",
-                "--build", &host,
+        .args(&["--build", &host,
                 "--host", &target,
                 "--enable-static",
                 "--disable-shared",
                 "--disable-languages",
+                "--disable-doc",
                 &format!("--with-libgpg-error-prefix={}", &gpgerror_root),
                 &format!("--with-libassuan-prefix={}", &dst),
                 &format!("--prefix={}", &dst)])) {
