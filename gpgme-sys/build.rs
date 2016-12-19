@@ -136,11 +136,11 @@ fn try_build() -> bool {
         .env("CC", compiler.path())
         .env("CFLAGS", &cflags)
         .arg(msys_compatible(src.join("configure")))
-        .args(&["--build", gnu_target(&host),
+        .args(&["--enable-maintainer-mode",
+                "--build", gnu_target(&host),
                 "--host", gnu_target(&target),
                 "--enable-static",
                 "--disable-shared",
-                "--disable-doc",
                 &format!("--with-libgpg-error-prefix={}", msys_compatible(&gpgerror_root)),
                 &format!("--prefix={}", msys_compatible(&dst))])) {
         return false;
@@ -168,12 +168,12 @@ fn try_build() -> bool {
         .env("CC", compiler.path())
         .env("CFLAGS", &cflags)
         .arg(msys_compatible(src.join("configure")))
-        .args(&["--build", gnu_target(&host),
+        .args(&["--enable-maintainer-mode",
+                "--build", gnu_target(&host),
                 "--host", gnu_target(&target),
                 "--enable-static",
                 "--disable-shared",
                 "--disable-languages",
-                "--disable-doc",
                 &format!("--with-libgpg-error-prefix={}", msys_compatible(&gpgerror_root)),
                 &format!("--with-libassuan-prefix={}", msys_compatible(&dst)),
                 &format!("--prefix={}", msys_compatible(&dst))])) {
