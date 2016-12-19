@@ -135,14 +135,14 @@ fn try_build() -> bool {
         .current_dir(&build)
         .env("CC", compiler.path())
         .env("CFLAGS", &cflags)
-        .arg(src.join("configure"))
-        .args(&["--build", &host,
-                "--host", &target,
+        .arg(msys_compatible(src.join("configure")))
+        .args(&["--build", gnu_target(&host),
+                "--host", gnu_target(&target),
                 "--enable-static",
                 "--disable-shared",
                 "--disable-doc",
-                &format!("--with-libgpg-error-prefix={}", &gpgerror_root),
-                &format!("--prefix={}", &dst)])) {
+                &format!("--with-libgpg-error-prefix={}", msys_compatible(&gpgerror_root)),
+                &format!("--prefix={}", msys_compatible(&dst))])) {
         return false;
     }
     if !run(Command::new("make")
@@ -167,16 +167,16 @@ fn try_build() -> bool {
         .current_dir(&build)
         .env("CC", compiler.path())
         .env("CFLAGS", &cflags)
-        .arg(src.join("configure"))
-        .args(&["--build", &host,
-                "--host", &target,
+        .arg(msys_compatible(src.join("configure")))
+        .args(&["--build", gnu_target(&host),
+                "--host", gnu_target(&target),
                 "--enable-static",
                 "--disable-shared",
                 "--disable-languages",
                 "--disable-doc",
-                &format!("--with-libgpg-error-prefix={}", &gpgerror_root),
-                &format!("--with-libassuan-prefix={}", &dst),
-                &format!("--prefix={}", &dst)])) {
+                &format!("--with-libgpg-error-prefix={}", msys_compatible(&gpgerror_root)),
+                &format!("--with-libassuan-prefix={}", msys_compatible(&dst)),
+                &format!("--prefix={}", msys_compatible(&dst))])) {
         return false;
     }
     if !run(Command::new("make")
@@ -259,4 +259,20 @@ fn output(cmd: &mut Command) -> Option<String> {
         }
     }
     None
+}
+
+fn msys_compatible<P: AsRef<Path>>(path: P) -> String {
+    let path = path.as_ref().to_str().unwrap();
+    if !cfg!(windows) {
+        return path.to_string();
+    }
+    path.replace("C:\\", "/c/").replace("\\", "/")
+}
+
+fn gnu_target(target: &str) -> &str {
+    match target {
+        "i686-pc-windows-gnu" => "i686-w64-mingw32",
+        "x86_64-pc-windows-gnu" => "x86_64-w64-mingw32",
+        s => s,
+    }
 }
