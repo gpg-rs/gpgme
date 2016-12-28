@@ -3,43 +3,60 @@ sudo: false
 matrix:
   include:
     - os: linux
-      dist: precise
       rust: stable
       addons:
         apt:
           packages:
-            - libgpg-error-dev
             - libgpgme11-dev
       script:
         - travis-cargo build -- --no-default-features
         - travis-cargo test -- --no-default-features --color always | tee
     - os: linux
-      dist: precise
-      rust: nightly
-      addons:
-        apt:
-          packages:
-            - libgpg-error-dev
-            - libgpgme11-dev
+      rust: stable
+      before_install:
+        - curl -sL https://ftp.gnu.org/gnu/automake/automake-${AUTOMAKE_VERSION}.tar.gz -o automake-${AUTOMAKE_VERSION}.tar.gz
+        - tar -xf automake-${AUTOMAKE_VERSION}.tar.gz
+        - pushd automake-${AUTOMAKE_VERSION}
+        - ./configure --prefix=${HOME}/.local 1>/dev/null
+        - make -j2 1>/dev/null
+        - make install 1>/dev/null
+        - popd
+        - curl -sL https://ftp.gnu.org/gnu/gettext/gettext-${GETTEXT_VERSION}.tar.gz -o gettext-${GETTEXT_VERSION}.tar.gz
+        - tar -xf gettext-${GETTEXT_VERSION}.tar.gz
+        - pushd gettext-${GETTEXT_VERSION}
+        - ./configure --without-emacs --disable-java --disable-c++ --enable-fast-install --prefix=${HOME}/.local 1>/dev/null
+        - make -j2 1>/dev/null
+        - make install 1>/dev/null
+        - popd
+        - export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
       script:
-        - travis-cargo build -- --no-default-features
-        - travis-cargo test -- --no-default-features --color always | tee
-    # - os: linux
-    #   dist: trusty
-    #   rust: stable
-    #   script:
-    #     - travis-cargo build
-    #     - travis-cargo test -- --color always
-    #     - travis-cargo doc
-    #   after_success:
-    #     - travis-cargo --only stable doc-upload
-    # - os: linux
-    #   dist: trusty
-    #   rust: nightly
-    #   script:
-    #     - travis-cargo build
-    #     - travis-cargo test -- --color always
-    #     - travis-cargo doc
+        - travis-cargo build -- --verbose --verbose
+        - travis-cargo test
+        - travis-cargo doc
+      after_success:
+        - travis-cargo doc-upload
+    - os: linux
+      rust: nightly
+      before_install:
+        - curl -sL https://ftp.gnu.org/gnu/automake/automake-${AUTOMAKE_VERSION}.tar.gz -o automake-${AUTOMAKE_VERSION}.tar.gz
+        - tar -xf automake-${AUTOMAKE_VERSION}.tar.gz
+        - pushd automake-${AUTOMAKE_VERSION}
+        - ./configure --prefix=${HOME}/.local 1>/dev/null
+        - make -j2 1>/dev/null
+        - make install 1>/dev/null
+        - popd
+        - curl -sL https://ftp.gnu.org/gnu/gettext/gettext-${GETTEXT_VERSION}.tar.gz -o gettext-${GETTEXT_VERSION}.tar.gz
+        - tar -xf gettext-${GETTEXT_VERSION}.tar.gz
+        - pushd gettext-${GETTEXT_VERSION}
+        - ./configure --without-emacs --disable-java --disable-c++ --enable-fast-install --prefix=${HOME}/.local 1>/dev/null
+        - make -j2 1>/dev/null
+        - make install 1>/dev/null
+        - popd
+        - export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
+      script:
+        - travis-cargo build -- --verbose --verbose
+        - travis-cargo test
+        - travis-cargo doc
 before_script:
   - gpg --version || true
   - gpg2 --version || true
@@ -48,6 +65,8 @@ before_script:
 env:
   global:
     - GPGME_DEBUG=9
+    - AUTOMAKE_VERSION=1.14.1
+    - GETTEXT_VERSION=0.19.3
     - TRAVIS_CARGO_NIGHTLY_FEATURE=nightly
     - secure: KKPYXC3dn8CR8YRPuqkBSEu9VUjt7qSTLENnPYz4B2+lFT0iI265MqZGaHFhBv3YHjV/ONjvOj6Tn1l1JFIzLyBbiJ9EeY/5u/kh+tN2fjR8AniaqPG+SZuRERZwe92T/8xr+fGdzlG9hKr7XgAXQAdB7hAlQoU+cuiwuB0+FDMBciDELnLokIRCoKzW0LSY5EvQQ2BkPHuWv3n04isd7WF11IsidqN0HMDtSaVSC6FbfpW/MdlRqVzey/VxG/BpY0FWvCkRayB7NVLEWXtr/rWyn3jY6pKqev+I0w6eIL/hvKrQUrmSP3y0RJcCgq/7asdNQDeIFXbT1emFXw3dKmA9ZdSzBnm5Z2NO18DNAb3yUQjCJztSWaCfyEbKFbrV/V6cl8I61gHzGzS8kWG8kAbC6dSQxaAtm3wrcrPI1q4bHj0JAXJ27ICKAHoxMUWX50+tMZDchv8exQjBPu35gPi+5tJGCuGeSnZ33w+XHPTdJtb1Hqt87CSEs8umJyZbjT/NpIWzgKJz/2dTX1dpvEnJ0THRMTd2W2TQra9Y9e6GxUZlV6MVI6pDSBKdee6fGTxAtfmVzgL6Bfey5vP+70RanHmLTN/FJXw/thEfZaSsZnK298XsmJ6WXksCEBo40E0wINDe6R7R4egzTzoFqUzsv/uPNu/0QXXrM8DWTo4=
 branches:
