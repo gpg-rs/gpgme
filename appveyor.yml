@@ -1,6 +1,4 @@
 environment:
-  global:
-    GPGME_DEBUG: 9
   matrix:
     - TARGET: x86_64-pc-windows-gnu
       MSYS_BITS: 64
@@ -21,5 +19,6 @@ install:
   - gpg --version
 build: false
 test_script:
+  - set GPGME_DEBUG=9
   - cargo build --verbose --verbose --target %TARGET%
   - cargo test --verbose --target %TARGET%
