@@ -57,6 +57,10 @@ fn main() {
     if !Path::new("libassuan/.git").exists() || !Path::new("gpgme/.git").exists() {
         run(Command::new("git").args(&["submodule", "update", "--init"]));
     }
+    run(Command::new("git")
+        .current_dir("libassuan")
+        .args(&["apply", "../libassuan-remove-doc.patch"]));
+    run(Command::new("git").current_dir("gpgme").args(&["apply", "../gpgme-remove-doc.patch"]));
 
     if try_build() || try_config("gpgme-config") {
         return;
@@ -136,18 +140,19 @@ fn try_build() -> bool {
         .env("CC", compiler.path())
         .env("CFLAGS", &cflags)
         .arg(msys_compatible(src.join("configure")))
-        .args(&["--enable-maintainer-mode",
-                "--build", gnu_target(&host),
+        .args(&["--build", gnu_target(&host),
                 "--host", gnu_target(&target),
                 "--enable-static",
                 "--disable-shared",
-                &format!("--with-libgpg-error-prefix={}", msys_compatible(&gpgerror_root)),
+                &format!("--with-libgpg-error-prefix={}",
+                         msys_compatible(&gpgerror_root)),
                 &format!("--prefix={}", msys_compatible(&dst))])) {
         return false;
     }
     if !run(Command::new("make")
         .current_dir(&build)
-        .arg("-j").arg(env::var("NUM_JOBS").unwrap())) {
+        .arg("-j")
+        .arg(env::var("NUM_JOBS").unwrap())) {
         return false;
     }
     if !run(Command::new("make")
@@ -168,20 +173,21 @@ fn try_build() -> bool {
         .env("CC", compiler.path())
         .env("CFLAGS", &cflags)
         .arg(msys_compatible(src.join("configure")))
-        .args(&["--enable-maintainer-mode",
-                "--build", gnu_target(&host),
+        .args(&["--build", gnu_target(&host),
                 "--host", gnu_target(&target),
                 "--enable-static",
                 "--disable-shared",
                 "--disable-languages",
-                &format!("--with-libgpg-error-prefix={}", msys_compatible(&gpgerror_root)),
+                &format!("--with-libgpg-error-prefix={}",
+                         msys_compatible(&gpgerror_root)),
                 &format!("--with-libassuan-prefix={}", msys_compatible(&dst)),
                 &format!("--prefix={}", msys_compatible(&dst))])) {
         return false;
     }
     if !run(Command::new("make")
         .current_dir(&build)
-        .arg("-j").arg(env::var("NUM_JOBS").unwrap())) {
+        .arg("-j")
+        .arg(env::var("NUM_JOBS").unwrap())) {
         return false;
     }
     if !run(Command::new("make").current_dir(&build).arg("install")) {
@@ -204,8 +210,7 @@ fn test_version(version: &str) {
             Ordering::Less => break,
             Ordering::Greater => {
                 panic!("GPGME version `{}` is less than requested `{}`",
-                       version,
-                       TARGET_VERSION)
+                       version, TARGET_VERSION)
             }
             _ => (),
         }

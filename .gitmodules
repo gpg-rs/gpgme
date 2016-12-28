@@ -1,6 +1,8 @@
 [submodule "gpgme-sys/gpgme"]
 	path = gpgme-sys/gpgme
 	url = git://git.gnupg.org/gpgme.git
+	shallow = true
 [submodule "gpgme-sys/libassuan"]
 	path = gpgme-sys/libassuan
 	url = git://git.gnupg.org/libassuan.git
+	shallow = true

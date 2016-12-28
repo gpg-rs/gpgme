@@ -1,9 +1,15 @@
 environment:
+  global:
+    GPGME_DEBUG: 9
   matrix:
     - TARGET: x86_64-pc-windows-gnu
       MSYS_BITS: 64
     - TARGET: i686-pc-windows-gnu
       MSYS_BITS: 32
+branches:
+  except:
+    - gh-pages
+skip_tags: true
 install:
   - curl -sSf -o rustup-init.exe https://win.rustup.rs/
   - rustup-init.exe -y --default-host %TARGET%
@@ -13,9 +19,7 @@ install:
   - rustc -V
   - cargo -V
   - gpg --version
-
 build: false
-
 test_script:
   - cargo build --verbose --verbose --target %TARGET%
   - cargo test --verbose --target %TARGET%

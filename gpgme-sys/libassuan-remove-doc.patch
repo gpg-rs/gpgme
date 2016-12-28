@@ -1,0 +1,25 @@
+diff --git i/Makefile.am w/Makefile.am
+index fdfd791..b6b9fbc 100644
+--- i/Makefile.am
++++ w/Makefile.am
+@@ -28,7 +28,7 @@ EXTRA_DIST = autogen.sh autogen.rc README.GIT         	                \
+              tests/ChangeLog-2011 contrib/ChangeLog-2011     		\
+              build-aux/git-log-footer build-aux/git-log-fix
+ 
+-SUBDIRS = m4 src doc tests
++SUBDIRS = m4 src tests
+ 
+ 
+ dist-hook: gen-ChangeLog
+diff --git i/configure.ac w/configure.ac
+index 5da876d..fe3767a 100644
+--- i/configure.ac
++++ w/configure.ac
+@@ -459,7 +459,6 @@ fi
+ AC_CONFIG_FILES([Makefile])
+ AC_CONFIG_FILES([m4/Makefile])
+ AC_CONFIG_FILES([src/Makefile])
+-AC_CONFIG_FILES([doc/Makefile])
+ AC_CONFIG_FILES([tests/Makefile])
+ AC_CONFIG_FILES([src/libassuan-config], [chmod +x src/libassuan-config])
+ AC_CONFIG_FILES([src/versioninfo.rc])
