@@ -11,13 +11,13 @@ use ffi;
 use {NonZero, Protocol, TOKEN, Token};
 use error::Result;
 
-#[derive(Debug, Copy, Clone)]
-pub struct EngineInfo<'a, T: 'a>(NonZero<ffi::gpgme_engine_info_t>, PhantomData<&'a T>);
+#[derive(Copy, Clone)]
+pub struct EngineInfo<'a>(NonZero<ffi::gpgme_engine_info_t>, PhantomData<&'a ()>);
 
-unsafe impl<'a, T> Send for EngineInfo<'a, T> {}
-unsafe impl<'a, T> Sync for EngineInfo<'a, T> {}
+unsafe impl<'a> Send for EngineInfo<'a> {}
+unsafe impl<'a> Sync for EngineInfo<'a> {}
 
-impl<'a, T> EngineInfo<'a, T> {
+impl<'a> EngineInfo<'a> {
     impl_wrapper!(@phantom EngineInfo: ffi::gpgme_engine_info_t);
 
     /// Returns the `Protocol` implemented by the engine.
@@ -67,25 +67,20 @@ impl<'a, T> EngineInfo<'a, T> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct EngineInfos<'a, T: 'a> {
-    current: Option<EngineInfo<'a, T>>,
-    left: Option<usize>,
-}
-
-impl<'a, T> EngineInfos<'a, T> {
-    #[inline]
-    pub unsafe fn from_list(first: ffi::gpgme_engine_info_t) -> Self {
-        EngineInfos {
-            current: first.as_mut().map(|r| EngineInfo::from_raw(r)),
-            left: count_list!(first),
-        }
+impl<'a> fmt::Debug for EngineInfo<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("EngineInfo")
+            .field("raw", &self.as_raw())
+            .field("protocol", &self.protocol())
+            .field("path", &self.path_raw())
+            .field("home_dir", &self.home_dir_raw())
+            .field("version", &self.version_raw())
+            .field("required_version", &self.required_version_raw())
+            .finish()
     }
 }
 
-impl<'a, T> Iterator for EngineInfos<'a, T> {
-    list_iterator!(EngineInfo<'a, T>, EngineInfo::from_raw);
-}
+impl_list_iterator!(EngineInfos, EngineInfo, ffi::gpgme_engine_info_t);
 
 pub struct EngineInfoGuard(RwLockReadGuard<'static, ()>);
 
@@ -100,12 +95,12 @@ impl EngineInfoGuard {
     }
 
     #[inline]
-    pub fn get(&self, proto: Protocol) -> Option<EngineInfo<()>> {
+    pub fn get(&self, proto: Protocol) -> Option<EngineInfo> {
         self.iter().find(|info| info.protocol() == proto)
     }
 
     #[inline]
-    pub fn iter(&self) -> EngineInfos<()> {
+    pub fn iter(&self) -> EngineInfos {
         unsafe {
             let mut first = ptr::null_mut();
             assert_eq!(ffi::gpgme_get_engine_info(&mut first), 0);
@@ -115,8 +110,8 @@ impl EngineInfoGuard {
 }
 
 impl<'a> IntoIterator for &'a EngineInfoGuard {
-    type Item = EngineInfo<'a, ()>;
-    type IntoIter = EngineInfos<'a, ()>;
+    type Item = EngineInfo<'a>;
+    type IntoIter = EngineInfos<'a>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {

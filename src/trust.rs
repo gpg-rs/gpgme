@@ -1,11 +1,11 @@
 use std::ffi::CStr;
+use std::fmt;
 use std::str::Utf8Error;
 
 use ffi;
 
 use NonZero;
 
-#[derive(Debug)]
 pub struct TrustItem(NonZero<ffi::gpgme_trust_item_t>);
 
 unsafe impl Send for TrustItem {}
@@ -74,5 +74,18 @@ impl TrustItem {
     #[inline]
     pub fn validity_raw(&self) -> Option<&CStr> {
         unsafe { (*self.as_raw()).validity.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+}
+
+impl fmt::Debug for TrustItem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TrustItem")
+            .field("raw", &self.as_raw())
+            .field("trust_level", &self.trust_level())
+            .field("key_id", &self.key_id_raw())
+            .field("user_id", &self.user_id_raw())
+            .field("owner_trust", &self.owner_trust_raw())
+            .field("validity", &self.validity_raw())
+            .finish()
     }
 }

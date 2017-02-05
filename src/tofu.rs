@@ -102,16 +102,16 @@ impl<'a> TofuInfo<'a> {
 impl<'a> fmt::Debug for TofuInfo<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TofuInfo")
-            .field("desc", &self.description().unwrap_or("<null>"))
+            .field("raw", &self.as_raw())
+            .field("description", &self.description_raw())
             .field("validity", &self.validity())
             .field("policy", &self.policy())
-            .field("sign_count", &self.signature_count())
-            .field("sign_first", &self.first_signed())
-            .field("sign_last", &self.last_signed())
-            .field("encr_count", &self.encrypted_count())
-            .field("encr_first", &self.first_encrypted())
-            .field("encr_last", &self.last_encrypted())
-            .field("raw", &*self.0)
+            .field("signature_count", &self.signature_count())
+            .field("first_signed", &self.first_signed())
+            .field("last_signed", &self.last_signed())
+            .field("encrypted_count", &self.encrypted_count())
+            .field("first_encrypt", &self.first_encrypted())
+            .field("last_encrypt", &self.last_encrypted())
             .finish()
     }
 }

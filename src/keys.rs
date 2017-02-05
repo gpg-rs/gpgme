@@ -169,14 +169,14 @@ impl Key {
         self.fingerprint_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    #[cfg(not(feature = "v1_7_0"))]
     #[inline]
+    #[cfg(not(feature = "v1_7_0"))]
     pub fn fingerprint_raw(&self) -> Option<&CStr> {
         self.primary_key().and_then(|k| k.fingerprint_raw())
     }
 
-    #[cfg(feature = "v1_7_0")]
     #[inline]
+    #[cfg(feature = "v1_7_0")]
     pub fn fingerprint_raw(&self) -> Option<&CStr> {
         unsafe {
             (*self.as_raw())
@@ -225,21 +225,28 @@ impl Key {
 impl fmt::Debug for Key {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Key")
-            .field("protocol", &self.protocol().name().unwrap_or("<null>"))
-            .field("owner_trust", &self.owner_trust().to_string())
-            .field("issuer", &self.issuer_name().unwrap_or("<null>"))
-            .field("fingerprint", &self.fingerprint().unwrap_or("<null>"))
+            .field("raw", &self.as_raw())
+            .field("protocol", &self.protocol())
+            .field("owner_trust", &self.owner_trust())
+            .field("issuer", &self.issuer_name_raw())
+            .field("fingerprint", &self.fingerprint_raw())
             .field("list_mode", &self.key_list_mode())
+            .field("has_secret", &self.has_secret())
+            .field("expired", &self.is_expired())
+            .field("revoked", &self.is_revoked())
+            .field("invalid", &self.is_invalid())
+            .field("disabled", &self.is_disabled())
             .field("can_sign", &self.can_sign())
             .field("can_encrypt", &self.can_encrypt())
             .field("can_certify", &self.can_certify())
             .field("can_auth", &self.can_authenticate())
-            .field("raw", &*self.0)
+            .field("user_ids", &self.user_ids())
+            .field("subkeys", &self.subkeys())
             .finish()
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct Subkey<'a>(NonZero<ffi::gpgme_subkey_t>, PhantomData<&'a Key>);
 
 unsafe impl<'a> Send for Subkey<'a> {}
@@ -353,8 +360,8 @@ impl<'a> Subkey<'a> {
         unsafe { KeyAlgorithm::from_raw((*self.as_raw()).pubkey_algo) }
     }
 
-    #[cfg(feature = "v1_7_0")]
     #[inline]
+    #[cfg(feature = "v1_7_0")]
     pub fn algorithm_name(&self) -> ::Result<String> {
         unsafe {
             match ffi::gpgme_pubkey_algo_string(self.as_raw()).as_mut() {
@@ -399,7 +406,6 @@ impl<'a> Subkey<'a> {
     }
 
     #[inline]
-    #[cfg(feature = "v1_5_0")]
     pub fn curve(&self) -> Result<&'a str, Option<Utf8Error>> {
         self.curve_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -409,26 +415,40 @@ impl<'a> Subkey<'a> {
     pub fn curve_raw(&self) -> Option<&'a CStr> {
         unsafe { (*self.as_raw()).curve.as_ref().map(|s| CStr::from_ptr(s)) }
     }
-}
 
-#[derive(Debug, Clone)]
-pub struct Subkeys<'a> {
-    current: Option<Subkey<'a>>,
-    left: Option<usize>,
-}
-
-impl<'a> Subkeys<'a> {
-    pub unsafe fn from_list(first: ffi::gpgme_subkey_t) -> Self {
-        Subkeys {
-            current: first.as_mut().map(|r| Subkey::from_raw(r)),
-            left: count_list!(first),
-        }
+    #[inline]
+    #[cfg(not(feature = "v1_5_0"))]
+    pub fn curve_raw(&self) -> Option<&'a CStr> {
+        None
     }
 }
 
-impl<'a> Iterator for Subkeys<'a> {
-    list_iterator!(Subkey<'a>, Subkey::from_raw);
+impl<'a> fmt::Debug for Subkey<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Subkey")
+            .field("raw", &self.as_raw())
+            .field("fingerprint", &self.fingerprint_raw())
+            .field("secret", &self.is_secret())
+            .field("algorithm", &self.algorithm())
+            .field("expired", &self.is_expired())
+            .field("creation_time", &self.creation_time())
+            .field("expiration_time", &self.expiration_time())
+            .field("curve", &self.curve_raw())
+            .field("length", &self.length())
+            .field("card_key", &self.is_card_key())
+            .field("card_serial_number", &self.card_serial_number_raw())
+            .field("revoked", &self.is_revoked())
+            .field("invalid", &self.is_invalid())
+            .field("disabled", &self.is_disabled())
+            .field("can_sign", &self.can_sign())
+            .field("can_encrypt", &self.can_encrypt())
+            .field("can_certify", &self.can_certify())
+            .field("can_auth", &self.can_authenticate())
+            .finish()
+    }
 }
+
+impl_list_iterator!(Subkeys, Subkey, ffi::gpgme_subkey_t);
 
 #[derive(Copy, Clone)]
 pub struct UserId<'a>(NonZero<ffi::gpgme_user_id_t>, PhantomData<&'a Key>);
@@ -514,18 +534,26 @@ impl<'a> UserId<'a> {
     pub fn tofu_info(&self) -> Option<::TofuInfo> {
         unsafe { (*self.as_raw()).tofu.as_mut().map(|t| ::TofuInfo::from_raw(t)) }
     }
+
+    #[inline]
+    #[cfg(not(feature = "v1_7_0"))]
+    pub fn tofu_info(&self) -> Option<::TofuInfo> {
+        None
+    }
 }
 
 impl<'a> fmt::Debug for UserId<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("UserId")
-            .field("name", &self.name().unwrap_or("<null>"))
-            .field("email", &self.email().unwrap_or("<null>"))
-            .field("comment", &self.comment().unwrap_or("<null>"))
-            .field("validity", &self.validity().to_string())
+            .field("raw", &self.as_raw())
+            .field("name", &self.name_raw())
+            .field("email", &self.email_raw())
+            .field("comment", &self.comment_raw())
+            .field("validity", &self.validity())
             .field("revoked", &self.is_revoked())
             .field("invalid", &self.is_invalid())
-            .field("raw", &*self.0)
+            .field("tofu_info", &self.tofu_info())
+            .field("signatures", &self.signatures())
             .finish()
     }
 }
@@ -537,26 +565,9 @@ impl<'a> fmt::Display for UserId<'a> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct UserIds<'a> {
-    current: Option<UserId<'a>>,
-    left: Option<usize>,
-}
+impl_list_iterator!(UserIds, UserId, ffi::gpgme_user_id_t);
 
-impl<'a> UserIds<'a> {
-    pub unsafe fn from_list(first: ffi::gpgme_user_id_t) -> Self {
-        UserIds {
-            current: first.as_mut().map(|r| UserId::from_raw(r)),
-            left: count_list!(first),
-        }
-    }
-}
-
-impl<'a> Iterator for UserIds<'a> {
-    list_iterator!(UserId<'a>, UserId::from_raw);
-}
-
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct UserIdSignature<'a>(NonZero<ffi::gpgme_key_sig_t>, PhantomData<&'a Key>);
 
 unsafe impl<'a> Send for UserIdSignature<'a> {}
@@ -606,7 +617,7 @@ impl<'a> UserIdSignature<'a> {
     }
 
     #[inline]
-    pub fn is_revokation(&self) -> bool {
+    pub fn is_revocation(&self) -> bool {
         unsafe { (*self.as_raw()).revoked() }
     }
 
@@ -695,26 +706,28 @@ impl<'a> UserIdSignature<'a> {
     }
 
     #[inline]
-    pub fn notations(&self) -> SignatureNotations<'a, Key> {
+    pub fn notations(&self) -> SignatureNotations<'a> {
         unsafe { SignatureNotations::from_list((*self.as_raw()).notations) }
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct UserIdSignatures<'a> {
-    current: Option<UserIdSignature<'a>>,
-    left: Option<usize>,
-}
-
-impl<'a> UserIdSignatures<'a> {
-    pub unsafe fn from_list(first: ffi::gpgme_key_sig_t) -> Self {
-        UserIdSignatures {
-            current: first.as_mut().map(|r| UserIdSignature::from_raw(r)),
-            left: count_list!(first),
-        }
+impl<'a> fmt::Debug for UserIdSignature<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("UserIdSignature")
+            .field("raw", &self.as_raw())
+            .field("signer_key", &self.signer_key_id_raw())
+            .field("signer", &self.signer_user_id_raw())
+            .field("algorithm", &self.algorithm())
+            .field("expired", &self.is_expired())
+            .field("creation_time", &self.creation_time())
+            .field("expiration_time", &self.expiration_time())
+            .field("invalid", &self.is_invalid())
+            .field("revoked", &self.is_revocation())
+            .field("exportable", &self.is_exportable())
+            .field("status", &self.status())
+            .field("notations", &self.notations())
+            .finish()
     }
 }
 
-impl<'a> Iterator for UserIdSignatures<'a> {
-    list_iterator!(UserIdSignature<'a>, UserIdSignature::from_raw);
-}
+impl_list_iterator!(UserIdSignatures, UserIdSignature, ffi::gpgme_key_sig_t);

@@ -1,4 +1,5 @@
-#![warn(missing_debug_implementations, trivial_numeric_casts)]
+#![warn(trivial_numeric_casts)]
+#![deny(missing_debug_implementations)]
 #![cfg_attr(any(nightly, feature="nightly"), feature(nonzero))]
 extern crate core;
 extern crate libc;
@@ -225,9 +226,6 @@ impl Token {
     /// Returns the default value for specified configuration option.
     ///
     /// Commonly supported values for `what` are specified in [`info`](info/).
-    ///
-    /// This function requires a version of GPGme >= 1.5.0.
-    #[cfg(feature = "v1_5_0")]
     pub fn get_dir_info<S>(&self, what: S) -> result::Result<&'static str, Option<Utf8Error>>
     where S: IntoNativeString {
         self.get_dir_info_raw(what).map_or(Err(None), |s| s.to_str().map_err(Some))
@@ -236,14 +234,20 @@ impl Token {
     /// Returns the default value for specified configuration option.
     ///
     /// Commonly supported values for `what` are specified in [`info`](info/).
-    ///
-    /// This function requires a version of GPGme >= 1.5.0.
     #[cfg(feature = "v1_5_0")]
     pub fn get_dir_info_raw<S: IntoNativeString>(&self, what: S) -> Option<&'static CStr> {
         let what = what.into_native();
         unsafe {
             ffi::gpgme_get_dirinfo(what.as_ref().as_ptr()).as_ref().map(|s| CStr::from_ptr(s))
         }
+    }
+
+    /// Returns the default value for specified configuration option.
+    ///
+    /// Commonly supported values for `what` are specified in [`info`](info/).
+    #[cfg(not(feature = "v1_5_0"))]
+    pub fn get_dir_info_raw<S: IntoNativeString>(&self, what: S) -> Option<&'static CStr> {
+        None
     }
 
     /// Checks that the engine implementing the specified protocol is supported by the library.

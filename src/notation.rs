@@ -1,5 +1,6 @@
-    #![allow(trivial_numeric_casts)]
+#![allow(trivial_numeric_casts)]
 use std::ffi::CStr;
+use std::fmt;
 use std::marker::PhantomData;
 use std::str::Utf8Error;
 
@@ -8,13 +9,13 @@ use ffi;
 use NonZero;
 use SignatureNotationFlags;
 
-#[derive(Debug, Copy, Clone)]
-pub struct SignatureNotation<'a, T: 'a>(NonZero<ffi::gpgme_sig_notation_t>, PhantomData<&'a T>);
+#[derive(Copy, Clone)]
+pub struct SignatureNotation<'a>(NonZero<ffi::gpgme_sig_notation_t>, PhantomData<&'a ()>);
 
-unsafe impl<'a, T> Send for SignatureNotation<'a, T> {}
-unsafe impl<'a, T> Sync for SignatureNotation<'a, T> {}
+unsafe impl<'a> Send for SignatureNotation<'a> {}
+unsafe impl<'a> Sync for SignatureNotation<'a> {}
 
-impl<'a, T> SignatureNotation<'a, T> {
+impl<'a> SignatureNotation<'a> {
     impl_wrapper!(@phantom SignatureNotation: ffi::gpgme_sig_notation_t);
 
     #[inline]
@@ -53,21 +54,16 @@ impl<'a, T> SignatureNotation<'a, T> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct SignatureNotations<'a, T: 'a> {
-    current: Option<SignatureNotation<'a, T>>,
-    left: Option<usize>,
-}
-
-impl<'a, T> SignatureNotations<'a, T> {
-    pub unsafe fn from_list(first: ffi::gpgme_sig_notation_t) -> Self {
-        SignatureNotations {
-            current: first.as_mut().map(|r| SignatureNotation::from_raw(r)),
-            left: count_list!(first),
-        }
+impl<'a> fmt::Debug for SignatureNotation<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("SignatureNotation")
+            .field("raw", &self.as_raw())
+            .field("name", &self.name_raw())
+            .field("value", &self.value_raw())
+            .field("critical", &self.is_critical())
+            .field("human_readable", &self.is_human_readable())
+            .finish()
     }
 }
 
-impl<'a, T> Iterator for SignatureNotations<'a, T> {
-    list_iterator!(SignatureNotation<'a, T>, SignatureNotation::from_raw);
-}
+impl_list_iterator!(SignatureNotations, SignatureNotation, ffi::gpgme_sig_notation_t);

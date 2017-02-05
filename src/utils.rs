@@ -26,27 +26,50 @@ macro_rules! count_list {
     };
 }
 
-macro_rules! list_iterator {
-    ($item:ty, $constructor:path) => {
-        type Item = $item;
+macro_rules! impl_list_iterator {
+    ($Name:ident, $Item:ident, $Raw:ty) => {
+        #[derive(Clone)]
+        pub struct $Name<'a> {
+            current: Option<$Item<'a>>,
+            left: Option<usize>,
+        }
 
-        #[inline]
-        fn next(&mut self) -> Option<Self::Item> {
-            unsafe {
-                self.current.take().map(|c| {
-                    self.current = (*c.as_raw()).next.as_mut().map(|r| $constructor(r));
-                    self.left = self.left.and_then(|x| x.checked_sub(1));
-                    c
-                })
+        impl<'a> $Name<'a> {
+            #[inline]
+            pub unsafe fn from_list(first: $Raw) -> Self {
+                $Name {
+                    current: first.as_mut().map(|r| $Item::from_raw(r)),
+                    left: count_list!(first),
+                }
             }
         }
 
-        #[inline]
-        fn size_hint(&self) -> (usize, Option<usize>) {
-            (self.left.unwrap_or(usize::max_value()), self.left)
+        impl<'a> Iterator for $Name<'a> {
+            type Item = $Item<'a>;
+
+            #[inline]
+            fn next(&mut self) -> Option<Self::Item> {
+                unsafe {
+                    self.current.take().map(|c| {
+                        self.current = (*c.as_raw()).next.as_mut().map(|r| $Item::from_raw(r));
+                        self.left = self.left.and_then(|x| x.checked_sub(1));
+                        c
+                    })
+                }
+            }
+
+            #[inline]
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                (self.left.unwrap_or(usize::max_value()), self.left)
+            }
+        }
+
+        impl<'a> ::std::fmt::Debug for $Name<'a> {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                f.debug_list().entries(self.clone()).finish()
+            }
         }
     };
-    ($item:ty) => (list_iterator!($item, $item::from_raw));
 }
 
 macro_rules! impl_wrapper {

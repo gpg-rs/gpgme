@@ -1,4 +1,5 @@
 use std::ffi::CStr;
+use std::fmt;
 use std::{mem, ptr, result};
 use std::str::Utf8Error;
 #[cfg(feature = "v1_7_0")]
@@ -18,7 +19,6 @@ use notation::SignatureNotations;
 use results;
 
 /// A context for cryptographic operations
-#[derive(Debug)]
 pub struct Context(NonZero<ffi::gpgme_ctx_t>);
 
 impl Drop for Context {
@@ -114,7 +114,7 @@ impl Context {
         Ok(())
     }
 
-    pub fn engine_info(&self) -> EngineInfo<Context> {
+    pub fn engine_info(&self) -> EngineInfo {
         unsafe { EngineInfo::from_raw(ffi::gpgme_ctx_get_engine_info(self.as_raw())) }
     }
 
@@ -737,7 +737,7 @@ impl Context {
         }
     }
 
-    pub fn signature_notations(&self) -> SignatureNotations<Context> {
+    pub fn signature_notations(&self) -> SignatureNotations {
         unsafe { SignatureNotations::from_list(ffi::gpgme_sig_notation_get(self.as_raw())) }
     }
 
@@ -934,6 +934,18 @@ impl Context {
     }
 }
 
+impl fmt::Debug for Context {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Context")
+            .field("raw", &self.as_raw())
+            .field("protocol", &self.protocol())
+            .field("armor", &self.armor())
+            .field("text_mode", &self.text_mode())
+            .field("engine", &self.engine_info())
+            .finish()
+    }
+}
+
 #[derive(Debug)]
 pub struct Keys<'a> {
     ctx: &'a mut Context,
@@ -1047,7 +1059,7 @@ impl<'a> Iterator for TrustItems<'a> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Signers<'a> {
     ctx: &'a Context,
     current: Option<libc::c_int>,
@@ -1095,5 +1107,11 @@ impl<'a> Iterator for Signers<'a> {
     #[cfg(feature = "v1_4_3")]
     fn count(self) -> usize {
         self.size_hint().0
+    }
+}
+
+impl<'a> fmt::Debug for Signers<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.clone()).finish()
     }
 }

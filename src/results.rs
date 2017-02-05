@@ -1,5 +1,6 @@
 #![allow(trivial_numeric_casts)]
 use std::ffi::CStr;
+use std::fmt;
 use std::marker::PhantomData;
 use std::result;
 use std::str::Utf8Error;
@@ -15,7 +16,6 @@ use notation::SignatureNotations;
 
 macro_rules! impl_result {
     ($Name:ident: $T:ty = $Constructor:path) => {
-        #[derive(Debug)]
         pub struct $Name(NonZero<$T>);
 
         unsafe impl Send for $Name {}
@@ -59,7 +59,7 @@ macro_rules! impl_result {
 
 macro_rules! impl_subresult {
     ($Name:ident: $T:ty, $IterName:ident, $Owner:ty) => {
-        #[derive(Debug, Copy, Clone)]
+        #[derive(Copy, Clone)]
         pub struct $Name<'a>(NonZero<$T>, PhantomData<&'a $Owner>);
 
         unsafe impl<'a> Send for $Name<'a> {}
@@ -69,24 +69,7 @@ macro_rules! impl_subresult {
             impl_wrapper!(@phantom $Name: $T);
         }
 
-        #[derive(Debug, Copy, Clone)]
-        pub struct $IterName<'a> {
-            current: Option<$Name<'a>>,
-            left: Option<usize>,
-        }
-
-        impl<'a> $IterName<'a> {
-            pub unsafe fn from_list(first: $T) -> Self {
-                $IterName {
-                    current: first.as_mut().map(|r| $Name::from_raw(r)),
-                    left: count_list!(first),
-                }
-            }
-        }
-
-        impl<'a> Iterator for $IterName<'a> {
-            list_iterator!($Name<'a>, $Name::from_raw);
-        }
+        impl_list_iterator!($IterName, $Name, $T);
     };
 }
 
@@ -114,10 +97,29 @@ impl<'a> InvalidKey<'a> {
     }
 }
 
+impl<'a> fmt::Debug for InvalidKey<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("InvalidKey")
+            .field("raw", &self.as_raw())
+            .field("fingerprint", &self.fingerprint_raw())
+            .field("reason", &self.reason())
+            .finish()
+    }
+}
+
 impl_result!(KeyListResult: ffi::gpgme_keylist_result_t = ffi::gpgme_op_keylist_result);
 impl KeyListResult {
     pub fn is_truncated(&self) -> bool {
         unsafe { (*self.as_raw()).truncated() }
+    }
+}
+
+impl fmt::Debug for KeyListResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("KeyListResult")
+            .field("raw", &self.as_raw())
+            .field("truncated", &self.is_truncated())
+            .finish()
     }
 }
 
@@ -149,6 +151,14 @@ impl KeyGenerationResult {
     }
 }
 
+impl<'a> fmt::Debug for KeyGenerationResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("KeyGenerationResult")
+            .field("raw", &self.as_raw())
+            .field("fingerprint", &self.fingerprint_raw())
+            .finish()
+    }
+}
 
 impl_result!(ImportResult: ffi::gpgme_import_result_t = ffi::gpgme_op_import_result);
 impl ImportResult {
@@ -223,6 +233,27 @@ impl ImportResult {
     }
 }
 
+impl fmt::Debug for ImportResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("ImportResult")
+            .field("raw", &self.as_raw())
+            .field("without_user_id", &self.without_user_id())
+            .field("new_user_ids", &self.new_user_ids())
+            .field("new_subkeys", &self.new_subkeys())
+            .field("new_signatures", &self.new_signatures())
+            .field("new_revocations", &self.new_revocations())
+            .field("considered", &self.considered())
+            .field("imported", &self.imported())
+            .field("unchanged", &self.unchanged())
+            .field("secret_considered", &self.secret_considered())
+            .field("secret_imported", &self.secret_imported())
+            .field("secret_unchanged", &self.secret_unchanged())
+            .field("not_imported", &self.not_imported())
+            .field("imports", &self.imports())
+            .finish()
+    }
+}
+
 impl_subresult!(Import: ffi::gpgme_import_status_t, Imports, ImportResult);
 impl<'a> Import<'a> {
     #[inline]
@@ -249,6 +280,17 @@ impl<'a> Import<'a> {
     }
 }
 
+impl<'a> fmt::Debug for Import<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Import")
+            .field("raw", &self.as_raw())
+            .field("fingerprint", &self.fingerprint_raw())
+            .field("result", &self.result())
+            .field("status", &self.status())
+            .finish()
+    }
+}
+
 impl_result!(EncryptionResult: ffi::gpgme_encrypt_result_t = ffi::gpgme_op_encrypt_result);
 impl EncryptionResult {
     #[inline]
@@ -256,6 +298,16 @@ impl EncryptionResult {
         unsafe { InvalidKeys::from_list((*self.as_raw()).invalid_recipients) }
     }
 }
+
+impl fmt::Debug for EncryptionResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("EncryptionResult")
+            .field("raw", &self.as_raw())
+            .field("invalid_recipients", &self.invalid_recipients())
+            .finish()
+    }
+}
+
 impl_result!(DecryptionResult: ffi::gpgme_decrypt_result_t = ffi::gpgme_op_decrypt_result);
 impl DecryptionResult {
     #[inline]
@@ -289,6 +341,18 @@ impl DecryptionResult {
     }
 }
 
+impl fmt::Debug for DecryptionResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("DecryptionResult")
+            .field("raw", &self.as_raw())
+            .field("unsupported_algorithm", &self.unsupported_algorithm_raw())
+            .field("wrong_key_usage", &self.is_wrong_key_usage())
+            .field("filename", &self.filename_raw())
+            .field("recipients", &self.recipients())
+            .finish()
+    }
+}
+
 impl_subresult!(Recipient: ffi::gpgme_recipient_t,
                 Recipients,
                 DecryptionResult);
@@ -317,6 +381,17 @@ impl<'a> Recipient<'a> {
     }
 }
 
+impl<'a> fmt::Debug for Recipient<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Recipient")
+            .field("raw", &self.as_raw())
+            .field("key_id", &self.key_id_raw())
+            .field("algorithm", &self.algorithm())
+            .field("status", &self.status())
+            .finish()
+    }
+}
+
 impl_result!(SigningResult: ffi::gpgme_sign_result_t = ffi::gpgme_op_sign_result);
 impl SigningResult {
     #[inline]
@@ -327,6 +402,16 @@ impl SigningResult {
     #[inline]
     pub fn new_signatures(&self) -> NewSignatures {
         unsafe { NewSignatures::from_list((*self.as_raw()).signatures) }
+    }
+}
+
+impl fmt::Debug for SigningResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("SigningResult")
+            .field("raw", &self.as_raw())
+            .field("invalid_signers", &self.invalid_signers())
+            .field("new_signatures", &self.new_signatures())
+            .finish()
     }
 }
 
@@ -371,6 +456,20 @@ impl<'a> NewSignature<'a> {
     }
 }
 
+impl<'a> fmt::Debug for NewSignature<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("NewSignature")
+            .field("raw", &self.as_raw())
+            .field("fingerprint", &self.fingerprint_raw())
+            .field("creation_time", &self.creation_time())
+            .field("mode", &self.mode())
+            .field("key_algorithm", &self.key_algorithm())
+            .field("hash_algorithm", &self.hash_algorithm())
+            .field("class", &self.signature_class())
+            .finish()
+    }
+}
+
 impl_result!(VerificationResult: ffi::gpgme_verify_result_t = ffi::gpgme_op_verify_result);
 impl VerificationResult {
     #[inline]
@@ -386,6 +485,16 @@ impl VerificationResult {
     #[inline]
     pub fn signatures(&self) -> Signatures {
         unsafe { Signatures::from_list((*self.as_raw()).signatures) }
+    }
+}
+
+impl fmt::Debug for VerificationResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("VerificationResult")
+            .field("raw", &self.as_raw())
+            .field("filename", &self.filename_raw())
+            .field("signatures", &self.signatures())
+            .finish()
     }
 }
 
@@ -521,7 +630,7 @@ impl<'a> Signature<'a> {
     }
 
     #[inline]
-    pub fn notations(&self) -> SignatureNotations<'a, VerificationResult> {
+    pub fn notations(&self) -> SignatureNotations<'a> {
         unsafe { SignatureNotations::from_list((*self.as_raw()).notations) }
     }
 
@@ -534,5 +643,29 @@ impl<'a> Signature<'a> {
                 ::Key::from_raw(k)
             })
         }
+    }
+
+    #[inline]
+    #[cfg(not(feature = "v1_7_0"))]
+    pub fn key(&self) -> Option<::Key> {
+        None
+    }
+}
+
+impl<'a> fmt::Debug for Signature<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Signature")
+            .field("raw", &self.as_raw())
+            .field("fingerprint", &self.fingerprint_raw())
+            .field("creation_time", &self.creation_time())
+            .field("expiration_time", &self.expiration_time())
+            .field("key_algorithm", &self.key_algorithm())
+            .field("hash_algorithm", &self.hash_algorithm())
+            .field("summary", &self.summary())
+            .field("status", &self.status())
+            .field("validity", &self.validity())
+            .field("nonvalidity_reason", &self.nonvalidity_reason())
+            .field("notations", &self.notations())
+            .finish()
     }
 }
