@@ -168,8 +168,9 @@ fn try_build() -> bool {
     if !run(Command::new("sh").current_dir(&src).arg("autogen.sh")) {
         return false;
     }
-    if !run(Command::new("sh")
-        .current_dir(&build)
+
+    let mut configure = Command::new("sh");
+    configure.current_dir(&build)
         .env("CC", compiler.path())
         .env("CFLAGS", &cflags)
         .arg(msys_compatible(src.join("configure")))
@@ -181,7 +182,11 @@ fn try_build() -> bool {
                 &format!("--with-libgpg-error-prefix={}",
                          msys_compatible(&gpgerror_root)),
                 &format!("--with-libassuan-prefix={}", msys_compatible(&dst)),
-                &format!("--prefix={}", msys_compatible(&dst))])) {
+                &format!("--prefix={}", msys_compatible(&dst))]);
+    if target.contains("windows") {
+        configure.args(&["--disable-gpgsm-test", "--disable-gpgconf-test", "--disable-g13-test"]);
+    }
+    if !run(&mut configure) {
         return false;
     }
     if !run(Command::new("make")
