@@ -72,7 +72,7 @@ fn import_key(key: &[u8]) {
     assert!(child.wait().unwrap().success());
 }
 
-pub fn setup_agent(dir: &Path) {
+fn setup_agent(dir: &Path) {
     env::set_var("GNUPGHOME", dir);
     env::set_var("GPG_AGENT_INFO", "");
     let pinentry = {

@@ -40,12 +40,27 @@ cfg_if! {
 }
 
 fn main() {
-    if let Ok(lib) = env::var("GPGME_LIB") {
+    let path = env::var_os("GPGME_LIB_PATH");
+    let libs = env::var_os("GPGME_LIBS");
+    if path.is_some() || libs.is_some() {
         let mode = match env::var_os("GPGME_STATIC") {
             Some(_) => "static",
             _ => "dylib",
         };
-        println!("cargo:rustc-link-lib={0}={1}", mode, lib);
+
+        for path in path.iter().flat_map(env::split_paths) {
+            println!("cargo:rustc-link-search=native={}", path.display());
+        }
+        match libs {
+            Some(libs) => {
+                for lib in env::split_paths(&libs) {
+                    println!("cargo:rustc-link-lib={0}={1}", mode, lib.display());
+                }
+            }
+            None => {
+                println!("cargo:rustc-link-lib={0}={1}", mode, "gpgme");
+            }
+        }
         return;
     } else if let Some(path) = env::var_os("GPGME_CONFIG") {
         if !try_config(path) {
@@ -71,22 +86,26 @@ fn main() {
 fn try_config<S: AsRef<OsStr>>(path: S) -> bool {
     let path = path.as_ref();
 
-    if let Some(output) = output(Command::new(&path).arg("--version")) {
+    let mut cmd = path.to_owned();
+    cmd.push(" --version");
+    if let Some(output) = output(Command::new("sh").arg("-c").arg(cmd)) {
         test_version(&output);
     } else {
         return false;
     }
 
-    if let Some(output) = output(Command::new(&path).arg("--prefix")) {
+    let mut cmd = path.to_owned();
+    cmd.push(" --prefix");
+    if let Some(output) = output(Command::new("sh").arg("-c").arg(cmd)) {
         println!("cargo:root={}", output);
     }
 
-    let mut command = Command::new(&path);
+    let mut cmd = path.to_owned();
     if cfg!(unix) {
-        command.arg("--thread=pthread");
+        cmd.push(" --thread=pthread");
     }
-    command.arg("--libs");
-    if let Some(output) = output(&mut command) {
+    cmd.push(" --libs");
+    if let Some(output) = output(Command::new("sh").arg("-c").arg(cmd)) {
         parse_config_output(&output);
         return true;
     }
@@ -118,8 +137,8 @@ fn parse_config_output(output: &str) {
 
 fn try_build() -> bool {
     let src = PathBuf::from(env::current_dir().unwrap()).join("libassuan");
-    let dst = env::var("OUT_DIR").unwrap();
-    let build = PathBuf::from(&dst).join("build/assuan");
+    let dst = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+    let build = dst.clone().join("build/assuan");
     let target = env::var("TARGET").unwrap();
     let host = env::var("HOST").unwrap();
     let gpgerror_root = env::var("DEP_GPG_ERROR_ROOT").unwrap();
@@ -162,7 +181,7 @@ fn try_build() -> bool {
     }
 
     let src = PathBuf::from(env::current_dir().unwrap()).join("gpgme");
-    let build = PathBuf::from(&dst).join("build/gpgme");
+    let build = dst.clone().join("build/gpgme");
     let _ = fs::create_dir_all(&build);
 
     if !run(Command::new("sh").current_dir(&src).arg("autogen.sh")) {
@@ -199,11 +218,10 @@ fn try_build() -> bool {
         return false;
     }
 
-    println!("cargo:rustc-link-search=native={}",
-             PathBuf::from(dst.clone()).join("lib").display());
+    println!("cargo:rustc-link-search=native={}", dst.clone().join("lib").display());
     println!("cargo:rustc-link-lib=static=assuan");
     println!("cargo:rustc-link-lib=static=gpgme");
-    println!("cargo:root={}", &dst);
+    println!("cargo:root={}", dst.display());
     true
 }
 
@@ -272,11 +290,21 @@ fn output(cmd: &mut Command) -> Option<String> {
 }
 
 fn msys_compatible<P: AsRef<Path>>(path: P) -> String {
-    let path = path.as_ref().to_str().unwrap();
-    if !cfg!(windows) {
-        return path.to_string();
+    use std::ascii::AsciiExt;
+
+    let mut path = path.as_ref().to_string_lossy().into_owned();
+    if !cfg!(windows) || Path::new(&path).is_relative() {
+        return path;
     }
-    path.replace("C:\\", "/c/").replace("\\", "/")
+
+    if let Some(b'a'...b'z') = path.as_bytes().first().map(u8::to_ascii_lowercase) {
+        if path.split_at(1).1.starts_with(":\\") {
+            (&mut path[..1]).make_ascii_lowercase();
+            path.remove(1);
+            path.insert(0, '/');
+        }
+    }
+    path.replace("\\", "/")
 }
 
 fn gnu_target(target: &str) -> &str {
