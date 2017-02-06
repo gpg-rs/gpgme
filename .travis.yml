@@ -10,28 +10,28 @@ matrix:
             - libgpgme11-dev
       script:
         - travis-cargo build -- --no-default-features
-        - travis-cargo test -- --no-default-features --color always | tee
+        - travis-cargo test -- --no-default-features --color always --no-fail-fast | tee
     - os: linux
       rust: stable
       before_install:
         - curl -sL https://ftp.gnu.org/gnu/automake/automake-${AUTOMAKE_VERSION}.tar.gz -o automake-${AUTOMAKE_VERSION}.tar.gz
         - tar -xf automake-${AUTOMAKE_VERSION}.tar.gz
         - pushd automake-${AUTOMAKE_VERSION}
-        - ./configure --prefix=${HOME}/.local 1>/dev/null
-        - make -j2 1>/dev/null
-        - make install 1>/dev/null
+        - ./configure --prefix=${HOME}/.local >/dev/null
+        - make -j2 >/dev/null
+        - make install >/dev/null
         - popd
         - curl -sL https://ftp.gnu.org/gnu/gettext/gettext-${GETTEXT_VERSION}.tar.gz -o gettext-${GETTEXT_VERSION}.tar.gz
         - tar -xf gettext-${GETTEXT_VERSION}.tar.gz
         - pushd gettext-${GETTEXT_VERSION}
-        - ./configure --without-emacs --disable-java --disable-c++ --enable-fast-install --prefix=${HOME}/.local 1>/dev/null
-        - make -j2 1>/dev/null
-        - make install 1>/dev/null
+        - ./configure --without-emacs --disable-java --disable-c++ --enable-fast-install --prefix=${HOME}/.local >/dev/null
+        - make -j2 >/dev/null
+        - make install >/dev/null
         - popd
         - export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
       script:
         - travis-cargo build -- --verbose --verbose
-        - travis-cargo test
+        - travis-cargo test --no-fail-fast
         - travis-cargo doc
       after_success:
         - travis-cargo doc-upload
@@ -41,21 +41,21 @@ matrix:
         - curl -sL https://ftp.gnu.org/gnu/automake/automake-${AUTOMAKE_VERSION}.tar.gz -o automake-${AUTOMAKE_VERSION}.tar.gz
         - tar -xf automake-${AUTOMAKE_VERSION}.tar.gz
         - pushd automake-${AUTOMAKE_VERSION}
-        - ./configure --prefix=${HOME}/.local 1>/dev/null
-        - make -j2 1>/dev/null
-        - make install 1>/dev/null
+        - ./configure --prefix=${HOME}/.local >/dev/null
+        - make -j2 >/dev/null
+        - make install >/dev/null
         - popd
         - curl -sL https://ftp.gnu.org/gnu/gettext/gettext-${GETTEXT_VERSION}.tar.gz -o gettext-${GETTEXT_VERSION}.tar.gz
         - tar -xf gettext-${GETTEXT_VERSION}.tar.gz
         - pushd gettext-${GETTEXT_VERSION}
-        - ./configure --without-emacs --disable-java --disable-c++ --enable-fast-install --prefix=${HOME}/.local 1>/dev/null
-        - make -j2 1>/dev/null
-        - make install 1>/dev/null
+        - ./configure --without-emacs --disable-java --disable-c++ --enable-fast-install --prefix=${HOME}/.local >/dev/null
+        - make -j2 >/dev/null
+        - make install >/dev/null
         - popd
         - export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
       script:
         - travis-cargo build -- --verbose --verbose
-        - travis-cargo test
+        - travis-cargo test --no-fail-fast
         - travis-cargo doc
 before_script:
   - gpg --version || true

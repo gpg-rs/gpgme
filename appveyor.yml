@@ -20,4 +20,4 @@ build: false
 test_script:
   - set GPGME_DEBUG=9
   - cargo build --verbose --verbose --target %TARGET%
-  - cargo test --verbose --target %TARGET%
+  - cargo test --verbose --target %TARGET% --no-fail-fast
