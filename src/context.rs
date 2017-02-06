@@ -132,12 +132,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn set_engine_path<S>(&self, path: S) -> Result<()> where S: IntoNativeString {
+    pub fn set_engine_path<S>(&mut self, path: S) -> Result<()> where S: IntoNativeString {
         let path = path.into_native();
-        let home_dir = self.engine_info()
-            .home_dir_raw()
-            .map(|s| s.as_ptr())
-            .unwrap_or(ptr::null());
+        let home_dir = self.engine_info().home_dir_raw().map_or(ptr::null(), CStr::as_ptr);
         unsafe {
             return_err!(ffi::gpgme_ctx_set_engine_info(self.as_raw(),
                                                        self.protocol().raw(),
@@ -148,8 +145,8 @@ impl Context {
     }
 
     #[inline]
-    pub fn set_engine_home_dir<S>(&self, home_dir: S) -> Result<()> where S: IntoNativeString {
-        let path = self.engine_info().path_raw().map(|s| s.as_ptr()).unwrap_or(ptr::null());
+    pub fn set_engine_home_dir<S>(&mut self, home_dir: S) -> Result<()> where S: IntoNativeString {
+        let path = self.engine_info().path_raw().map_or(ptr::null(), CStr::as_ptr);
         let home_dir = home_dir.into_native();
         unsafe {
             return_err!(ffi::gpgme_ctx_set_engine_info(self.as_raw(),
@@ -161,13 +158,13 @@ impl Context {
     }
 
     #[inline]
-    pub fn set_engine_info<S1, S2>(&mut self, path: S1, home_dir: S2) -> Result<()>
+    pub fn set_engine_info<S1, S2>(&mut self, path: Option<S1>, home_dir: Option<S2>) -> Result<()>
     where S1: IntoNativeString, S2: IntoNativeString {
-        let path = path.into_native();
-        let home_dir = home_dir.into_native();
+        let path = path.map(S1::into_native);
+        let home_dir = home_dir.map(S2::into_native);
         unsafe {
-            let path = path.as_ref().as_ptr();
-            let home_dir = home_dir.as_ref().as_ptr();
+            let path = path.map_or(ptr::null(), |s| s.as_ref().as_ptr());
+            let home_dir = home_dir.map_or(ptr::null(), |s| s.as_ref().as_ptr());
             return_err!(ffi::gpgme_ctx_set_engine_info(self.as_raw(),
                                                        self.protocol().raw(),
                                                        path,
@@ -629,7 +626,7 @@ impl Context {
 
     pub fn import_keys<'k, I>(&mut self, keys: I) -> Result<results::ImportResult>
     where I: IntoIterator<Item = &'k Key> {
-        let mut ptrs: Vec<_> = keys.into_iter().map(|k| k.as_raw()).collect();
+        let mut ptrs: Vec<_> = keys.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
             ptrs.as_mut_ptr()
@@ -669,7 +666,7 @@ impl Context {
         -> Result<()>
     where I: IntoIterator<Item = &'k Key> {
         let data = data.map_or(ptr::null_mut(), |d| d.as_raw());
-        let mut ptrs: Vec<_> = keys.into_iter().map(|k| k.as_raw()).collect();
+        let mut ptrs: Vec<_> = keys.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
             ptrs.as_mut_ptr()
@@ -879,7 +876,7 @@ impl Context {
         plaintext: &mut Data, ciphertext: &mut Data)
         -> Result<results::EncryptionResult>
     where I: IntoIterator<Item = &'k Key> {
-        let mut ptrs: Vec<_> = recp.into_iter().map(|k| k.as_raw()).collect();
+        let mut ptrs: Vec<_> = recp.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
             ptrs.as_mut_ptr()
@@ -939,7 +936,7 @@ impl Context {
         &mut self, recp: I, flags: ::EncryptFlags, plaintext: &mut Data, ciphertext: &mut Data)
         -> Result<(results::EncryptionResult, results::SigningResult)>
     where I: IntoIterator<Item = &'k Key> {
-        let mut ptrs: Vec<_> = recp.into_iter().map(|k| k.as_raw()).collect();
+        let mut ptrs: Vec<_> = recp.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
             ptrs.as_mut_ptr()

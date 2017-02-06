@@ -195,6 +195,35 @@ pub fn init() -> Token {
     TOKEN.clone()
 }
 
+cfg_if! {
+    if #[cfg(feature = "v1_4_0")] {
+        use std::sync::Mutex;
+
+        lazy_static! {
+            static ref FLAG_LOCK: Mutex<()> = Mutex::default();
+        }
+
+        pub fn set_flag<S1, S2>(name: S1, val: S2) -> Result<()>
+        where S1: IntoNativeString, S2: IntoNativeString {
+            let name = name.into_native();
+            let val = val.into_native();
+            let _lock = FLAG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+            unsafe {
+                if ffi::gpgme_set_global_flag(name.as_ref().as_ptr(), val.as_ref().as_ptr()) == 0 {
+                    Ok(())
+                } else {
+                    Err(Error::new(error::GPG_ERR_GENERAL))
+                }
+            }
+        }
+    } else {
+        pub fn set_flag<S1, S2>(_name: S1, _val: S2) -> Result<()>
+        where S1: IntoNativeString, S2: IntoNativeString {
+            Err(Error::new(error::GPG_ERR_GENERAL))
+        }
+    }
+}
+
 /// A type for managing the library's configuration.
 #[derive(Debug, Clone)]
 pub struct Token(Arc<TokenImp>);
@@ -266,15 +295,26 @@ impl Token {
         EngineInfoGuard::new(&TOKEN)
     }
 
+    unsafe fn get_engine_info(&self, proto: Protocol) -> ffi::gpgme_engine_info_t {
+        let mut info = ptr::null_mut();
+        assert_eq!(ffi::gpgme_get_engine_info(&mut info), 0);
+        while !info.is_null() && ((*info).protocol != proto.raw()) {
+            info = (*info).next;
+        }
+        info
+    }
+
     #[inline]
     pub fn set_engine_path<S>(&self, proto: Protocol, path: S) -> Result<()>
     where S: IntoNativeString {
         let path = path.into_native();
         unsafe {
             let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
-            return_err!(ffi::gpgme_set_engine_info(proto.raw(),
-                                                   path.as_ref().as_ptr(),
-                                                   ptr::null()));
+            let home_dir = self.get_engine_info(proto).as_ref().map_or(ptr::null(), |e| {
+                (*e).home_dir
+            });
+            return_err!(ffi::gpgme_set_engine_info(proto.raw(), path.as_ref().as_ptr(),
+                                                   home_dir));
         }
         Ok(())
     }
@@ -285,21 +325,24 @@ impl Token {
         let home_dir = home_dir.into_native();
         unsafe {
             let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
-            return_err!(ffi::gpgme_set_engine_info(proto.raw(),
-                                                   ptr::null(),
+            let path = self.get_engine_info(proto).as_ref().map_or(ptr::null(), |e| {
+                (*e).file_name
+            });
+            return_err!(ffi::gpgme_set_engine_info(proto.raw(), path,
                                                    home_dir.as_ref().as_ptr()));
         }
         Ok(())
     }
 
     #[inline]
-    pub fn set_engine_info<S1, S2>(&self, proto: Protocol, path: S1, home_dir: S2) -> Result<()>
+    pub fn set_engine_info<S1, S2>(&self, proto: Protocol,
+                                   path: Option<S1>, home_dir: Option<S2>) -> Result<()>
     where S1: IntoNativeString, S2: IntoNativeString {
-        let path = path.into_native();
-        let home_dir = home_dir.into_native();
+        let path = path.map(S1::into_native);
+        let home_dir = home_dir.map(S2::into_native);
         unsafe {
-            let path = path.as_ref().as_ptr();
-            let home_dir = home_dir.as_ref().as_ptr();
+            let path = path.map_or(ptr::null(), |s| s.as_ref().as_ptr());
+            let home_dir = home_dir.map_or(ptr::null(), |s| s.as_ref().as_ptr());
             let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
             return_err!(ffi::gpgme_set_engine_info(proto.raw(), path, home_dir));
         }
