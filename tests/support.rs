@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use std::env;
-use std::fs::{self, File};
+use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::path::Path;
@@ -51,36 +51,17 @@ macro_rules! test_case {
     };
 }
 
-const KEYS: [(&'static str, &'static [u8]); 5] = [("13CD0F3BDF24BE53FE192D62F18737256FF6E4FD",
-                                                   include_bytes!("./data/13CD0F3BDF24BE53FE192D62F18737256FF6E4FD")),
-                                                  ("76F7E2B35832976B50A27A282D9B87E44577EB66",
-                                                   include_bytes!("./data/76F7E2B35832976B50A27A282D9B87E44577EB66")),
-                                                  ("A0747D5F9425E6664F4FFBEED20FBCA79FDED2BD",
-                                                   include_bytes!("./data/A0747D5F9425E6664F4FFBEED20FBCA79FDED2BD")),
-                                                  ("13CBE3758AFE42B5E5E2AE4CED27AFA455E3F87F",
-                                                   include_bytes!("./data/13CBE3758AFE42B5E5E2AE4CED27AFA455E3F87F")),
-                                                  ("7A030357C0F253A5BBCD282FFC4E521B37558F5C",
-                                                   include_bytes!("./data/7A030357C0F253A5BBCD282FFC4E521B37558F5C"))];
-
 pub fn passphrase_cb(_req: PassphraseRequest, out: &mut Write) -> gpgme::Result<()> {
     try!(out.write_all(b"abc"));
     Ok(())
-}
-
-fn create_keys(dir: &Path) {
-    let keydir = dir.join("private-keys-v1.d");
-    fs::create_dir(&keydir).unwrap();
-    for &(fpr, key) in &KEYS {
-        let mut filename = keydir.join(fpr);
-        filename.set_extension("key");
-        File::create(filename).unwrap().write_all(key).unwrap();
-    }
 }
 
 fn import_key(key: &[u8]) {
     let gpg = env::var_os("GPG").unwrap_or("gpg".into());
     let mut child = Command::new(&gpg)
         .arg("--no-permission-warning")
+        .arg("--passphrase")
+        .arg("abc")
         .arg("--import")
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
@@ -128,7 +109,6 @@ impl TestCase {
     pub fn new(count: usize) -> TestCase {
         let dir = TempDir::new(".test-gpgme").unwrap();
         setup_agent(dir.path());
-        create_keys(dir.path());
         import_key(include_bytes!("./data/pubdemo.asc"));
         import_key(include_bytes!("./data/secdemo.asc"));
         TestCase {
@@ -157,7 +137,7 @@ impl TestCase {
             Err(err) => {
                 println!("Unable to kill agent: {}", err);
                 return;
-            },
+            }
         };
         if let Some(ref mut stdin) = child.stdin {
             let _ = stdin.write_all(b"KILLAGENT\nBYE\n");

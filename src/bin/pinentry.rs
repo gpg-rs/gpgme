@@ -3,11 +3,13 @@ use std::io::prelude::*;
 
 #[allow(dead_code)]
 fn main() {
-    let stdin = io::stdin();
     println!("OK Your orders please");
-    for cmd in stdin.lock().lines() {
-        match cmd.unwrap().as_ref() {
-            "GETPIN" => {
+
+    let stdin = io::stdin();
+    let mut lines = stdin.lock().lines();
+    while let Some(Ok(cmd)) = lines.next() {
+        match cmd.split(" ").nth(0) {
+            Some("GETPIN") => {
                 println!("D abc");
                 println!("OK");
             },
