@@ -31,7 +31,7 @@ matrix:
         - export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
       script:
         - travis-cargo build -- --verbose --verbose
-        - travis-cargo test --no-fail-fast
+        - travis-cargo test -- --no-fail-fast
         - travis-cargo doc
       after_success:
         - travis-cargo doc-upload
@@ -55,7 +55,7 @@ matrix:
         - export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
       script:
         - travis-cargo build -- --verbose --verbose
-        - travis-cargo test --no-fail-fast
+        - travis-cargo test -- --no-fail-fast
         - travis-cargo doc
 before_script:
   - gpg --version || true

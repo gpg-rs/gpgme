@@ -45,7 +45,10 @@ test = false
 name = "keylist"
 
 [[test]]
-name = "encrypt"
+name = "encrypt_simple"
+
+[[test]]
+name = "encrypt_symmetric"
 
 [[test]]
 name = "verify"

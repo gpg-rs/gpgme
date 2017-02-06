@@ -249,7 +249,7 @@ impl Token {
     /// Commonly supported values for `what` are specified in [`info`](info/).
     #[inline]
     #[cfg(not(feature = "v1_5_0"))]
-    pub fn get_dir_info_raw<S: IntoNativeString>(&self, what: S) -> Option<&'static CStr> {
+    pub fn get_dir_info_raw<S: IntoNativeString>(&self, _what: S) -> Option<&'static CStr> {
         None
     }
 
