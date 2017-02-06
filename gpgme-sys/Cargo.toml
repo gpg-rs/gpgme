@@ -6,6 +6,7 @@ version = "0.2.0"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
+categories = ["cryptography", "external-ffi-bindings"]
 links = "gpgme"
 build = "build.rs"
 
