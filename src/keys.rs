@@ -215,9 +215,9 @@ impl Key {
                                       ::KEY_LIST_MODE_VALIDATE |
                                       ::KEY_LIST_MODE_WITH_TOFU);
         if self.has_secret() {
-            ctx.get_key(self)
-        } else {
             ctx.get_secret_key(self)
+        } else {
+            ctx.get_key(self)
         }
     }
 }

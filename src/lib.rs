@@ -226,6 +226,7 @@ impl Token {
     /// Returns the default value for specified configuration option.
     ///
     /// Commonly supported values for `what` are specified in [`info`](info/).
+    #[inline]
     pub fn get_dir_info<S>(&self, what: S) -> result::Result<&'static str, Option<Utf8Error>>
     where S: IntoNativeString {
         self.get_dir_info_raw(what).map_or(Err(None), |s| s.to_str().map_err(Some))
@@ -234,6 +235,7 @@ impl Token {
     /// Returns the default value for specified configuration option.
     ///
     /// Commonly supported values for `what` are specified in [`info`](info/).
+    #[inline]
     #[cfg(feature = "v1_5_0")]
     pub fn get_dir_info_raw<S: IntoNativeString>(&self, what: S) -> Option<&'static CStr> {
         let what = what.into_native();
@@ -245,6 +247,7 @@ impl Token {
     /// Returns the default value for specified configuration option.
     ///
     /// Commonly supported values for `what` are specified in [`info`](info/).
+    #[inline]
     #[cfg(not(feature = "v1_5_0"))]
     pub fn get_dir_info_raw<S: IntoNativeString>(&self, what: S) -> Option<&'static CStr> {
         None
@@ -263,6 +266,7 @@ impl Token {
         EngineInfoGuard::new(&TOKEN)
     }
 
+    #[inline]
     pub fn set_engine_path<S>(&self, proto: Protocol, path: S) -> Result<()>
     where S: IntoNativeString {
         let path = path.into_native();
@@ -275,6 +279,7 @@ impl Token {
         Ok(())
     }
 
+    #[inline]
     pub fn set_engine_home_dir<S>(&self, proto: Protocol, home_dir: S) -> Result<()>
     where S: IntoNativeString {
         let home_dir = home_dir.into_native();
@@ -287,6 +292,7 @@ impl Token {
         Ok(())
     }
 
+    #[inline]
     pub fn set_engine_info<S1, S2>(&self, proto: Protocol, path: S1, home_dir: S2) -> Result<()>
     where S1: IntoNativeString, S2: IntoNativeString {
         let path = path.into_native();

@@ -19,6 +19,7 @@ use notation::SignatureNotations;
 use results;
 
 /// A context for cryptographic operations
+#[must_use]
 pub struct Context(NonZero<ffi::gpgme_ctx_t>);
 
 impl Drop for Context {
@@ -41,6 +42,7 @@ impl Context {
         }
     }
 
+    #[inline]
     pub fn from_protocol(proto: Protocol) -> Result<Self> {
         let ctx = try!(Context::new());
         unsafe {
@@ -49,35 +51,42 @@ impl Context {
         Ok(ctx)
     }
 
+    #[inline]
     pub fn protocol(&self) -> Protocol {
         unsafe { Protocol::from_raw(ffi::gpgme_get_protocol(self.as_raw())) }
     }
 
+    #[inline]
     pub fn armor(&self) -> bool {
         unsafe { ffi::gpgme_get_armor(self.as_raw()) != 0 }
     }
 
+    #[inline]
     pub fn set_armor(&mut self, enabled: bool) {
         unsafe {
             ffi::gpgme_set_armor(self.as_raw(), if enabled { 1 } else { 0 });
         }
     }
 
+    #[inline]
     pub fn text_mode(&self) -> bool {
         unsafe { ffi::gpgme_get_textmode(self.as_raw()) != 0 }
     }
 
+    #[inline]
     pub fn set_text_mode(&mut self, enabled: bool) {
         unsafe {
             ffi::gpgme_set_textmode(self.as_raw(), if enabled { 1 } else { 0 });
         }
     }
 
+    #[inline]
     #[cfg(feature = "v1_6_0")]
     pub fn offline(&self) -> bool {
         unsafe { ffi::gpgme_get_offline(self.as_raw()) != 0 }
     }
 
+    #[inline]
     #[cfg(feature = "v1_6_0")]
     pub fn set_offline(&mut self, enabled: bool) {
         unsafe {
@@ -85,12 +94,14 @@ impl Context {
         }
     }
 
+    #[inline]
     #[cfg(feature = "v1_8_0")]
     pub fn get_flag<S>(&self, name: S) -> result::Result<&str, Option<Utf8Error>>
     where S: IntoNativeString {
         self.get_flag_raw(name).map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    #[inline]
     #[cfg(feature = "v1_8_0")]
     pub fn get_flag_raw<S>(&self, name: S) -> Option<&CStr> where S: IntoNativeString {
         let name = name.into_native();
@@ -101,6 +112,7 @@ impl Context {
         }
     }
 
+    #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
     where S1: IntoNativeString, S2: IntoNativeString {
@@ -114,10 +126,12 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     pub fn engine_info(&self) -> EngineInfo {
         unsafe { EngineInfo::from_raw(ffi::gpgme_ctx_get_engine_info(self.as_raw())) }
     }
 
+    #[inline]
     pub fn set_engine_path<S>(&self, path: S) -> Result<()> where S: IntoNativeString {
         let path = path.into_native();
         let home_dir = self.engine_info()
@@ -133,6 +147,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     pub fn set_engine_home_dir<S>(&self, home_dir: S) -> Result<()> where S: IntoNativeString {
         let path = self.engine_info().path_raw().map(|s| s.as_ptr()).unwrap_or(ptr::null());
         let home_dir = home_dir.into_native();
@@ -145,6 +160,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     pub fn set_engine_info<S1, S2>(&mut self, path: S1, home_dir: S2) -> Result<()>
     where S1: IntoNativeString, S2: IntoNativeString {
         let path = path.into_native();
@@ -160,11 +176,13 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     #[cfg(feature = "v1_4_0")]
     pub fn pinentry_mode(self) -> ::PinentryMode {
         unsafe { ::PinentryMode::from_raw(ffi::gpgme_get_pinentry_mode(self.as_raw())) }
     }
 
+    #[inline]
     #[cfg(feature = "v1_4_0")]
     pub fn set_pinentry_mode(&mut self, mode: ::PinentryMode) -> Result<()> {
         unsafe {
@@ -243,6 +261,7 @@ impl Context {
         }
     }
 
+    #[inline]
     pub fn find_trust_items<S: IntoNativeString>(&mut self, pattern: S, max_level: i32)
         -> Result<TrustItems> {
         let pattern = pattern.into_native();
@@ -254,10 +273,12 @@ impl Context {
         Ok(TrustItems { ctx: self })
     }
 
+    #[inline]
     pub fn key_list_mode(&self) -> KeyListMode {
         unsafe { ::KeyListMode::from_bits_truncate(ffi::gpgme_get_keylist_mode(self.as_raw())) }
     }
 
+    #[inline]
     pub fn add_key_list_mode(&mut self, mask: KeyListMode) -> Result<()> {
         unsafe {
             let old = ffi::gpgme_get_keylist_mode(self.as_raw());
@@ -268,6 +289,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     pub fn set_key_list_mode(&mut self, mode: KeyListMode) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_set_keylist_mode(self.as_raw(), mode.bits()));
@@ -275,14 +297,17 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     pub fn keys(&mut self) -> Result<Keys> {
         Keys::new(self, None::<String>, false)
     }
 
+    #[inline]
     pub fn secret_keys(&mut self) -> Result<Keys> {
         Keys::new(self, None::<String>, true)
     }
 
+    #[inline]
     pub fn get_key(&mut self, key: &Key) -> Result<Key> {
         if let Some(fpr) = key.fingerprint_raw() {
             self.find_key(fpr)
@@ -291,6 +316,7 @@ impl Context {
         }
     }
 
+    #[inline]
     pub fn get_secret_key(&mut self, key: &Key) -> Result<Key> {
         if let Some(fpr) = key.fingerprint_raw() {
             self.find_secret_key(fpr)
@@ -301,6 +327,7 @@ impl Context {
 
     /// Returns the public key with the specified fingerprint, if such a key can
     /// be found. Otherwise, an error is returned.
+    #[inline]
     pub fn find_key<S: IntoNativeString>(&self, fingerprint: S) -> Result<Key> {
         let fingerprint = fingerprint.into_native();
         unsafe {
@@ -315,6 +342,7 @@ impl Context {
 
     /// Returns the secret key with the specified fingerprint, if such a key can
     /// be found. Otherwise, an error is returned.
+    #[inline]
     pub fn find_secret_key<S: IntoNativeString>(&self, fingerprint: S) -> Result<Key> {
         let fingerprint = fingerprint.into_native();
         unsafe {
@@ -329,6 +357,7 @@ impl Context {
 
     /// Returns an iterator for a list of all public keys matching one or more of the
     /// specified patterns.
+    #[inline]
     pub fn find_keys<I>(&mut self, patterns: I) -> Result<Keys>
     where I: IntoIterator, I::Item: IntoNativeString {
         Keys::new(self, patterns, false)
@@ -336,11 +365,13 @@ impl Context {
 
     /// Returns an iterator for a list of all secret keys matching one or more of the
     /// specified patterns.
+    #[inline]
     pub fn find_secret_keys<I>(&mut self, patterns: I) -> Result<Keys>
     where I: IntoIterator, I::Item: IntoNativeString {
         Keys::new(self, patterns, true)
     }
 
+    #[inline]
     pub fn generate_key<S>(&mut self, params: S, public: Option<&mut Data>,
         secret: Option<&mut Data>)
         -> Result<results::KeyGenerationResult>
@@ -357,6 +388,7 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn create_key<S1, S2>(&mut self, userid: S1, algo: S2, expires: Option<SystemTime>,
         flags: ::CreateKeyFlags)
@@ -379,6 +411,7 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn create_subkey<S>(&mut self, key: &Key, algo: S, expires: Option<SystemTime>,
         flags: ::CreateKeyFlags)
@@ -399,6 +432,7 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn add_uid<S>(&mut self, key: &Key, userid: S) -> Result<()> where S: IntoNativeString {
         let userid = userid.into_native();
@@ -411,6 +445,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn revoke_uid<S>(&mut self, key: &Key, userid: S) -> Result<()> where S: IntoNativeString {
         let userid = userid.into_native();
@@ -423,6 +458,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn sign_key<I>(&mut self, key: &Key, userids: I, expires: Option<SystemTime>) -> Result<()>
     where I: IntoIterator, I::Item: AsRef<[u8]> {
@@ -463,6 +499,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn change_key_tofu_policy(&mut self, key: &Key, policy: ::TofuPolicy) -> Result<()> {
         unsafe {
@@ -472,6 +509,7 @@ impl Context {
     }
 
     // Only works with GPG >= 2.0.15
+    #[inline]
     #[cfg(feature = "v1_3_0")]
     pub fn change_key_passphrase(&mut self, key: &Key) -> Result<()> {
         unsafe {
@@ -480,6 +518,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     pub fn edit_key<E: EditInteractor>(&mut self, key: &Key, interactor: E, data: &mut Data)
         -> Result<()> {
         unsafe {
@@ -496,6 +535,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     pub fn edit_card_key<E: EditInteractor>(&mut self, key: &Key, interactor: E, data: &mut Data)
         -> Result<()> {
         unsafe {
@@ -512,16 +552,19 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     pub fn edit_key_with<E: edit::Editor>(&mut self, key: &Key, editor: E, data: &mut Data)
         -> Result<()> {
         self.edit_key(key, edit::EditorWrapper::new(editor), data)
     }
 
+    #[inline]
     pub fn edit_card_key_with<E: edit::Editor>(&mut self, key: &Key, editor: E, data: &mut Data)
         -> Result<()> {
         self.edit_card_key(key, edit::EditorWrapper::new(editor), data)
     }
 
+    #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn interact<I: ::Interactor>(&mut self, key: &Key, interactor: I, data: &mut Data)
         -> Result<()> {
@@ -540,6 +583,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn interact_with_card<I: ::Interactor>(&mut self, key: &Key, interactor: I,
         data: &mut Data)
@@ -559,6 +603,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     pub fn delete_key(&mut self, key: &Key) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_op_delete(self.as_raw(), key.as_raw(), 0));
@@ -566,6 +611,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     pub fn delete_secret_key(&mut self, key: &Key) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_op_delete(self.as_raw(), key.as_raw(), 1));
@@ -573,6 +619,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     pub fn import(&mut self, key_data: &mut Data) -> Result<results::ImportResult> {
         unsafe {
             return_err!(ffi::gpgme_op_import(self.as_raw(), key_data.as_raw()));
@@ -595,6 +642,7 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    #[inline]
     pub fn export_all(&mut self, mode: ::ExportMode, data: Option<&mut Data>) -> Result<()> {
         self.export(None::<String>, mode, data)
     }
@@ -634,6 +682,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     #[cfg(feature = "v1_8_0")]
     pub fn clear_sender(&mut self) -> Result<()> {
         unsafe {
@@ -642,6 +691,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     #[cfg(feature = "v1_8_0")]
     pub fn set_sender<S: IntoNativeString>(&mut self, sender: S) -> Result<()> {
         let sender = sender.into_native();
@@ -651,6 +701,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     #[cfg(feature = "v1_8_0")]
     pub fn sender(&self) -> result::Result<&str, Option<Utf8Error>> {
         match self.sender_raw() {
@@ -659,15 +710,18 @@ impl Context {
         }
     }
 
+    #[inline]
     #[cfg(feature = "v1_8_0")]
     pub fn sender_raw(&self) -> Option<&CStr> {
         unsafe { ffi::gpgme_get_sender(self.as_raw()).as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
+    #[inline]
     pub fn clear_signers(&mut self) {
         unsafe { ffi::gpgme_signers_clear(self.as_raw()) }
     }
 
+    #[inline]
     pub fn add_signer(&mut self, key: &Key) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_signers_add(self.as_raw(), key.as_raw()));
@@ -675,6 +729,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     pub fn signers(&self) -> Signers {
         Signers {
             ctx: self,
@@ -682,12 +737,14 @@ impl Context {
         }
     }
 
+    #[inline]
     pub fn clear_signature_notations(&mut self) {
         unsafe {
             ffi::gpgme_sig_notation_clear(self.as_raw());
         }
     }
 
+    #[inline]
     pub fn add_signature_notation<S1, S2>(&mut self, name: S1, value: S2,
         flags: ::SignatureNotationFlags)
         -> Result<()>
@@ -703,6 +760,7 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     pub fn add_signature_policy_url<S>(&mut self, url: S, critical: bool) -> Result<()>
     where S: IntoNativeString {
         let url = url.into_native();
@@ -720,10 +778,12 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
     pub fn signature_policy_url(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.signature_policy_url_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    #[inline]
     pub fn signature_policy_url_raw(&self) -> Option<&CStr> {
         unsafe {
             let mut notation = ffi::gpgme_sig_notation_get(self.as_raw());
@@ -737,10 +797,12 @@ impl Context {
         }
     }
 
+    #[inline]
     pub fn signature_notations(&self) -> SignatureNotations {
         unsafe { SignatureNotations::from_list(ffi::gpgme_sig_notation_get(self.as_raw())) }
     }
 
+    #[inline]
     pub fn sign(&mut self, mode: ::SignMode, plain: &mut Data, signature: &mut Data)
         -> Result<results::SigningResult> {
         unsafe {
@@ -752,21 +814,25 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    #[inline]
     pub fn sign_clear(&mut self, plain: &mut Data, signed: &mut Data)
         -> Result<results::SigningResult> {
         self.sign(SignMode::Clear, plain, signed)
     }
 
+    #[inline]
     pub fn sign_detached(&mut self, plain: &mut Data, signature: &mut Data)
         -> Result<results::SigningResult> {
         self.sign(SignMode::Detached, plain, signature)
     }
 
+    #[inline]
     pub fn sign_normal(&mut self, plain: &mut Data, signed: &mut Data)
         -> Result<results::SigningResult> {
         self.sign(SignMode::Normal, plain, signed)
     }
 
+    #[inline]
     pub fn verify(&mut self, signature: &mut Data, signed: Option<&mut Data>,
         plain: Option<&mut Data>)
         -> Result<results::VerificationResult> {
@@ -778,11 +844,13 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    #[inline]
     pub fn verify_detached(&mut self, signature: &mut Data, signed: &mut Data)
         -> Result<results::VerificationResult> {
         self.verify(signature, Some(signed), None)
     }
 
+    #[inline]
     pub fn verify_opaque(&mut self, signature: &mut Data, plain: &mut Data)
         -> Result<results::VerificationResult> {
         self.verify(signature, None, Some(plain))
@@ -800,6 +868,7 @@ impl Context {
     /// let (mut plaintext, mut ciphertext) = (Data::new().unwrap(), Data::new().unwrap());
     /// ctx.encrypt(Some(&key), &mut plaintext, &mut ciphertext).unwrap();
     /// ```
+    #[inline]
     pub fn encrypt<'k, I>(&mut self, recp: I, plaintext: &mut Data, ciphertext: &mut Data)
         -> Result<results::EncryptionResult>
     where I: IntoIterator<Item = &'k Key> {
@@ -827,10 +896,12 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    #[inline]
     pub fn encrypt_symmetric(&mut self, plaintext: &mut Data, ciphertext: &mut Data) -> Result<()> {
         self.encrypt_symmetric_with_flags(::EncryptFlags::empty(), plaintext, ciphertext)
     }
 
+    #[inline]
     pub fn encrypt_symmetric_with_flags(&mut self, flags: ::EncryptFlags, plaintext: &mut Data,
         ciphertext: &mut Data)
         -> Result<()> {
@@ -856,6 +927,7 @@ impl Context {
     /// let (mut plaintext, mut ciphertext) = (Data::new().unwrap(), Data::new().unwrap());
     /// ctx.sign_and_encrypt(Some(&key), &mut plaintext, &mut ciphertext).unwrap();
     /// ```
+    #[inline]
     pub fn sign_and_encrypt<'k, I>(
         &mut self, recp: I, plaintext: &mut Data, ciphertext: &mut Data)
         -> Result<(results::EncryptionResult, results::SigningResult)>
@@ -896,6 +968,7 @@ impl Context {
     /// let mut plain = Data::new().unwrap();
     /// ctx.decrypt(&mut cipher, &mut plain).unwrap();
     /// ```
+    #[inline]
     pub fn decrypt(&mut self, ciphertext: &mut Data, plaintext: &mut Data)
         -> Result<results::DecryptionResult> {
         unsafe {
@@ -918,6 +991,7 @@ impl Context {
     /// let mut plain = Data::new().unwrap();
     /// ctx.decrypt_and_verify(&mut cipher, &mut plain).unwrap();
     /// ```
+    #[inline]
     pub fn decrypt_and_verify(
         &mut self, ciphertext: &mut Data, plaintext: &mut Data)
         -> Result<(results::DecryptionResult, results::VerificationResult)> {
