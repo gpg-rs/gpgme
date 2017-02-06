@@ -69,7 +69,7 @@ fn main() {
         return;
     }
 
-    if !Path::new("libassuan/.git").exists() || !Path::new("gpgme/.git").exists() {
+    if !Path::new("libassuan/autogen.sh").exists() || !Path::new("gpgme/autogen.sh").exists() {
         run(Command::new("git").args(&["submodule", "update", "--init"]));
     }
     run(Command::new("git")
