@@ -152,24 +152,28 @@ impl<'a> Data<'a> {
     #[inline]
     pub fn from_bytes<B: AsRef<[u8]>>(bytes: B) -> Result<Data<'static>> {
         let bytes = bytes.as_ref();
-        unsafe {
+        let mut data = unsafe {
             let (buf, len) = (bytes.as_ptr() as *const _, bytes.len().into());
             let mut data = ptr::null_mut();
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf, len, 1));
-            Ok(Data::from_raw(data))
-        }
+            Data::from_raw(data)
+        };
+        let _ = data.set_flag("size-hint", bytes.len().to_string());
+        Ok(data)
     }
 
     /// Constructs a data object which copies from `buf` as needed.
     #[inline]
     pub fn from_buffer<B: AsRef<[u8]> + ?Sized>(buf: &B) -> Result<Data> {
         let buf = buf.as_ref();
-        unsafe {
+        let mut data = unsafe {
             let (buf, len) = (buf.as_ptr() as *const _, buf.len().into());
             let mut data = ptr::null_mut();
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf, len, 0));
-            Ok(Data::from_raw(data))
-        }
+            Data::from_raw(data)
+        };
+        let _ = data.set_flag("size-hint", buf.len().to_string());
+        Ok(data)
     }
 
     #[inline]
@@ -327,6 +331,13 @@ impl<'a> Data<'a> {
                                                  value.as_ref().as_ptr()));
         }
         Ok(())
+    }
+
+    #[inline]
+    #[cfg(not(feature = "v1_7_0"))]
+    pub fn set_flag<S1, S2>(&mut self, _name: S1, _value: S2) -> Result<()>
+    where S1: IntoNativeString, S2: IntoNativeString {
+        Err(Error::new(error::GPG_ERR_GENERAL))
     }
 
     #[inline]
