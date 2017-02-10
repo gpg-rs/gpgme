@@ -38,7 +38,7 @@ pub use self::callbacks::{EditInteractionStatus, EditInteractor, InteractionStat
                           StatusHandler};
 pub use self::results::{DecryptionResult, EncryptionResult, Import, ImportResult, InvalidKey,
                         KeyGenerationResult, KeyListResult, NewSignature, PkaTrust, Recipient,
-                        Signature, SigningResult, VerificationResult};
+                        Signature, SigningResult, VerificationResult, QuerySwdbResult};
 pub use self::engine::EngineInfo;
 
 #[macro_use]
@@ -219,7 +219,7 @@ cfg_if! {
     } else {
         pub fn set_flag<S1, S2>(_name: S1, _val: S2) -> Result<()>
         where S1: IntoNativeString, S2: IntoNativeString {
-            Err(Error::new(error::GPG_ERR_GENERAL))
+            Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
         }
     }
 }
@@ -341,8 +341,8 @@ impl Token {
         let path = path.map(S1::into_native);
         let home_dir = home_dir.map(S2::into_native);
         unsafe {
-            let path = path.map_or(ptr::null(), |s| s.as_ref().as_ptr());
-            let home_dir = home_dir.map_or(ptr::null(), |s| s.as_ref().as_ptr());
+            let path = path.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
+            let home_dir = home_dir.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
             let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
             return_err!(ffi::gpgme_set_engine_info(proto.raw(), path, home_dir));
         }

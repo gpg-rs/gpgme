@@ -9,8 +9,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use tempdir::TempDir;
 
-use gpgme::{self, Context};
-use gpgme::PassphraseRequest;
+use gpgme::{self, Context, PassphraseRequest, PinentryMode};
 
 #[macro_export]
 macro_rules! fail_if_err {
@@ -167,6 +166,8 @@ impl<'a> Drop for Test<'a> {
 
 impl<'a> Test<'a> {
     pub fn create_context(&self) -> Context {
-        fail_if_err!(Context::from_protocol(gpgme::Protocol::OpenPgp))
+        let mut ctx = fail_if_err!(Context::from_protocol(gpgme::Protocol::OpenPgp));
+        let _ = ctx.set_pinentry_mode(PinentryMode::Loopback);
+        ctx
     }
 }

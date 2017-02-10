@@ -3,8 +3,9 @@ use std::ffi::CStr;
 use std::fmt;
 use std::{mem, ptr, result};
 use std::str::Utf8Error;
+use std::time::SystemTime;
 #[cfg(feature = "v1_7_0")]
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::UNIX_EPOCH;
 
 use libc;
 use conv::ValueInto;
@@ -96,7 +97,6 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(feature = "v1_8_0")]
     pub fn get_flag<S>(&self, name: S) -> result::Result<&str, Option<Utf8Error>>
     where S: IntoNativeString {
         self.get_flag_raw(name).map_or(Err(None), |s| s.to_str().map_err(Some))
@@ -114,6 +114,12 @@ impl Context {
     }
 
     #[inline]
+    #[cfg(not(feature = "v1_8_0"))]
+    pub fn get_flag_raw<S>(&self, _name: S) -> Option<&CStr> where S: IntoNativeString {
+        None
+    }
+
+    #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
     where S1: IntoNativeString, S2: IntoNativeString {
@@ -125,6 +131,13 @@ impl Context {
                                                 value.as_ref().as_ptr()));
         }
         Ok(())
+    }
+
+    #[inline]
+    #[cfg(not(feature = "v1_7_0"))]
+    pub fn set_flag<S1, S2>(&mut self, _name: S1, _value: S2) -> Result<()>
+    where S1: IntoNativeString, S2: IntoNativeString {
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     #[inline]
@@ -164,8 +177,8 @@ impl Context {
         let path = path.map(S1::into_native);
         let home_dir = home_dir.map(S2::into_native);
         unsafe {
-            let path = path.map_or(ptr::null(), |s| s.as_ref().as_ptr());
-            let home_dir = home_dir.map_or(ptr::null(), |s| s.as_ref().as_ptr());
+            let path = path.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
+            let home_dir = home_dir.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
             return_err!(ffi::gpgme_ctx_set_engine_info(self.as_raw(),
                                                        self.protocol().raw(),
                                                        path,
@@ -181,12 +194,24 @@ impl Context {
     }
 
     #[inline]
+    #[cfg(not(feature = "v1_4_0"))]
+    pub fn pinentry_mode(self) -> ::PinentryMode {
+        ::PinentryMode::Default
+    }
+
+    #[inline]
     #[cfg(feature = "v1_4_0")]
     pub fn set_pinentry_mode(&mut self, mode: ::PinentryMode) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_set_pinentry_mode(self.as_raw(), mode.raw()));
         }
         Ok(())
+    }
+
+    #[inline]
+    #[cfg(not(feature = "v1_4_0"))]
+    pub fn set_pinentry_mode(&mut self, _mode: ::PinentryMode) -> Result<()> {
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     /// Uses the specified provider to handle passphrase requests for the duration of the
@@ -412,6 +437,15 @@ impl Context {
     }
 
     #[inline]
+    #[cfg(not(feature = "v1_7_0"))]
+    pub fn create_key<S1, S2>(&mut self, _userid: S1, _algo: S2, _expires: Option<SystemTime>,
+        _flags: ::CreateKeyFlags)
+        -> Result<results::KeyGenerationResult>
+    where S1: IntoNativeString, S2: IntoNativeString {
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
+    }
+
+    #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn create_subkey<S>(&mut self, key: &Key, algo: S, expires: Option<SystemTime>,
         flags: ::CreateKeyFlags)
@@ -433,6 +467,15 @@ impl Context {
     }
 
     #[inline]
+    #[cfg(not(feature = "v1_7_0"))]
+    pub fn create_subkey<S>(&mut self, _key: &Key, _algo: S, _expires: Option<SystemTime>,
+        _flags: ::CreateKeyFlags)
+        -> Result<results::KeyGenerationResult>
+    where S: IntoNativeString {
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
+    }
+
+    #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn add_uid<S>(&mut self, key: &Key, userid: S) -> Result<()> where S: IntoNativeString {
         let userid = userid.into_native();
@@ -443,6 +486,12 @@ impl Context {
                                              0));
         }
         Ok(())
+    }
+
+    #[inline]
+    #[cfg(not(feature = "v1_7_0"))]
+    pub fn add_uid<S>(&mut self, _key: &Key, _userid: S) -> Result<()> where S: IntoNativeString {
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     #[inline]
@@ -459,7 +508,13 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
+    #[cfg(not(feature = "v1_7_0"))]
+    pub fn revoke_uid<S>(&mut self, _key: &Key, _userid: S) -> Result<()>
+    where S: IntoNativeString {
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
+    }
+
+    #[inline]
     pub fn sign_key<I>(&mut self, key: &Key, userids: I, expires: Option<SystemTime>) -> Result<()>
     where I: IntoIterator, I::Item: AsRef<[u8]> {
         self.sign_key_with_flags(key, userids, expires, ::KeySigningFlags::empty())
@@ -500,12 +555,27 @@ impl Context {
     }
 
     #[inline]
+    #[cfg(not(feature = "v1_7_0"))]
+    pub fn sign_key_with_flags<I>(&mut self, _key: &Key, _userids: I,
+        _expires: Option<SystemTime>, _flags: ::KeySigningFlags)
+        -> Result<()>
+    where I: IntoIterator, I::Item: AsRef<[u8]> {
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
+    }
+
+    #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn change_key_tofu_policy(&mut self, key: &Key, policy: ::TofuPolicy) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_op_tofu_policy(self.as_raw(), key.as_raw(), policy.raw()));
         }
         Ok(())
+    }
+
+    #[inline]
+    #[cfg(not(feature = "v1_7_0"))]
+    pub fn change_key_tofu_policy(&mut self, _key: &Key, _policy: ::TofuPolicy) -> Result<()> {
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     // Only works with GPG >= 2.0.15
@@ -516,6 +586,12 @@ impl Context {
             return_err!(ffi::gpgme_op_passwd(self.as_raw(), key.as_raw(), 0));
         }
         Ok(())
+    }
+
+    #[inline]
+    #[cfg(not(feature = "v1_3_0"))]
+    pub fn change_key_passphrase(&mut self, _key: &Key) -> Result<()> {
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     #[inline]
@@ -587,6 +663,13 @@ impl Context {
     }
 
     #[inline]
+    #[cfg(not(feature = "v1_7_0"))]
+    pub fn interact<'a, I, D>(&mut self, _key: &Key, _interactor: I, _data: D) -> Result<()>
+    where I: ::Interactor, D: IntoData<'a> {
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
+    }
+
+    #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn interact_with_card<'a, I, D>(&mut self, key: &Key, interactor: I, data: D) -> Result<()>
     where I: ::Interactor, D: IntoData<'a> {
@@ -604,6 +687,13 @@ impl Context {
                                                (*wrapper.response).as_raw()));
         }
         Ok(())
+    }
+
+    #[inline]
+    #[cfg(not(feature = "v1_7_0"))]
+    pub fn interact_with_card<'a, I, D>(&mut self, _key: &Key, _interactor: I, _data: D) -> Result<()>
+    where I: ::Interactor, D: IntoData<'a> {
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     #[inline]
@@ -730,6 +820,12 @@ impl Context {
     }
 
     #[inline]
+    #[cfg(not(feature = "v1_8_0"))]
+    pub fn clear_sender(&mut self) -> Result<()> {
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
+    }
+
+    #[inline]
     #[cfg(feature = "v1_8_0")]
     pub fn set_sender<S: IntoNativeString>(&mut self, sender: S) -> Result<()> {
         let sender = sender.into_native();
@@ -740,18 +836,26 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(feature = "v1_8_0")]
+    #[cfg(not(feature = "v1_8_0"))]
+    pub fn set_sender<S: IntoNativeString>(&mut self, _sender: S) -> Result<()> {
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
+    }
+
+    #[inline]
     pub fn sender(&self) -> result::Result<&str, Option<Utf8Error>> {
-        match self.sender_raw() {
-            Some(s) => s.to_str().map_err(Some),
-            None => Err(None),
-        }
+        self.sender_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     #[cfg(feature = "v1_8_0")]
     pub fn sender_raw(&self) -> Option<&CStr> {
         unsafe { ffi::gpgme_get_sender(self.as_raw()).as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    #[inline]
+    #[cfg(not(feature = "v1_8_0"))]
+    pub fn sender_raw(&self) -> Option<&CStr> {
+        None
     }
 
     #[inline]

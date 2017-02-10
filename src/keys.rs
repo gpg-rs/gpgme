@@ -379,7 +379,6 @@ impl<'a> Subkey<'a> {
     }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn keygrip(&self) -> Result<&'a str, Option<Utf8Error>> {
         self.keygrip_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -388,6 +387,12 @@ impl<'a> Subkey<'a> {
     #[cfg(feature = "v1_7_0")]
     pub fn keygrip_raw(&self) -> Option<&'a CStr> {
         unsafe { (*self.as_raw()).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
+    }
+
+    #[inline]
+    #[cfg(not(feature = "v1_7_0"))]
+    pub fn keygrip_raw(&self) -> Option<&'a CStr> {
+        None
     }
 
     #[inline]
