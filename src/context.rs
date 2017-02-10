@@ -1172,6 +1172,29 @@ impl Context {
         Ok((self.get_result().unwrap(), self.get_result().unwrap()))
     }
 
+    #[inline]
+    #[cfg(feature = "v1_8_0")]
+    pub fn query_swdb<S1, S2>(&mut self, name: Option<S1>, installed_ver: Option<S2>)
+        -> Result<results::QuerySwdbResult>
+    where S1: IntoNativeString, S2: IntoNativeString {
+        let name = name.map(|s| s.into_native());
+        let iversion = installed_ver.map(|s| s.into_native());
+        unsafe {
+            let name = name.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
+            let iversion = iversion.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
+            return_err!(ffi::gpgme_op_query_swdb(self.as_raw(), name, iversion, 0));
+        }
+        Ok(self.get_result().unwrap())
+    }
+
+    #[inline]
+    #[cfg(not(feature = "v1_8_0"))]
+    pub fn query_swdb<S1, S2>(&mut self, _name: Option<S1>, _installed_ver: Option<S2>)
+        -> Result<results::QuerySwdbResult>
+    where S1: IntoNativeString, S2: IntoNativeString {
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
+    }
+
     fn get_result<R: ::OpResult>(&self) -> Option<R> {
         R::from_context(self)
     }

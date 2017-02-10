@@ -15,7 +15,7 @@ use error;
 use notation::SignatureNotations;
 
 macro_rules! impl_result {
-    ($Name:ident: $T:ty = $Constructor:path) => {
+    ($Name:ident: $T:ty = $Constructor:expr) => {
         pub struct $Name(NonZero<$T>);
 
         unsafe impl Send for $Name {}
@@ -666,6 +666,134 @@ impl<'a> fmt::Debug for Signature<'a> {
             .field("validity", &self.validity())
             .field("nonvalidity_reason", &self.nonvalidity_reason())
             .field("notations", &self.notations())
+            .finish()
+    }
+}
+
+#[cfg(feature = "v1_8_0")]
+impl_result!(QuerySwdbResult: ffi::gpgme_query_swdb_result_t = ffi::gpgme_op_query_swdb_result);
+#[cfg(not(feature = "v1_8_0"))]
+impl_result!(QuerySwdbResult: ffi::gpgme_query_swdb_result_t = |_| ::std::ptr::null_mut());
+impl QuerySwdbResult {
+    #[inline]
+    pub fn name(&self) -> result::Result<&str, Option<Utf8Error>> {
+        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    #[inline]
+    pub fn name_raw(&self) -> Option<&CStr> {
+        unsafe {
+            (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s))
+        }
+    }
+
+    #[inline]
+    pub fn installed_version(&self) -> result::Result<&str, Option<Utf8Error>> {
+        self.installed_version_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    #[inline]
+    pub fn installed_version_raw(&self) -> Option<&CStr> {
+        unsafe {
+            (*self.as_raw()).iversion.as_ref().map(|s| CStr::from_ptr(s))
+        }
+    }
+
+    #[inline]
+    pub fn latest_version(&self) -> result::Result<&str, Option<Utf8Error>> {
+        self.latest_version_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    #[inline]
+    pub fn latest_version_raw(&self) -> Option<&CStr> {
+        unsafe {
+            (*self.as_raw()).version.as_ref().map(|s| CStr::from_ptr(s))
+        }
+    }
+
+    #[inline]
+    pub fn creation_time(&self) -> Option<SystemTime> {
+        let timestamp = unsafe { (*self.as_raw()).created };
+        if timestamp > 0 {
+            Some(UNIX_EPOCH + Duration::from_secs(timestamp.into()))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn retrieval_time(&self) -> Option<SystemTime> {
+        let timestamp = unsafe { (*self.as_raw()).retrieved };
+        if timestamp > 0 {
+            Some(UNIX_EPOCH + Duration::from_secs(timestamp.into()))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn release_time(&self) -> Option<SystemTime> {
+        let timestamp = unsafe { (*self.as_raw()).reldate };
+        if timestamp > 0 {
+            Some(UNIX_EPOCH + Duration::from_secs(timestamp.into()))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn has_warning(&self) -> bool {
+        unsafe { (*self.as_raw()).warning() }
+    }
+
+    #[inline]
+    pub fn has_update(&self) -> bool {
+        unsafe { (*self.as_raw()).update() }
+    }
+
+    #[inline]
+    pub fn is_urgent(&self) -> bool {
+        unsafe { (*self.as_raw()).urgent() }
+    }
+
+    #[inline]
+    pub fn has_noinfo(&self) -> bool {
+        unsafe { (*self.as_raw()).noinfo() }
+    }
+
+    #[inline]
+    pub fn is_unknown(&self) -> bool {
+        unsafe { (*self.as_raw()).unknown() }
+    }
+
+    #[inline]
+    pub fn is_too_old(&self) -> bool {
+        unsafe { (*self.as_raw()).tooold() }
+    }
+
+    #[inline]
+    pub fn has_error(&self) -> bool {
+        unsafe { (*self.as_raw()).error() }
+    }
+}
+
+impl fmt::Debug for QuerySwdbResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("QuerySwdbResult")
+            .field("raw", &self.as_raw())
+            .field("name", &self.name_raw())
+            .field("installed_version", &self.installed_version_raw())
+            .field("latest_version", &self.latest_version_raw())
+            .field("creation_time", &self.creation_time())
+            .field("retrieval_time", &self.retrieval_time())
+            .field("release_time", &self.release_time())
+            .field("has_warning", &self.has_warning())
+            .field("has_update", &self.has_update())
+            .field("is_urgent", &self.is_urgent())
+            .field("has_noinfo", &self.has_noinfo())
+            .field("is_unknown", &self.is_unknown())
+            .field("is_too_old", &self.is_too_old())
+            .field("has_error", &self.has_error())
             .finish()
     }
 }
