@@ -3,13 +3,14 @@ extern crate getopts;
 extern crate gpgme;
 
 use std::env;
+use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Context, Data, Protocol};
+use gpgme::{Context, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] FILENAME", program);
@@ -83,35 +84,16 @@ fn main() {
             let key = ctx.find_secret_key(key).unwrap();
             ctx.add_signer(&key).unwrap();
         } else {
-            writeln!(io::stderr(),
-                     "{}: ignoring --key in UI-server mode",
-                     program);
+            writeln!(io::stderr(), "ignoring --key in UI-server mode");
         }
     }
 
-    let mut input = match Data::load(matches.free[0].clone()) {
-        Ok(input) => input,
-        Err(err) => {
-            writeln!(io::stderr(),
-                     "{}: error reading '{}': {}",
-                     program,
-                     &matches.free[0],
-                     err);
-            exit(1);
-        }
-    };
-
-    let mut output = Data::new().unwrap();
-    match ctx.sign(mode, &mut input, &mut output) {
-        Ok(result) => print_result(&result),
-        Err(err) => {
-            writeln!(io::stderr(), "{}: signing failed: {}", program, err);
-            exit(1);
-        }
-    }
+    let mut input = File::open(&matches.free[0]).unwrap();
+    let mut output = Vec::new();
+    let result = ctx.sign(mode, &mut input, &mut output).expect("signing failed");
+    print_result(&result);
 
     println!("Begin Output:");
-    output.seek(io::SeekFrom::Start(0));
-    io::copy(&mut output, &mut io::stdout());
+    io::stdout().write_all(&output).unwrap();
     println!("End Output.");
 }

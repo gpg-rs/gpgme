@@ -73,8 +73,8 @@ fn main() {
 
     let mut ctx = Context::from_protocol(proto).unwrap();
     ctx.set_key_list_mode(mode).unwrap();
-
     let mut keys = ctx.find_keys(matches.free).unwrap();
+
     for key in keys.by_ref().filter_map(Result::ok) {
         println!("keyid   : {}", key.id().unwrap_or("?"));
         println!("fpr     : {}", key.fingerprint().unwrap_or("?"));
@@ -98,8 +98,6 @@ fn main() {
     }
 
     if keys.finish().unwrap().is_truncated() {
-        writeln!(io::stderr(),
-                 "{}: key listing unexpectedly truncated",
-                 program);
+        panic!("key listing unexpectedly truncated");
     }
 }

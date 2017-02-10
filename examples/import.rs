@@ -95,12 +95,11 @@ fn main() {
     };
 
     let mut ctx = Context::from_protocol(gpgme::Protocol::OpenPgp).unwrap();
-
     for file in matches.free {
         println!("reading file `{}'", &file);
 
         let mut data = Data::load(file).unwrap();
         mode.map(|m| data.set_encoding(m));
-        print_import_result(ctx.import(&mut data).unwrap());
+        print_import_result(ctx.import(&mut data).expect("import failed"));
     }
 }

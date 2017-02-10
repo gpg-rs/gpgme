@@ -4,8 +4,6 @@ extern crate lazy_static;
 extern crate tempdir;
 extern crate gpgme;
 
-use gpgme::Data;
-
 use self::support::passphrase_cb;
 
 #[macro_use]
@@ -13,27 +11,18 @@ mod support;
 
 test_case! {
     test_symmetric_encrypt_decrypt(test) {
-        let mut ctx = test.create_context();
-
-        ctx.set_armor(true);
-        ctx.set_text_mode(true);
-
         let mut ciphertext = Vec::new();
-        ctx.with_passphrase_provider(passphrase_cb, |mut ctx| {
-            let mut input = fail_if_err!(Data::from_buffer(b"Hello World"));
-            let mut output = fail_if_err!(Data::from_writer(&mut ciphertext));
+        test.create_context().with_passphrase_provider(passphrase_cb, |mut ctx| {
+            ctx.set_armor(true);
+            ctx.set_text_mode(true);
 
-            fail_if_err!(ctx.encrypt_symmetric(&mut input, &mut output));
+            fail_if_err!(ctx.encrypt_symmetric("Hello World", &mut ciphertext));
         });
         assert!(ciphertext.starts_with(b"-----BEGIN PGP MESSAGE-----"));
-        drop(ctx);
 
         let mut plaintext = Vec::new();
         test.create_context().with_passphrase_provider(passphrase_cb, |mut ctx| {
-            let mut input = fail_if_err!(Data::from_buffer(&ciphertext));
-            let mut output = fail_if_err!(Data::from_writer(&mut plaintext));
-
-            fail_if_err!(ctx.decrypt(&mut input, &mut output));
+            fail_if_err!(ctx.decrypt(&ciphertext, &mut plaintext));
         });
         assert_eq!(plaintext, b"Hello World");
     },

@@ -9,7 +9,7 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Context, Data};
+use gpgme::{Context, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] USERID+", program);
@@ -49,7 +49,7 @@ fn main() {
         gpgme::ExportMode::empty()
     };
 
-    let mut ctx = Context::from_protocol(gpgme::Protocol::OpenPgp).unwrap();
+    let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
     ctx.set_armor(true);
 
     let keys = {
@@ -61,30 +61,20 @@ fn main() {
                      key.fingerprint().unwrap_or("?"));
         }
         if key_iter.finish().unwrap().is_truncated() {
-            writeln!(io::stderr(),
-                     "{}: key listing unexpectedly truncated",
-                     program);
-            exit(1);
+            panic!("key listing unexpectedly truncated");
         }
         keys
     };
 
     if mode.contains(gpgme::EXPORT_EXTERN) {
         println!("sending keys to keyserver");
-        if let Err(err) = ctx.export_keys(&keys, mode, None) {
-            writeln!(io::stderr(), "{}: export failed: {}", program, err);
-            exit(1);
-        }
+        ctx.export_keys_extern(&keys, mode).expect("export failed");
     } else {
-        let mut output = Data::new().unwrap();
-        if let Err(err) = ctx.export_keys(&keys, mode, Some(&mut output)) {
-            writeln!(io::stderr(), "{}: export failed: {}", program, err);
-            exit(1);
-        }
+        let mut output = Vec::new();
+        ctx.export_keys(&keys, mode, &mut output).expect("export failed");
 
         println!("Begin Result:");
-        output.seek(io::SeekFrom::Start(0));
-        io::copy(&mut output, &mut io::stdout());
+        io::stdout().write_all(&output).unwrap();
         println!("End Result.");
     }
 }

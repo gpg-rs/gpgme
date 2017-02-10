@@ -4,6 +4,7 @@ fn_brace_style = "PreferSameLine"
 fn_args_paren_newline = false
 fn_args_density = "Compressed"
 fn_arg_indent = "Tabbed"
+fn_arg_layout = "Block"
 fn_return_indent = "WithWhereClause"
 where_indent = "Inherit"
 where_layout = "Mixed"

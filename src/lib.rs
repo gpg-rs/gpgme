@@ -27,7 +27,7 @@ use self::engine::EngineInfoGuard;
 pub use self::flags::*;
 pub use self::utils::IntoNativeString;
 pub use self::error::{Error, Result};
-pub use self::data::Data;
+pub use self::data::{Data, IntoData};
 pub use self::context::Context;
 pub use self::keys::{Key, Subkey, UserId, UserIdSignature};
 pub use self::notation::SignatureNotation;

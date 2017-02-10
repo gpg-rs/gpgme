@@ -10,7 +10,7 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Context, Data, Protocol};
+use gpgme::{Context, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] [SIGFILE] FILE", program);
@@ -121,29 +121,20 @@ fn main() {
 
     let mut ctx = Context::from_protocol(proto).unwrap();
 
-    let mut signature = {
-        let file = match File::open(&matches.free[0]) {
-            Ok(file) => file,
-            Err(err) => {
-                writeln!(io::stderr(),
-                         "{}: can't open '{}': {}",
-                         program,
-                         &matches.free[0],
-                         err);
-                exit(1);
-            }
-        };
-        match Data::from_seekable_reader(file) {
-            Ok(data) => data,
-            Err(..) => {
-                writeln!(io::stderr(), "{}: error allocating data object", program);
-                exit(1);
-            }
+    let signature = match File::open(&matches.free[0]) {
+        Ok(file) => file,
+        Err(err) => {
+            writeln!(io::stderr(),
+                     "{}: can't open '{}': {}",
+                     program,
+                     &matches.free[0],
+                     err);
+            exit(1);
         }
     };
 
-    let mut signed = if matches.free.len() > 1 {
-        let file = match File::open(&matches.free[1]) {
+    let result = if matches.free.len() > 1 {
+        let signed = match File::open(&matches.free[1]) {
             Ok(file) => file,
             Err(err) => {
                 writeln!(io::stderr(),
@@ -154,24 +145,12 @@ fn main() {
                 exit(1);
             }
         };
-        match Data::from_seekable_reader(file) {
-            Ok(data) => Some(data),
-            Err(..) => {
-                writeln!(io::stderr(), "{}: error allocating data object", program);
-                exit(1);
-            }
-        }
+        ctx.verify_detached(signature, signed)
     } else {
-        None
+        ctx.verify_opaque(signature, &mut Vec::new())
     };
 
-    let mut plain = if signed.is_none() {
-        Some(Data::new().unwrap())
-    } else {
-        None
-    };
-
-    match ctx.verify(&mut signature, signed.as_mut(), plain.as_mut()) {
+    match result {
         Ok(result) => print_result(&result),
         Err(err) => {
             writeln!(io::stderr(), "{}: verification failed: {}", program, err);

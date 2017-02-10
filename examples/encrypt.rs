@@ -3,13 +3,14 @@ extern crate getopts;
 extern crate gpgme;
 
 use std::env;
+use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::process::exit;
 
 use getopts::{HasArg, Occur, Options};
 
-use gpgme::{Context, Data, Protocol};
+use gpgme::{Context, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] FILENAME", program);
@@ -70,29 +71,11 @@ fn main() {
         Vec::new()
     };
 
-    let mut input = match Data::load(matches.free[0].clone()) {
-        Ok(input) => input,
-        Err(err) => {
-            writeln!(io::stderr(),
-                     "{}: error reading '{}': {}",
-                     program,
-                     &matches.free[0],
-                     err);
-            exit(1);
-        }
-    };
-
-    let mut output = Data::new().unwrap();
-    match ctx.encrypt(&keys, &mut input, &mut output) {
-        Ok(..) => (),
-        Err(err) => {
-            writeln!(io::stderr(), "{}: encrypting failed: {}", program, err);
-            exit(1);
-        }
-    }
+    let mut input = File::open(&matches.free[0]).unwrap();
+    let mut output = Vec::new();
+    ctx.encrypt(&keys, &mut input, &mut output).expect("encrypting failed");
 
     println!("Begin Output:");
-    output.seek(io::SeekFrom::Start(0));
-    io::copy(&mut output, &mut io::stdout());
+    io::stdout().write_all(&output).unwrap();
     println!("End Output.");
 }

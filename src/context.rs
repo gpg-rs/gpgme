@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::ffi::CStr;
 use std::fmt;
 use std::{mem, ptr, result};
@@ -11,8 +12,8 @@ use conv::ValueInto;
 use conv::UnwrapOrSaturate;
 use ffi;
 
-use {Data, EditInteractor, Error, IntoNativeString, Key, KeyListMode, NonZero, PassphraseProvider,
-     ProgressHandler, Protocol, Result, SignMode, TrustItem};
+use {Data, EditInteractor, Error, IntoData, IntoNativeString, Key, KeyListMode, NonZero,
+     PassphraseProvider, ProgressHandler, Protocol, Result, SignMode, TrustItem};
 use {callbacks, edit, error};
 use engine::EngineInfo;
 use notation::SignatureNotations;
@@ -369,14 +370,16 @@ impl Context {
     }
 
     #[inline]
-    pub fn generate_key<S>(&mut self, params: S, public: Option<&mut Data>,
-        secret: Option<&mut Data>)
+    pub fn generate_key<'d1, 'd2, S, D1, D2>(&mut self, params: S, public: Option<D1>,
+        secret: Option<D2>)
         -> Result<results::KeyGenerationResult>
-    where S: IntoNativeString {
+    where S: IntoNativeString, D1: IntoData<'d1>, D2: IntoData<'d2> {
         let params = params.into_native();
-        let public = public.map_or(ptr::null_mut(), |d| d.as_raw());
-        let secret = secret.map_or(ptr::null_mut(), |d| d.as_raw());
+        let mut public = try!(public.map_or(Ok(None), |d| d.into_data().map(Some)));
+        let mut secret = try!(secret.map_or(Ok(None), |d| d.into_data().map(Some)));
         unsafe {
+            let public = public.as_mut().map_or(ptr::null_mut(), |mut d| d.borrow_mut().as_raw());
+            let secret = secret.as_mut().map_or(ptr::null_mut(), |mut d| d.borrow_mut().as_raw());
             return_err!(ffi::gpgme_op_genkey(self.as_raw(),
                                              params.as_ref().as_ptr(),
                                              public,
@@ -516,86 +519,89 @@ impl Context {
     }
 
     #[inline]
-    pub fn edit_key<E: EditInteractor>(&mut self, key: &Key, interactor: E, data: &mut Data)
-        -> Result<()> {
+    pub fn edit_key<'a, E, D>(&mut self, key: &Key, interactor: E, data: D) -> Result<()>
+    where E: EditInteractor, D: IntoData<'a> {
+        let mut data = try!(data.into_data());
+        let mut wrapper = callbacks::EditInteractorWrapper {
+            state: Some(Ok(interactor)),
+            response: data.borrow_mut(),
+        };
         unsafe {
-            let mut wrapper = callbacks::EditInteractorWrapper {
-                state: Some(Ok(interactor)),
-                response: data,
-            };
             return_err!(ffi::gpgme_op_edit(self.as_raw(),
                                            key.as_raw(),
                                            Some(callbacks::edit_cb::<E>),
                                            (&mut wrapper as *mut _) as *mut _,
-                                           data.as_raw()));
+                                           (*wrapper.response).as_raw()));
         }
         Ok(())
     }
 
     #[inline]
-    pub fn edit_card_key<E: EditInteractor>(&mut self, key: &Key, interactor: E, data: &mut Data)
-        -> Result<()> {
+    pub fn edit_card_key<'a, E, D>(&mut self, key: &Key, interactor: E, data: D) -> Result<()>
+    where E: EditInteractor, D: IntoData<'a> {
+        let mut data = try!(data.into_data());
+        let mut wrapper = callbacks::EditInteractorWrapper {
+            state: Some(Ok(interactor)),
+            response: data.borrow_mut(),
+        };
         unsafe {
-            let mut wrapper = callbacks::EditInteractorWrapper {
-                state: Some(Ok(interactor)),
-                response: data,
-            };
             return_err!(ffi::gpgme_op_card_edit(self.as_raw(),
                                                 key.as_raw(),
                                                 Some(callbacks::edit_cb::<E>),
                                                 (&mut wrapper as *mut _) as *mut _,
-                                                data.as_raw()));
+                                                (*wrapper.response).as_raw()));
         }
         Ok(())
     }
 
     #[inline]
-    pub fn edit_key_with<E: edit::Editor>(&mut self, key: &Key, editor: E, data: &mut Data)
-        -> Result<()> {
+    pub fn edit_key_with<'a, E, D>(&mut self, key: &Key, editor: E, data: D) -> Result<()>
+    where E: edit::Editor, D: IntoData<'a> {
         self.edit_key(key, edit::EditorWrapper::new(editor), data)
     }
 
     #[inline]
-    pub fn edit_card_key_with<E: edit::Editor>(&mut self, key: &Key, editor: E, data: &mut Data)
-        -> Result<()> {
+    pub fn edit_card_key_with<'a, E, D>(&mut self, key: &Key, editor: E, data: D) -> Result<()>
+    where E: edit::Editor, D: IntoData<'a> {
         self.edit_card_key(key, edit::EditorWrapper::new(editor), data)
     }
 
     #[inline]
     #[cfg(feature = "v1_7_0")]
-    pub fn interact<I: ::Interactor>(&mut self, key: &Key, interactor: I, data: &mut Data)
-        -> Result<()> {
+    pub fn interact<'a, I, D>(&mut self, key: &Key, interactor: I, data: D) -> Result<()>
+    where I: ::Interactor, D: IntoData<'a> {
+        let mut data = try!(data.into_data());
+        let mut wrapper = callbacks::InteractorWrapper {
+            state: Some(Ok(interactor)),
+            response: data.borrow_mut(),
+        };
         unsafe {
-            let mut wrapper = callbacks::InteractorWrapper {
-                state: Some(Ok(interactor)),
-                response: data,
-            };
             return_err!(ffi::gpgme_op_interact(self.as_raw(),
                                                key.as_raw(),
                                                0,
                                                Some(callbacks::interact_cb::<I>),
                                                &mut wrapper as *mut _ as *mut _,
-                                               data.as_raw()));
+                                               (*wrapper.response).as_raw()));
         }
         Ok(())
     }
 
     #[inline]
     #[cfg(feature = "v1_7_0")]
-    pub fn interact_with_card<I: ::Interactor>(&mut self, key: &Key, interactor: I,
-        data: &mut Data)
-        -> Result<()> {
+    pub fn interact_with_card<'a, I, D>(&mut self, key: &Key, interactor: I, data: D) -> Result<()>
+    where I: ::Interactor, D: IntoData<'a> {
+        let mut data = try!(data.into_data());
+        let mut wrapper = callbacks::InteractorWrapper {
+            state: Some(Ok(interactor)),
+            response: data.borrow_mut(),
+        };
         unsafe {
-            let mut wrapper = callbacks::InteractorWrapper {
-                state: Some(Ok(interactor)),
-                response: data,
-            };
             return_err!(ffi::gpgme_op_interact(self.as_raw(),
                                                key.as_raw(),
                                                ffi::GPGME_INTERACT_CARD,
                                                Some(callbacks::interact_cb::<I>),
                                                &mut wrapper as *mut _ as *mut _,
-                                               data.as_raw()));
+                                               (*wrapper.response).as_raw()));
         }
         Ok(())
     }
@@ -617,9 +623,12 @@ impl Context {
     }
 
     #[inline]
-    pub fn import(&mut self, key_data: &mut Data) -> Result<results::ImportResult> {
+    pub fn import<'a, D>(&mut self, key_data: D) -> Result<results::ImportResult>
+    where D: IntoData<'a> {
+        use std::borrow::BorrowMut;
+        let mut key_data = try!(key_data.into_data());
         unsafe {
-            return_err!(ffi::gpgme_op_import(self.as_raw(), key_data.as_raw()));
+            return_err!(ffi::gpgme_op_import(self.as_raw(), key_data.borrow_mut().as_raw()));
         }
         Ok(self.get_result().unwrap())
     }
@@ -640,16 +649,37 @@ impl Context {
     }
 
     #[inline]
-    pub fn export_all(&mut self, mode: ::ExportMode, data: Option<&mut Data>) -> Result<()> {
-        self.export(None::<String>, mode, data)
+    pub fn export_all_extern<'a, I>(&mut self, mode: ::ExportMode) -> Result<()>
+    where I: IntoIterator, I::Item: IntoNativeString {
+        self.export_(None::<&CStr>, mode | ::EXPORT_EXTERN, None)
     }
 
-    pub fn export<I>(&mut self, patterns: I, mode: ::ExportMode, data: Option<&mut Data>)
-        -> Result<()>
+    #[inline]
+    pub fn export_extern<'a, I>(&mut self, patterns: I, mode: ::ExportMode) -> Result<()>
     where I: IntoIterator, I::Item: IntoNativeString {
-        let data = data.map_or(ptr::null_mut(), |d| d.as_raw());
         let patterns: Vec<_> = patterns.into_iter().map(|s| s.into_native()).collect();
-        let mut patterns: Vec<_> = patterns.iter().map(|s| s.as_ref().as_ptr()).collect();
+        self.export_(&patterns, mode | ::EXPORT_EXTERN, None)
+    }
+
+    #[inline]
+    pub fn export_all<'a, D>(&mut self, mode: ::ExportMode, data: D) -> Result<()>
+    where D: IntoData<'a> {
+        let mut data = try!(data.into_data());
+        self.export_(None::<&CStr>, mode, Some(data.borrow_mut()))
+    }
+
+    #[inline]
+    pub fn export<'a, I, D>(&mut self, patterns: I, mode: ::ExportMode, data: D) -> Result<()>
+    where I: IntoIterator, I::Item: IntoNativeString, D: IntoData<'a> {
+        let mut data = try!(data.into_data());
+        let patterns: Vec<_> = patterns.into_iter().map(|s| s.into_native()).collect();
+        self.export_(&patterns, mode, Some(data.borrow_mut()))
+    }
+
+    fn export_<I>(&mut self, patterns: I, mode: ::ExportMode, data: Option<&mut Data>) -> Result<()>
+    where I: IntoIterator, I::Item: AsRef<CStr> {
+        let data = data.map_or(ptr::null_mut(), |d| d.as_raw());
+        let mut patterns: Vec<_> = patterns.into_iter().map(|s| s.as_ref().as_ptr()).collect();
         let ptr = if !patterns.is_empty() {
             patterns.push(ptr::null());
             patterns.as_mut_ptr()
@@ -662,7 +692,18 @@ impl Context {
         Ok(())
     }
 
-    pub fn export_keys<'k, I>(&mut self, keys: I, mode: ::ExportMode, data: Option<&mut Data>)
+    pub fn export_keys_extern<'k, I>(&mut self, keys: I, mode: ::ExportMode) -> Result<()>
+    where I: IntoIterator<Item = &'k Key> {
+        self.export_keys_(keys, mode | ::EXPORT_EXTERN, None)
+    }
+
+    pub fn export_keys<'k, 'a, I, D>(&mut self, keys: I, mode: ::ExportMode, data: D) -> Result<()>
+    where I: IntoIterator<Item = &'k Key>, D: IntoData<'a> {
+        let mut data = try!(data.into_data());
+        self.export_keys_(keys, mode, Some(data.borrow_mut()))
+    }
+
+    fn export_keys_<'k, I>(&mut self, keys: I, mode: ::ExportMode, data: Option<&mut Data>)
         -> Result<()>
     where I: IntoIterator<Item = &'k Key> {
         let data = data.map_or(ptr::null_mut(), |d| d.as_raw());
@@ -800,57 +841,68 @@ impl Context {
     }
 
     #[inline]
-    pub fn sign(&mut self, mode: ::SignMode, plain: &mut Data, signature: &mut Data)
-        -> Result<results::SigningResult> {
+    pub fn sign_clear<'p, 't, P, T>(&mut self, plaintext: P, signedtext: T)
+        -> Result<results::SigningResult>
+    where P: IntoData<'p>, T: IntoData<'t> {
+        self.sign(SignMode::Clear, plaintext, signedtext)
+    }
+
+    #[inline]
+    pub fn sign_detached<'p, 's, P, S>(&mut self, plaintext: P, signature: S)
+        -> Result<results::SigningResult>
+    where P: IntoData<'p>, S: IntoData<'s> {
+        self.sign(SignMode::Detached, plaintext, signature)
+    }
+
+    #[inline]
+    pub fn sign_normal<'p, 't, P, T>(&mut self, plaintext: P, signedtext: T)
+        -> Result<results::SigningResult>
+    where P: IntoData<'p>, T: IntoData<'t> {
+        self.sign(SignMode::Normal, plaintext, signedtext)
+    }
+
+    #[inline]
+    pub fn sign<'p, 's, P, S>(&mut self, mode: ::SignMode, plaintext: P, signature: S)
+        -> Result<results::SigningResult>
+    where P: IntoData<'p>, S: IntoData<'s> {
+        let mut signature = try!(signature.into_data());
+        let mut plain = try!(plaintext.into_data());
         unsafe {
             return_err!(ffi::gpgme_op_sign(self.as_raw(),
-                                           plain.as_raw(),
-                                           signature.as_raw(),
+                                           plain.borrow_mut().as_raw(),
+                                           signature.borrow_mut().as_raw(),
                                            mode.raw()));
         }
         Ok(self.get_result().unwrap())
     }
 
     #[inline]
-    pub fn sign_clear(&mut self, plain: &mut Data, signed: &mut Data)
-        -> Result<results::SigningResult> {
-        self.sign(SignMode::Clear, plain, signed)
+    pub fn verify_detached<'s, 't, S, T>(&mut self, signature: S, signedtext: T)
+        -> Result<results::VerificationResult>
+    where S: IntoData<'s>, T: IntoData<'t> {
+        let mut signature = try!(signature.into_data());
+        let mut signed = try!(signedtext.into_data());
+        self.verify(signature.borrow_mut(), Some(signed.borrow_mut()), None)
     }
 
     #[inline]
-    pub fn sign_detached(&mut self, plain: &mut Data, signature: &mut Data)
-        -> Result<results::SigningResult> {
-        self.sign(SignMode::Detached, plain, signature)
+    pub fn verify_opaque<'s, 'p, S, P>(&mut self, signedtext: S, plaintext: P)
+        -> Result<results::VerificationResult>
+    where S: IntoData<'s>, P: IntoData<'p> {
+        let mut signed = try!(signedtext.into_data());
+        let mut plain = try!(plaintext.into_data());
+        self.verify(signed.borrow_mut(), None, Some(plain.borrow_mut()))
     }
 
-    #[inline]
-    pub fn sign_normal(&mut self, plain: &mut Data, signed: &mut Data)
-        -> Result<results::SigningResult> {
-        self.sign(SignMode::Normal, plain, signed)
-    }
-
-    #[inline]
-    pub fn verify(&mut self, signature: &mut Data, signed: Option<&mut Data>,
-        plain: Option<&mut Data>)
+    fn verify(&mut self, signature: &mut Data, signedtext: Option<&mut Data>,
+        plaintext: Option<&mut Data>)
         -> Result<results::VerificationResult> {
-        let signed = signed.map_or(ptr::null_mut(), |d| d.as_raw());
-        let plain = plain.map_or(ptr::null_mut(), |d| d.as_raw());
         unsafe {
+            let signed = signedtext.map_or(ptr::null_mut(), |d| d.as_raw());
+            let plain = plaintext.map_or(ptr::null_mut(), |d| d.as_raw());
             return_err!(ffi::gpgme_op_verify(self.as_raw(), signature.as_raw(), signed, plain));
         }
         Ok(self.get_result().unwrap())
-    }
-
-    #[inline]
-    pub fn verify_detached(&mut self, signature: &mut Data, signed: &mut Data)
-        -> Result<results::VerificationResult> {
-        self.verify(signature, Some(signed), None)
-    }
-
-    #[inline]
-    pub fn verify_opaque(&mut self, signature: &mut Data, plain: &mut Data)
-        -> Result<results::VerificationResult> {
-        self.verify(signature, None, Some(plain))
     }
 
     /// Encrypts a message for the specified recipients.
@@ -862,20 +914,22 @@ impl Context {
     ///
     /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
     /// let key = ctx.find_key("some pattern").unwrap();
-    /// let (mut plaintext, mut ciphertext) = (Data::new().unwrap(), Data::new().unwrap());
+    /// let (mut plaintext, mut ciphertext) = (Vec::new(), Vec::new());
     /// ctx.encrypt(Some(&key), &mut plaintext, &mut ciphertext).unwrap();
     /// ```
     #[inline]
-    pub fn encrypt<'k, I>(&mut self, recp: I, plaintext: &mut Data, ciphertext: &mut Data)
+    pub fn encrypt<'k, 'p, 'c, I, P, C>(&mut self, recp: I, plaintext: P, ciphertext: C)
         -> Result<results::EncryptionResult>
-    where I: IntoIterator<Item = &'k Key> {
+    where I: IntoIterator<Item = &'k Key>, P: IntoData<'p>, C: IntoData<'c> {
         self.encrypt_with_flags(recp, ::EncryptFlags::empty(), plaintext, ciphertext)
     }
 
-    pub fn encrypt_with_flags<'k, I>(&mut self, recp: I, flags: ::EncryptFlags,
-        plaintext: &mut Data, ciphertext: &mut Data)
+    pub fn encrypt_with_flags<'k, 'p, 'c, I, P, C>(&mut self, recp: I, flags: ::EncryptFlags,
+        plaintext: P, ciphertext: C)
         -> Result<results::EncryptionResult>
-    where I: IntoIterator<Item = &'k Key> {
+    where I: IntoIterator<Item = &'k Key>, P: IntoData<'p>, C: IntoData<'c> {
+        let mut plain = try!(plaintext.into_data());
+        let mut cipher = try!(ciphertext.into_data());
         let mut ptrs: Vec<_> = recp.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
@@ -883,31 +937,36 @@ impl Context {
         } else {
             ptr::null_mut()
         };
+
         unsafe {
             return_err!(ffi::gpgme_op_encrypt(self.as_raw(),
                                               keys,
                                               flags.bits(),
-                                              plaintext.as_raw(),
-                                              ciphertext.as_raw()));
+                                              plain.borrow_mut().as_raw(),
+                                              cipher.borrow_mut().as_raw()));
         }
         Ok(self.get_result().unwrap())
     }
 
     #[inline]
-    pub fn encrypt_symmetric(&mut self, plaintext: &mut Data, ciphertext: &mut Data) -> Result<()> {
+    pub fn encrypt_symmetric<'p, 'c, P, C>(&mut self, plaintext: P, ciphertext: C) -> Result<()>
+    where P: IntoData<'p>, C: IntoData<'c> {
         self.encrypt_symmetric_with_flags(::EncryptFlags::empty(), plaintext, ciphertext)
     }
 
     #[inline]
-    pub fn encrypt_symmetric_with_flags(&mut self, flags: ::EncryptFlags, plaintext: &mut Data,
-        ciphertext: &mut Data)
-        -> Result<()> {
+    pub fn encrypt_symmetric_with_flags<'p, 'c, P, C>(&mut self, flags: ::EncryptFlags,
+        plaintext: P, ciphertext: C)
+        -> Result<()>
+    where P: IntoData<'p>, C: IntoData<'c> {
+        let mut plain = try!(plaintext.into_data());
+        let mut cipher = try!(ciphertext.into_data());
         unsafe {
             return_err!(ffi::gpgme_op_encrypt(self.as_raw(),
                                               ptr::null_mut(),
                                               flags.bits(),
-                                              plaintext.as_raw(),
-                                              ciphertext.as_raw()));
+                                              plain.borrow_mut().as_raw(),
+                                              cipher.borrow_mut().as_raw()));
         }
         Ok(())
     }
@@ -917,25 +976,27 @@ impl Context {
     /// # Examples
     ///
     /// ```no_run
-    /// use gpgme::{Context, Data, Protocol};
+    /// use gpgme::{Context, Protocol};
     ///
     /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
     /// let key = ctx.find_key("some pattern").unwrap();
-    /// let (mut plaintext, mut ciphertext) = (Data::new().unwrap(), Data::new().unwrap());
+    /// let (mut plaintext, mut ciphertext) = (Vec::new(), Vec::new());
     /// ctx.sign_and_encrypt(Some(&key), &mut plaintext, &mut ciphertext).unwrap();
     /// ```
     #[inline]
-    pub fn sign_and_encrypt<'k, I>(
-        &mut self, recp: I, plaintext: &mut Data, ciphertext: &mut Data)
+    pub fn sign_and_encrypt<'k, 'p, 'c, I, P, C>(
+        &mut self, recp: I, plaintext: P, ciphertext: C)
         -> Result<(results::EncryptionResult, results::SigningResult)>
-    where I: IntoIterator<Item = &'k Key> {
+    where I: IntoIterator<Item = &'k Key>, P: IntoData<'p>, C: IntoData<'c> {
         self.sign_and_encrypt_with_flags(recp, ::EncryptFlags::empty(), plaintext, ciphertext)
     }
 
-    pub fn sign_and_encrypt_with_flags<'k, I>(
-        &mut self, recp: I, flags: ::EncryptFlags, plaintext: &mut Data, ciphertext: &mut Data)
+    pub fn sign_and_encrypt_with_flags<'k, 'p, 'c, I, P, C>(
+        &mut self, recp: I, flags: ::EncryptFlags, plaintext: P, ciphertext: C)
         -> Result<(results::EncryptionResult, results::SigningResult)>
-    where I: IntoIterator<Item = &'k Key> {
+    where I: IntoIterator<Item = &'k Key>, P: IntoData<'p>, C: IntoData<'c> {
+        let mut plain = try!(plaintext.into_data());
+        let mut cipher = try!(ciphertext.into_data());
         let mut ptrs: Vec<_> = recp.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
@@ -943,12 +1004,13 @@ impl Context {
         } else {
             ptr::null_mut()
         };
+
         unsafe {
             return_err!(ffi::gpgme_op_encrypt_sign(self.as_raw(),
                                                    keys,
                                                    flags.bits(),
-                                                   plaintext.as_raw(),
-                                                   ciphertext.as_raw()))
+                                                   plain.borrow_mut().as_raw(),
+                                                   cipher.borrow_mut().as_raw()))
         }
         Ok((self.get_result().unwrap(), self.get_result().unwrap()))
     }
@@ -962,16 +1024,19 @@ impl Context {
     ///
     /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
     /// let mut cipher = Data::load("some file").unwrap();
-    /// let mut plain = Data::new().unwrap();
+    /// let mut plain = Vec::new();
     /// ctx.decrypt(&mut cipher, &mut plain).unwrap();
     /// ```
     #[inline]
-    pub fn decrypt(&mut self, ciphertext: &mut Data, plaintext: &mut Data)
-        -> Result<results::DecryptionResult> {
+    pub fn decrypt<'c, 'p, C, P>(&mut self, ciphertext: C, plaintext: P)
+        -> Result<results::DecryptionResult>
+    where C: IntoData<'c>, P: IntoData<'p> {
+        let mut cipher = try!(ciphertext.into_data());
+        let mut plain = try!(plaintext.into_data());
         unsafe {
             return_err!(ffi::gpgme_op_decrypt(self.as_raw(),
-                                              ciphertext.as_raw(),
-                                              plaintext.as_raw()));
+                                              cipher.borrow_mut().as_raw(),
+                                              plain.borrow_mut().as_raw()));
         }
         Ok(self.get_result().unwrap())
     }
@@ -985,17 +1050,20 @@ impl Context {
     ///
     /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
     /// let mut cipher = Data::load("some file").unwrap();
-    /// let mut plain = Data::new().unwrap();
+    /// let mut plain = Vec::new();
     /// ctx.decrypt_and_verify(&mut cipher, &mut plain).unwrap();
     /// ```
     #[inline]
-    pub fn decrypt_and_verify(
-        &mut self, ciphertext: &mut Data, plaintext: &mut Data)
-        -> Result<(results::DecryptionResult, results::VerificationResult)> {
+    pub fn decrypt_and_verify<'c, 'p, C, P>(
+        &mut self, ciphertext: C, plaintext: P)
+        -> Result<(results::DecryptionResult, results::VerificationResult)>
+    where C: IntoData<'c>, P: IntoData<'p> {
+        let mut cipher = try!(ciphertext.into_data());
+        let mut plain = try!(plaintext.into_data());
         unsafe {
             return_err!(ffi::gpgme_op_decrypt_verify(self.as_raw(),
-                                                     ciphertext.as_raw(),
-                                                     plaintext.as_raw()))
+                                                     cipher.borrow_mut().as_raw(),
+                                                     plain.borrow_mut().as_raw()))
         }
         Ok((self.get_result().unwrap(), self.get_result().unwrap()))
     }

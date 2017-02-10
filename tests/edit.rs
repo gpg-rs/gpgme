@@ -5,7 +5,7 @@ extern crate gpgme;
 
 use std::io::prelude::*;
 
-use gpgme::{Data, Error, Result};
+use gpgme::{Error, Result};
 use gpgme::error;
 use gpgme::edit::{self, EditInteractionStatus, Editor};
 
@@ -87,8 +87,7 @@ test_case! {
     test_edit(test) {
         test.create_context().with_passphrase_provider(passphrase_cb, |mut ctx| {
             let key = fail_if_err!(ctx.find_keys(Some("Alpha"))).next().unwrap().unwrap();
-            let mut output = fail_if_err!(Data::new());
-            fail_if_err!(ctx.edit_key_with(&key, TestEditor, &mut output));
+            fail_if_err!(ctx.edit_key_with(&key, TestEditor, &mut Vec::new()));
         });
     }
 }

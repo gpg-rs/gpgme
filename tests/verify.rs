@@ -3,8 +3,6 @@ extern crate lazy_static;
 extern crate tempdir;
 extern crate gpgme;
 
-use gpgme::Data;
-
 #[macro_use]
 mod support;
 
@@ -18,11 +16,9 @@ const TEST_MSG1: &'static [u8] = b"-----BEGIN PGP MESSAGE-----\n\
 
 test_case! {
     test_signature_key(test) {
-        let mut input = fail_if_err!(Data::from_buffer(TEST_MSG1));
-        let mut output = fail_if_err!(Data::new());
-
+        let mut output = Vec::new();
         let mut ctx = test.create_context();
-        let result = fail_if_err!(ctx.verify_opaque(&mut input, &mut output));
+        let result = fail_if_err!(ctx.verify_opaque(TEST_MSG1, &mut output));
         assert_eq!(result.signatures().count(), 1);
 
         let sig = result.signatures().nth(0).unwrap();

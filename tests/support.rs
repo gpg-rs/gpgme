@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 use std::env;
 use std::fs::File;
-use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -10,7 +9,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use tempdir::TempDir;
 
-use gpgme::{self, Context, Data};
+use gpgme::{self, Context};
 use gpgme::PassphraseRequest;
 
 #[macro_export]
@@ -169,12 +168,5 @@ impl<'a> Drop for Test<'a> {
 impl<'a> Test<'a> {
     pub fn create_context(&self) -> Context {
         fail_if_err!(Context::from_protocol(gpgme::Protocol::OpenPgp))
-    }
-
-    pub fn check_data(data: &mut Data, expected: &[u8]) {
-        let mut buffer = Vec::new();
-        data.seek(io::SeekFrom::Start(0)).unwrap();
-        data.read_to_end(&mut buffer).unwrap();
-        assert_eq!(buffer, expected);
     }
 }

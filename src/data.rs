@@ -1,5 +1,7 @@
+use std::borrow::BorrowMut;
 use std::ffi::CStr;
 use std::fmt;
+use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::marker::PhantomData;
@@ -463,5 +465,111 @@ extern "C" fn seek_callback<S: Seek>(handle: *mut libc::c_void, offset: libc::of
 extern "C" fn release_callback<S>(handle: *mut libc::c_void) {
     unsafe {
         drop(Box::from_raw(handle as *mut CallbackWrapper<S>));
+    }
+}
+
+pub trait DataSource<'a> {
+    type Output: BorrowMut<Data<'a>>;
+
+    fn into_data(self) -> Result<Self::Output>;
+}
+
+pub trait DataSink<'a> {
+    type Output: BorrowMut<Data<'a>>;
+
+    fn into_data(self) -> Result<Self::Output>;
+}
+
+pub trait IntoData<'a> {
+    type Output: BorrowMut<Data<'a>>;
+
+    fn into_data(self) -> Result<Self::Output>;
+}
+
+impl<'a, 'b> IntoData<'a> for &'b mut Data<'a> {
+    type Output = Self;
+
+    fn into_data(self) -> Result<Self> {
+        Ok(self)
+    }
+}
+
+impl<'a> IntoData<'a> for Data<'a> {
+    type Output = Self;
+
+    fn into_data(self) -> Result<Self> {
+        Ok(self)
+    }
+}
+
+impl<'a> IntoData<'a> for &'a [u8] {
+    type Output = Data<'a>;
+
+    fn into_data(self) -> Result<Data<'a>> {
+        Data::from_buffer(self)
+    }
+}
+
+impl<'a> IntoData<'a> for &'a Vec<u8> {
+    type Output = Data<'a>;
+
+    fn into_data(self) -> Result<Data<'a>> {
+        Data::from_buffer(self)
+    }
+}
+
+impl<'a> IntoData<'a> for &'a mut Vec<u8> {
+    type Output = Data<'a>;
+
+    fn into_data(self) -> Result<Data<'a>> {
+        Data::from_writer(self).map_err(|e| e.error())
+    }
+}
+
+impl IntoData<'static> for Vec<u8> {
+    type Output = Data<'static>;
+
+    fn into_data(self) -> Result<Data<'static>> {
+        Data::from_bytes(self)
+    }
+}
+
+impl<'a> IntoData<'a> for &'a str {
+    type Output = Data<'a>;
+
+    fn into_data(self) -> Result<Data<'a>> {
+        Data::from_buffer(self)
+    }
+}
+
+impl IntoData<'static> for String {
+    type Output = Data<'static>;
+
+    fn into_data(self) -> Result<Data<'static>> {
+        Data::from_bytes(self)
+    }
+}
+
+impl<'a> IntoData<'a> for &'a File {
+    type Output = Data<'a>;
+
+    fn into_data(self) -> Result<Data<'a>> {
+        Data::from_seekable_stream(self).map_err(|e| e.error())
+    }
+}
+
+impl<'a> IntoData<'a> for &'a mut File {
+    type Output = Data<'a>;
+
+    fn into_data(self) -> Result<Data<'a>> {
+        Data::from_seekable_stream(self).map_err(|e| e.error())
+    }
+}
+
+impl IntoData<'static> for File {
+    type Output = Data<'static>;
+
+    fn into_data(self) -> Result<Data<'static>> {
+        Data::from_seekable_stream(self).map_err(|e| e.error())
     }
 }
