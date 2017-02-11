@@ -673,7 +673,7 @@ impl<'a> fmt::Debug for Signature<'a> {
 #[cfg(feature = "v1_8_0")]
 impl_result!(QuerySwdbResult: ffi::gpgme_query_swdb_result_t = ffi::gpgme_op_query_swdb_result);
 #[cfg(not(feature = "v1_8_0"))]
-impl_result!(QuerySwdbResult: ffi::gpgme_query_swdb_result_t = |_| ::std::ptr::null_mut());
+impl_result!(QuerySwdbResult: ffi::gpgme_query_swdb_result_t = |_| unreachable!());
 impl QuerySwdbResult {
     #[inline]
     pub fn name(&self) -> result::Result<&str, Option<Utf8Error>> {

@@ -97,6 +97,13 @@ bitflags! {
     }
 }
 
+bitflags! {
+    pub flags AuditLogFlags: libc::c_uint {
+        const AUDIT_LOG_HTML = ffi::GPGME_AUDITLOG_HTML,
+        const AUDIT_LOG_WITH_HELP = ffi::GPGME_AUDITLOG_WITH_HELP,
+    }
+}
+
 ffi_enum_wrapper! {
     pub enum SignMode: ffi::gpgme_sig_mode_t {
         Normal = ffi::GPGME_SIG_MODE_NORMAL,

@@ -691,7 +691,8 @@ impl Context {
 
     #[inline]
     #[cfg(not(feature = "v1_7_0"))]
-    pub fn interact_with_card<'a, I, D>(&mut self, _key: &Key, _interactor: I, _data: D) -> Result<()>
+    pub fn interact_with_card<'a, I, D>(&mut self, _key: &Key, _interactor: I, _data: D)
+        -> Result<()>
     where I: ::Interactor, D: IntoData<'a> {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
@@ -1193,6 +1194,18 @@ impl Context {
         -> Result<results::QuerySwdbResult>
     where S1: IntoNativeString, S2: IntoNativeString {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
+    }
+
+    #[inline]
+    pub fn get_audit_log<'a, D>(&mut self, out: D, flags: ::AuditLogFlags) -> Result<()>
+    where D: IntoData<'a> {
+        let mut out = try!(out.into_data());
+        unsafe {
+            return_err!(ffi::gpgme_op_getauditlog(self.as_raw(),
+                                                  out.borrow_mut().as_raw(),
+                                                  flags.bits()));
+        }
+        Ok(())
     }
 
     fn get_result<R: ::OpResult>(&self) -> Option<R> {

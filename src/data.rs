@@ -339,13 +339,19 @@ impl<'a> Data<'a> {
     #[cfg(not(feature = "v1_7_0"))]
     pub fn set_flag<S1, S2>(&mut self, _name: S1, _value: S2) -> Result<()>
     where S1: IntoNativeString, S2: IntoNativeString {
-        Err(Error::new(error::GPG_ERR_GENERAL))
+        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     #[inline]
     #[cfg(feature = "v1_4_3")]
     pub fn identify(&mut self) -> Type {
         unsafe { Type::from_raw(ffi::gpgme_data_identify(self.as_raw(), 0)) }
+    }
+
+    #[inline]
+    #[cfg(not(feature = "v1_4_3"))]
+    pub fn identify(&mut self) -> Type {
+        Type::Unknown
     }
 
     #[inline]
