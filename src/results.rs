@@ -673,7 +673,8 @@ impl<'a> fmt::Debug for Signature<'a> {
 #[cfg(feature = "v1_8_0")]
 impl_result!(QuerySwdbResult: ffi::gpgme_query_swdb_result_t = ffi::gpgme_op_query_swdb_result);
 #[cfg(not(feature = "v1_8_0"))]
-impl_result!(QuerySwdbResult: ffi::gpgme_query_swdb_result_t = |_| unreachable!());
+impl_result!(QuerySwdbResult: ffi::gpgme_query_swdb_result_t =
+                 |_| -> ffi::gpgme_query_swdb_result_t { unreachable!() });
 impl QuerySwdbResult {
     #[inline]
     pub fn name(&self) -> result::Result<&str, Option<Utf8Error>> {
@@ -682,9 +683,7 @@ impl QuerySwdbResult {
 
     #[inline]
     pub fn name_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -694,9 +693,7 @@ impl QuerySwdbResult {
 
     #[inline]
     pub fn installed_version_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw()).iversion.as_ref().map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).iversion.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -706,9 +703,7 @@ impl QuerySwdbResult {
 
     #[inline]
     pub fn latest_version_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw()).version.as_ref().map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).version.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
