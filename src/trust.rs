@@ -38,42 +38,66 @@ impl TrustItem {
 
     #[inline]
     pub fn key_id(&self) -> Result<&str, Option<Utf8Error>> {
-        self.key_id_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.key_id_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn key_id_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .keyid
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
     pub fn user_id(&self) -> Result<&str, Option<Utf8Error>> {
-        self.user_id_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.user_id_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn user_id_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .name
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
     pub fn owner_trust(&self) -> Result<&str, Option<Utf8Error>> {
-        self.owner_trust_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.owner_trust_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn owner_trust_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).owner_trust.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .owner_trust
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
     pub fn validity(&self) -> Result<&str, Option<Utf8Error>> {
-        self.validity_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.validity_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn validity_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).validity.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .validity
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 }
 

@@ -54,7 +54,8 @@ fn main() {
     let mut ctx = Context::from_protocol(proto).unwrap();
     let mut input = File::open(&matches.free[0]).unwrap();
     let mut output = Vec::new();
-    ctx.decrypt(&mut input, &mut output).expect("decrypting failed");
+    ctx.decrypt(&mut input, &mut output)
+        .expect("decrypting failed");
 
     println!("Begin Output:");
     io::stdout().write_all(&output).unwrap();

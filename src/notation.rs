@@ -35,22 +35,34 @@ impl<'a> SignatureNotation<'a> {
 
     #[inline]
     pub fn name(&self) -> Result<&'a str, Option<Utf8Error>> {
-        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.name_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn name_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .name
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
     pub fn value(&self) -> Result<&'a str, Option<Utf8Error>> {
-        self.value_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.value_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn value_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.as_raw()).value.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .value
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 }
 
@@ -66,4 +78,8 @@ impl<'a> fmt::Debug for SignatureNotation<'a> {
     }
 }
 
-impl_list_iterator!(SignatureNotations, SignatureNotation, ffi::gpgme_sig_notation_t);
+impl_list_iterator!(
+    SignatureNotations,
+    SignatureNotation,
+    ffi::gpgme_sig_notation_t
+);

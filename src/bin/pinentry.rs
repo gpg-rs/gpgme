@@ -12,7 +12,7 @@ fn main() {
             Some("GETPIN") => {
                 println!("D abc");
                 println!("OK");
-            },
+            }
             _ => println!("OK"),
         }
     }

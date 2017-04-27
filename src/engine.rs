@@ -28,42 +28,66 @@ impl<'a> EngineInfo<'a> {
 
     #[inline]
     pub fn path(&self) -> result::Result<&str, Option<Utf8Error>> {
-        self.path_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.path_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn path_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).file_name.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .file_name
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
     pub fn home_dir(&self) -> result::Result<&str, Option<Utf8Error>> {
-        self.home_dir_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.home_dir_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn home_dir_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).home_dir.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .home_dir
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
     pub fn version(&self) -> result::Result<&str, Option<Utf8Error>> {
-        self.version_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.version_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn version_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).version.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .version
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
     pub fn required_version(&self) -> result::Result<&str, Option<Utf8Error>> {
-        self.required_version_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.required_version_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn required_version_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).req_version.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .req_version
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 }
 
@@ -86,7 +110,11 @@ pub struct EngineInfoGuard(RwLockReadGuard<'static, ()>);
 
 impl EngineInfoGuard {
     pub fn new(_token: &Token) -> Result<EngineInfoGuard> {
-        let lock = TOKEN.0.engine_info.read().expect("Engine info lock could not be acquired");
+        let lock = TOKEN
+            .0
+            .engine_info
+            .read()
+            .expect("Engine info lock could not be acquired");
         unsafe {
             let mut info = ptr::null_mut();
             return_err!(ffi::gpgme_get_engine_info(&mut info));

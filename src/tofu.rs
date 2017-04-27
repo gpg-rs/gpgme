@@ -90,12 +90,18 @@ impl<'a> TofuInfo<'a> {
 
     #[inline]
     pub fn description(&self) -> Result<&'a str, Option<Utf8Error>> {
-        self.description_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.description_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn description_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.as_raw()).description.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .description
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 }
 

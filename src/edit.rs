@@ -173,21 +173,26 @@ impl<E: Editor> EditorWrapper<E> {
 impl<E: Editor> EditInteractor for EditorWrapper<E> {
     fn interact<W: Write>(&mut self, status: EditInteractionStatus, out: Option<W>) -> Result<()> {
         let old_state = self.state;
-        self.state = status.code
+        self.state = status
+            .code
             .into_result()
             .and_then(|_| E::next_state(self.state, status, out.is_some()))
-            .and_then(|state| {
-                if old_state == Ok(state) {
-                    return Ok(state);
-                }
+            .and_then(
+                |state| {
+                    if old_state == Ok(state) {
+                        return Ok(state);
+                    }
 
-                out.map_or(Ok(()), |mut out| {
-                        self.editor
-                            .action(state, &mut out)
-                            .and_then(|_| out.write_all(b"\n").map_err(Error::from))
-                    })
-                    .and(Ok(state))
-            });
+                    out.map_or(
+                            Ok(()), |mut out| {
+                                self.editor
+                                    .action(state, &mut out)
+                                    .and_then(|_| out.write_all(b"\n").map_err(Error::from))
+                            }
+                        )
+                        .and(Ok(state))
+                },
+            );
         self.state.and(Ok(()))
     }
 }

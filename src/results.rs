@@ -78,7 +78,8 @@ impl_subresult!(InvalidKey: ffi::gpgme_invalid_key_t, InvalidKeys, ());
 impl<'a> InvalidKey<'a> {
     #[inline]
     pub fn fingerprint(&self) -> result::Result<&'a str, Option<Utf8Error>> {
-        self.fingerprint_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.fingerprint_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
@@ -142,7 +143,8 @@ impl KeyGenerationResult {
 
     #[inline]
     pub fn fingerprint(&self) -> result::Result<&str, Option<Utf8Error>> {
-        self.fingerprint_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.fingerprint_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
@@ -258,7 +260,8 @@ impl_subresult!(Import: ffi::gpgme_import_status_t, Imports, ImportResult);
 impl<'a> Import<'a> {
     #[inline]
     pub fn fingerprint(&self) -> result::Result<&'a str, Option<Utf8Error>> {
-        self.fingerprint_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.fingerprint_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
@@ -312,12 +315,18 @@ impl_result!(DecryptionResult: ffi::gpgme_decrypt_result_t = ffi::gpgme_op_decry
 impl DecryptionResult {
     #[inline]
     pub fn unsupported_algorithm(&self) -> result::Result<&str, Option<Utf8Error>> {
-        self.unsupported_algorithm_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.unsupported_algorithm_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn unsupported_algorithm_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).unsupported_algorithm.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .unsupported_algorithm
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
@@ -327,12 +336,18 @@ impl DecryptionResult {
 
     #[inline]
     pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
-        self.filename_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.filename_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn filename_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).file_name.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .file_name
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
@@ -353,18 +368,26 @@ impl fmt::Debug for DecryptionResult {
     }
 }
 
-impl_subresult!(Recipient: ffi::gpgme_recipient_t,
-                Recipients,
-                DecryptionResult);
+impl_subresult!(
+    Recipient: ffi::gpgme_recipient_t,
+    Recipients,
+    DecryptionResult
+);
 impl<'a> Recipient<'a> {
     #[inline]
     pub fn key_id(&self) -> result::Result<&'a str, Option<Utf8Error>> {
-        self.key_id_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.key_id_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn key_id_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.as_raw()).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .keyid
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
@@ -415,13 +438,16 @@ impl fmt::Debug for SigningResult {
     }
 }
 
-impl_subresult!(NewSignature: ffi::gpgme_new_signature_t,
-                NewSignatures,
-                SigningResult);
+impl_subresult!(
+    NewSignature: ffi::gpgme_new_signature_t,
+    NewSignatures,
+    SigningResult
+);
 impl<'a> NewSignature<'a> {
     #[inline]
     pub fn fingerprint(&self) -> result::Result<&'a str, Option<Utf8Error>> {
-        self.fingerprint_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.fingerprint_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
@@ -474,12 +500,18 @@ impl_result!(VerificationResult: ffi::gpgme_verify_result_t = ffi::gpgme_op_veri
 impl VerificationResult {
     #[inline]
     pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
-        self.filename_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.filename_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn filename_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).file_name.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .file_name
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
@@ -506,9 +538,11 @@ ffi_enum_wrapper! {
     }
 }
 
-impl_subresult!(Signature: ffi::gpgme_signature_t,
-                Signatures,
-                VerificationResult);
+impl_subresult!(
+    Signature: ffi::gpgme_signature_t,
+    Signatures,
+    VerificationResult
+);
 impl<'a> Signature<'a> {
     #[inline]
     pub fn summary(&self) -> SignatureSummary {
@@ -517,7 +551,8 @@ impl<'a> Signature<'a> {
 
     #[inline]
     pub fn fingerprint(&self) -> result::Result<&'a str, Option<Utf8Error>> {
-        self.fingerprint_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.fingerprint_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
@@ -575,12 +610,18 @@ impl<'a> Signature<'a> {
 
     #[inline]
     pub fn pka_address(&self) -> result::Result<&'a str, Option<Utf8Error>> {
-        self.pka_address_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.pka_address_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn pka_address_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.as_raw()).pka_address.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .pka_address
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
@@ -612,7 +653,8 @@ impl<'a> Signature<'a> {
 
     #[inline]
     pub fn policy_url(&self) -> result::Result<&'a str, Option<Utf8Error>> {
-        self.policy_url_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.policy_url_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
@@ -638,10 +680,15 @@ impl<'a> Signature<'a> {
     #[cfg(feature = "v1_7_0")]
     pub fn key(&self) -> Option<::Key> {
         unsafe {
-            (*self.as_raw()).key.as_mut().map(|k| {
-                ffi::gpgme_key_ref(k);
-                ::Key::from_raw(k)
-            })
+            (*self.as_raw())
+                .key
+                .as_mut()
+                .map(
+                    |k| {
+                        ffi::gpgme_key_ref(k);
+                        ::Key::from_raw(k)
+                    },
+                )
         }
     }
 
@@ -673,37 +720,54 @@ impl<'a> fmt::Debug for Signature<'a> {
 #[cfg(feature = "v1_8_0")]
 impl_result!(QuerySwdbResult: ffi::gpgme_query_swdb_result_t = ffi::gpgme_op_query_swdb_result);
 #[cfg(not(feature = "v1_8_0"))]
-impl_result!(QuerySwdbResult: ffi::gpgme_query_swdb_result_t =
-                 |_| -> ffi::gpgme_query_swdb_result_t { unreachable!() });
+impl_result!(QuerySwdbResult: ffi::gpgme_query_swdb_result_t = |_| -> ffi::gpgme_query_swdb_result_t { unreachable!() });
 impl QuerySwdbResult {
     #[inline]
     pub fn name(&self) -> result::Result<&str, Option<Utf8Error>> {
-        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.name_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn name_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .name
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
     pub fn installed_version(&self) -> result::Result<&str, Option<Utf8Error>> {
-        self.installed_version_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.installed_version_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn installed_version_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).iversion.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .iversion
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
     pub fn latest_version(&self) -> result::Result<&str, Option<Utf8Error>> {
-        self.latest_version_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.latest_version_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn latest_version_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).version.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            (*self.as_raw())
+                .version
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]

@@ -14,9 +14,11 @@ use gpgme::data;
 
 fn print_import_result(result: gpgme::ImportResult) {
     for import in result.imports() {
-        print!("  fpr: {} err: {:?} status:",
-               import.fingerprint().unwrap_or("[none]"),
-               import.result().err());
+        print!(
+            "  fpr: {} err: {:?} status:",
+            import.fingerprint().unwrap_or("[none]"),
+            import.result().err()
+        );
         let status = import.status();
         if status.contains(gpgme::IMPORT_NEW) {
             print!(" new");

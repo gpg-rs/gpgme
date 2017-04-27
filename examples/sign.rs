@@ -90,7 +90,8 @@ fn main() {
 
     let mut input = File::open(&matches.free[0]).unwrap();
     let mut output = Vec::new();
-    let result = ctx.sign(mode, &mut input, &mut output).expect("signing failed");
+    let result = ctx.sign(mode, &mut input, &mut output)
+        .expect("signing failed");
     print_result(&result);
 
     println!("Begin Output:");

@@ -25,12 +25,14 @@ fn main() {
     opts.optflag("h", "help", "display this help message");
     opts.optflag("", "openpgp", "use the OpenPGP protocol (default)");
     opts.optflag("", "cms", "use the CMS protocol");
-    opts.opt("r",
-             "recipient",
-             "encrypt message for NAME",
-             "NAME",
-             HasArg::Yes,
-             Occur::Multi);
+    opts.opt(
+        "r",
+        "recipient",
+        "encrypt message for NAME",
+        "NAME",
+        HasArg::Yes,
+        Occur::Multi,
+    );
 
     let matches = match opts.parse(&args[1..]) {
         Ok(matches) => matches,
@@ -73,7 +75,8 @@ fn main() {
 
     let mut input = File::open(&matches.free[0]).unwrap();
     let mut output = Vec::new();
-    ctx.encrypt(&keys, &mut input, &mut output).expect("encrypting failed");
+    ctx.encrypt(&keys, &mut input, &mut output)
+        .expect("encrypting failed");
 
     println!("Begin Output:");
     io::stdout().write_all(&output).unwrap();

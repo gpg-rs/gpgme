@@ -89,12 +89,22 @@ fn setup_agent(dir: &Path) {
 
     let agent_conf = dir.join("gpg-agent.conf");
     let mut agent_conf = File::create(agent_conf).unwrap();
-    agent_conf.write_all(b"ignore-invalid-option allow-loopback-pinentry\n").unwrap();
-    agent_conf.write_all(b"allow-loopback-pinentry\n").unwrap();
-    agent_conf.write_all(b"ignore-invalid-option pinentry-mode\n").unwrap();
-    agent_conf.write_all(b"pinentry-mode loopback\n").unwrap();
+    agent_conf
+        .write_all(b"ignore-invalid-option allow-loopback-pinentry\n")
+        .unwrap();
+    agent_conf
+        .write_all(b"allow-loopback-pinentry\n")
+        .unwrap();
+    agent_conf
+        .write_all(b"ignore-invalid-option pinentry-mode\n")
+        .unwrap();
+    agent_conf
+        .write_all(b"pinentry-mode loopback\n")
+        .unwrap();
     agent_conf.write_all(b"pinentry-program ").unwrap();
-    agent_conf.write_all(pinentry.to_str().unwrap().as_ref()).unwrap();
+    agent_conf
+        .write_all(pinentry.to_str().unwrap().as_ref())
+        .unwrap();
     agent_conf.write_all(b"\n").unwrap();
 }
 
@@ -125,12 +135,12 @@ impl TestCase {
             homedir.as_ref().unwrap().path().join("S.gpg-agent")
         };
         let mut child = match Command::new("gpg-connect-agent")
-            .arg("-S")
-            .arg(socket)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn() {
+                  .arg("-S")
+                  .arg(socket)
+                  .stdin(Stdio::piped())
+                  .stdout(Stdio::null())
+                  .stderr(Stdio::null())
+                  .spawn() {
             Ok(child) => child,
             Err(err) => {
                 println!("Unable to kill agent: {}", err);

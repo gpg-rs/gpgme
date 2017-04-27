@@ -54,8 +54,10 @@ fn print_summary(summary: gpgme::SignatureSummary) {
 }
 
 fn print_result(result: &gpgme::VerificationResult) {
-    println!("Original file name: {}",
-             result.filename().unwrap_or("[none]"));
+    println!(
+        "Original file name: {}",
+        result.filename().unwrap_or("[none]")
+    );
     for (i, sig) in result.signatures().enumerate() {
         println!("Signature {}", i);
         println!("  status ....: {:?}", sig.status());
@@ -71,17 +73,19 @@ fn print_result(result: &gpgme::VerificationResult) {
         println!("  digest algo: {}", sig.hash_algorithm());
         println!("  pka address: {}", sig.pka_address().unwrap_or("[none]"));
         println!("  pka trust .: {:?}", sig.pka_trust());
-        println!("  other flags: {}{}",
-                 if sig.is_wrong_key_usage() {
-                     " wrong-key-usage"
-                 } else {
-                     ""
-                 },
-                 if sig.verified_by_chain() {
-                     " chain-model"
-                 } else {
-                     ""
-                 });
+        println!(
+            "  other flags: {}{}",
+            if sig.is_wrong_key_usage() {
+                " wrong-key-usage"
+            } else {
+                ""
+            },
+            if sig.verified_by_chain() {
+                " chain-model"
+            } else {
+                ""
+            }
+        );
     }
 }
 
@@ -124,11 +128,13 @@ fn main() {
     let signature = match File::open(&matches.free[0]) {
         Ok(file) => file,
         Err(err) => {
-            writeln!(io::stderr(),
-                     "{}: can't open '{}': {}",
-                     program,
-                     &matches.free[0],
-                     err);
+            writeln!(
+                io::stderr(),
+                "{}: can't open '{}': {}",
+                program,
+                &matches.free[0],
+                err
+            );
             exit(1);
         }
     };
@@ -137,11 +143,13 @@ fn main() {
         let signed = match File::open(&matches.free[1]) {
             Ok(file) => file,
             Err(err) => {
-                writeln!(io::stderr(),
-                         "{}: can't open '{}': {}",
-                         program,
-                         &matches.free[1],
-                         err);
+                writeln!(
+                    io::stderr(),
+                    "{}: can't open '{}': {}",
+                    program,
+                    &matches.free[1],
+                    err
+                );
                 exit(1);
             }
         };

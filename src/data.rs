@@ -197,11 +197,15 @@ impl<'a> Data<'a> {
 
     unsafe fn from_callbacks<S>(cbs: ffi::gpgme_data_cbs, src: S)
         -> result::Result<Self, WrappedError<S>>
-    where S: Send + 'a {
-        let src = Box::into_raw(Box::new(CallbackWrapper {
-            cbs: cbs,
-            inner: src,
-        }));
+        where S: Send + 'a {
+        let src = Box::into_raw(
+            Box::new(
+                CallbackWrapper {
+                    cbs: cbs,
+                    inner: src,
+                },
+            ),
+        );
         let cbs = &mut (*src).cbs as *mut _;
         let mut data = ptr::null_mut();
         let result = ffi::gpgme_data_new_from_cbs(&mut data, cbs, src as *mut _);
@@ -225,7 +229,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_seekable_reader<R>(r: R) -> result::Result<Self, WrappedError<R>>
-    where R: Read + Seek + Send + 'a {
+        where R: Read + Seek + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -237,7 +241,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_writer<W>(w: W) -> result::Result<Self, WrappedError<W>>
-    where W: Write + Send + 'a {
+        where W: Write + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -249,7 +253,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_seekable_writer<W>(w: W) -> result::Result<Self, WrappedError<W>>
-    where W: Write + Seek + Send + 'a {
+        where W: Write + Seek + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -261,7 +265,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_stream<S: Send>(s: S) -> result::Result<Self, WrappedError<S>>
-    where S: Read + Write + Send + 'a {
+        where S: Read + Write + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -273,7 +277,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_seekable_stream<S>(s: S) -> result::Result<Self, WrappedError<S>>
-    where S: Read + Write + Seek + Send + 'a {
+        where S: Read + Write + Seek + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -285,12 +289,17 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
-        self.filename_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.filename_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn filename_raw(&self) -> Option<&CStr> {
-        unsafe { ffi::gpgme_data_get_file_name(self.as_raw()).as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            ffi::gpgme_data_get_file_name(self.as_raw())
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 
     #[inline]
@@ -324,13 +333,17 @@ impl<'a> Data<'a> {
     #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
-    where S1: IntoNativeString, S2: IntoNativeString {
+        where S1: IntoNativeString, S2: IntoNativeString {
         let name = name.into_native();
         let value = value.into_native();
         unsafe {
-            return_err!(ffi::gpgme_data_set_flag(self.as_raw(),
-                                                 name.as_ref().as_ptr(),
-                                                 value.as_ref().as_ptr()));
+            return_err!(
+                ffi::gpgme_data_set_flag(
+                    self.as_raw(),
+                    name.as_ref().as_ptr(),
+                    value.as_ref().as_ptr(),
+                )
+            );
         }
         Ok(())
     }
@@ -338,7 +351,7 @@ impl<'a> Data<'a> {
     #[inline]
     #[cfg(not(feature = "v1_7_0"))]
     pub fn set_flag<S1, S2>(&mut self, _name: S1, _value: S2) -> Result<()>
-    where S1: IntoNativeString, S2: IntoNativeString {
+        where S1: IntoNativeString, S2: IntoNativeString {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
@@ -360,7 +373,7 @@ impl<'a> Data<'a> {
             let mut len = 0;
             ffi::gpgme_data_release_and_get_mem(self.into_raw(), &mut len)
                 .as_ref()
-                .map(|b| slice::from_raw_parts(b as *const _ as *const _, len).to_vec())
+                .map(|b| slice::from_raw_parts(b as *const _ as *const _, len).to_vec(),)
         }
     }
 }
@@ -417,34 +430,43 @@ impl<'a> Seek for Data<'a> {
     }
 }
 
-extern "C" fn read_callback<S: Read>(handle: *mut libc::c_void, buffer: *mut libc::c_void,
-    size: libc::size_t)
+extern "C" fn read_callback<S: Read>(handle: *mut libc::c_void, buffer: *mut libc::c_void, size: libc::size_t)
     -> libc::ssize_t {
     let handle = handle as *mut CallbackWrapper<S>;
     unsafe {
         let slice = slice::from_raw_parts_mut(buffer as *mut u8, size);
-        (*handle).inner.read(slice).map(|n| n as libc::ssize_t).unwrap_or_else(|err| {
-            ffi::gpgme_err_set_errno(Error::from(err).to_errno());
-            -1
-        })
+        (*handle)
+            .inner
+            .read(slice)
+            .map(|n| n as libc::ssize_t)
+            .unwrap_or_else(
+                |err| {
+                    ffi::gpgme_err_set_errno(Error::from(err).to_errno());
+                    -1
+                },
+            )
     }
 }
 
-extern "C" fn write_callback<S: Write>(handle: *mut libc::c_void, buffer: *const libc::c_void,
-    size: libc::size_t)
+extern "C" fn write_callback<S: Write>(handle: *mut libc::c_void, buffer: *const libc::c_void, size: libc::size_t)
     -> libc::ssize_t {
     let handle = handle as *mut CallbackWrapper<S>;
     unsafe {
         let slice = slice::from_raw_parts(buffer as *const _, size);
-        (*handle).inner.write(slice).map(|n| n as libc::ssize_t).unwrap_or_else(|err| {
-            ffi::gpgme_err_set_errno(Error::from(err).to_errno());
-            -1
-        })
+        (*handle)
+            .inner
+            .write(slice)
+            .map(|n| n as libc::ssize_t)
+            .unwrap_or_else(
+                |err| {
+                    ffi::gpgme_err_set_errno(Error::from(err).to_errno());
+                    -1
+                },
+            )
     }
 }
 
-extern "C" fn seek_callback<S: Seek>(handle: *mut libc::c_void, offset: libc::off_t,
-    whence: libc::c_int)
+extern "C" fn seek_callback<S: Seek>(handle: *mut libc::c_void, offset: libc::off_t, whence: libc::c_int)
     -> libc::off_t {
     let handle = handle as *mut CallbackWrapper<S>;
     let pos = match whence {
@@ -461,10 +483,12 @@ extern "C" fn seek_callback<S: Seek>(handle: *mut libc::c_void, offset: libc::of
             .inner
             .seek(pos)
             .map(|n| n.value_into().unwrap_or_saturate())
-            .unwrap_or_else(|err| {
-                ffi::gpgme_err_set_errno(Error::from(err).to_errno());
-                -1
-            })
+            .unwrap_or_else(
+                |err| {
+                    ffi::gpgme_err_set_errno(Error::from(err).to_errno());
+                    -1
+                },
+            )
     }
 }
 

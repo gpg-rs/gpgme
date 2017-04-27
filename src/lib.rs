@@ -37,8 +37,8 @@ pub use self::callbacks::{EditInteractionStatus, EditInteractor, InteractionStat
                           PassphraseProvider, PassphraseRequest, ProgressHandler, ProgressInfo,
                           StatusHandler};
 pub use self::results::{DecryptionResult, EncryptionResult, Import, ImportResult, InvalidKey,
-                        KeyGenerationResult, KeyListResult, NewSignature, PkaTrust, Recipient,
-                        Signature, SigningResult, VerificationResult, QuerySwdbResult};
+                        KeyGenerationResult, KeyListResult, NewSignature, PkaTrust,
+                        QuerySwdbResult, Recipient, Signature, SigningResult, VerificationResult};
 pub use self::engine::EngineInfo;
 
 #[macro_use]
@@ -88,12 +88,17 @@ ffi_enum_wrapper! {
 impl Protocol {
     #[inline]
     pub fn name(&self) -> result::Result<&'static str, Option<Utf8Error>> {
-        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.name_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn name_raw(&self) -> Option<&'static CStr> {
-        unsafe { ffi::gpgme_get_protocol_name(self.raw()).as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            ffi::gpgme_get_protocol_name(self.raw())
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 }
 
@@ -257,8 +262,9 @@ impl Token {
     /// Commonly supported values for `what` are specified in [`info`](info/).
     #[inline]
     pub fn get_dir_info<S>(&self, what: S) -> result::Result<&'static str, Option<Utf8Error>>
-    where S: IntoNativeString {
-        self.get_dir_info_raw(what).map_or(Err(None), |s| s.to_str().map_err(Some))
+        where S: IntoNativeString {
+        self.get_dir_info_raw(what)
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     /// Returns the default value for specified configuration option.
@@ -269,7 +275,9 @@ impl Token {
     pub fn get_dir_info_raw<S: IntoNativeString>(&self, what: S) -> Option<&'static CStr> {
         let what = what.into_native();
         unsafe {
-            ffi::gpgme_get_dirinfo(what.as_ref().as_ptr()).as_ref().map(|s| CStr::from_ptr(s))
+            ffi::gpgme_get_dirinfo(what.as_ref().as_ptr())
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
         }
     }
 
@@ -306,44 +314,54 @@ impl Token {
 
     #[inline]
     pub fn set_engine_path<S>(&self, proto: Protocol, path: S) -> Result<()>
-    where S: IntoNativeString {
+        where S: IntoNativeString {
         let path = path.into_native();
         unsafe {
-            let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
-            let home_dir = self.get_engine_info(proto).as_ref().map_or(ptr::null(), |e| {
-                (*e).home_dir
-            });
-            return_err!(ffi::gpgme_set_engine_info(proto.raw(), path.as_ref().as_ptr(),
-                                                   home_dir));
+            let _lock = self.0
+                .engine_info
+                .write()
+                .expect("Engine info lock could not be acquired");
+            let home_dir = self.get_engine_info(proto)
+                .as_ref()
+                .map_or(ptr::null(), |e| (*e).home_dir);
+            return_err!(ffi::gpgme_set_engine_info(proto.raw(), path.as_ref().as_ptr(), home_dir));
         }
         Ok(())
     }
 
     #[inline]
     pub fn set_engine_home_dir<S>(&self, proto: Protocol, home_dir: S) -> Result<()>
-    where S: IntoNativeString {
+        where S: IntoNativeString {
         let home_dir = home_dir.into_native();
         unsafe {
-            let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
-            let path = self.get_engine_info(proto).as_ref().map_or(ptr::null(), |e| {
-                (*e).file_name
-            });
-            return_err!(ffi::gpgme_set_engine_info(proto.raw(), path,
-                                                   home_dir.as_ref().as_ptr()));
+            let _lock = self.0
+                .engine_info
+                .write()
+                .expect("Engine info lock could not be acquired");
+            let path = self.get_engine_info(proto)
+                .as_ref()
+                .map_or(ptr::null(), |e| (*e).file_name);
+            return_err!(ffi::gpgme_set_engine_info(proto.raw(), path, home_dir.as_ref().as_ptr()));
         }
         Ok(())
     }
 
     #[inline]
-    pub fn set_engine_info<S1, S2>(&self, proto: Protocol,
-                                   path: Option<S1>, home_dir: Option<S2>) -> Result<()>
-    where S1: IntoNativeString, S2: IntoNativeString {
+    pub fn set_engine_info<S1, S2>(&self, proto: Protocol, path: Option<S1>, home_dir: Option<S2>)
+        -> Result<()>
+        where S1: IntoNativeString, S2: IntoNativeString {
         let path = path.map(S1::into_native);
         let home_dir = home_dir.map(S2::into_native);
         unsafe {
-            let path = path.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
-            let home_dir = home_dir.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
-            let _lock = self.0.engine_info.write().expect("Engine info lock could not be acquired");
+            let path = path.as_ref()
+                .map_or(ptr::null(), |s| s.as_ref().as_ptr());
+            let home_dir = home_dir
+                .as_ref()
+                .map_or(ptr::null(), |s| s.as_ref().as_ptr());
+            let _lock = self.0
+                .engine_info
+                .write()
+                .expect("Engine info lock could not be acquired");
             return_err!(ffi::gpgme_set_engine_info(proto.raw(), path, home_dir));
         }
         Ok(())

@@ -56,9 +56,11 @@ fn main() {
         let mut key_iter = ctx.find_keys(matches.free).unwrap();
         let keys: Vec<_> = key_iter.by_ref().collect::<Result<_, _>>().unwrap();
         for key in &keys {
-            println!("keyid: {}  (fpr: {})",
-                     key.id().unwrap_or("?"),
-                     key.fingerprint().unwrap_or("?"));
+            println!(
+                "keyid: {}  (fpr: {})",
+                key.id().unwrap_or("?"),
+                key.fingerprint().unwrap_or("?")
+            );
         }
         if key_iter.finish().unwrap().is_truncated() {
             panic!("key listing unexpectedly truncated");
@@ -68,10 +70,12 @@ fn main() {
 
     if mode.contains(gpgme::EXPORT_EXTERN) {
         println!("sending keys to keyserver");
-        ctx.export_keys_extern(&keys, mode).expect("export failed");
+        ctx.export_keys_extern(&keys, mode)
+            .expect("export failed");
     } else {
         let mut output = Vec::new();
-        ctx.export_keys(&keys, mode, &mut output).expect("export failed");
+        ctx.export_keys(&keys, mode, &mut output)
+            .expect("export failed");
 
         println!("Begin Result:");
         io::stdout().write_all(&output).unwrap();

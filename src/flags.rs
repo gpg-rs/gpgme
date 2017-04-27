@@ -130,12 +130,17 @@ ffi_enum_wrapper! {
 impl KeyAlgorithm {
     #[inline]
     pub fn name(&self) -> Result<&'static str, Option<Utf8Error>> {
-        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.name_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn name_raw(&self) -> Option<&'static CStr> {
-        unsafe { ffi::gpgme_pubkey_algo_name(self.raw()).as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            ffi::gpgme_pubkey_algo_name(self.raw())
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 }
 
@@ -169,12 +174,17 @@ ffi_enum_wrapper! {
 impl HashAlgorithm {
     #[inline]
     pub fn name(&self) -> Result<&'static str, Option<Utf8Error>> {
-        self.name_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.name_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
     pub fn name_raw(&self) -> Option<&'static CStr> {
-        unsafe { ffi::gpgme_hash_algo_name(self.raw()).as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe {
+            ffi::gpgme_hash_algo_name(self.raw())
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+        }
     }
 }
 
