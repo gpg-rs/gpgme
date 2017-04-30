@@ -11,3 +11,4 @@ item_brace_style = "PreferSameLine"
 reorder_imported_names = true
 where_density = "Compressed"
 where_layout = "Mixed"
+write_mode = "Overwrite"

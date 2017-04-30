@@ -1,7 +1,8 @@
 extern crate libc;
 extern crate libgpg_error_sys;
 
-use libc::{c_void, c_char, c_uchar, c_short, c_ushort, c_int, c_uint, c_long, c_ulong, ssize_t, size_t};
+use libc::{c_char, c_int, c_long, c_short, c_uchar, c_uint, c_ulong, c_ushort, c_void, size_t,
+           ssize_t};
 
 use consts::*;
 
@@ -25,13 +26,13 @@ pub type gpgme_data_t = *mut gpgme_data;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct _gpgme_sig_notation {
-  pub next: gpgme_sig_notation_t,
-  pub name: *mut c_char,
-  pub value: *mut c_char,
-  pub name_len: c_int,
-  pub value_len: c_int,
-  pub flags: gpgme_sig_notation_flags_t,
-  pub bitfield: u32
+    pub next: gpgme_sig_notation_t,
+    pub name: *mut c_char,
+    pub value: *mut c_char,
+    pub name_len: c_int,
+    pub value_len: c_int,
+    pub flags: gpgme_sig_notation_flags_t,
+    pub bitfield: u32,
 }
 pub type gpgme_sig_notation_t = *mut _gpgme_sig_notation;
 
@@ -55,7 +56,7 @@ pub struct _gpgme_engine_info {
     pub file_name: *mut c_char,
     pub version: *mut c_char,
     pub req_version: *mut c_char,
-    pub home_dir: *mut c_char
+    pub home_dir: *mut c_char,
 }
 pub type gpgme_engine_info_t = *mut _gpgme_engine_info;
 
@@ -109,47 +110,51 @@ pub type gpgme_subkey_t = *mut _gpgme_subkey;
 impl _gpgme_subkey {
     #[inline]
     pub fn revoked(&self) -> bool {
-        (self.bitfield & 0b000_00000001) == 0b000_00000001
+        (self.bitfield & 0b0000_00000001) == 0b0000_00000001
     }
     #[inline]
     pub fn expired(&self) -> bool {
-        (self.bitfield & 0b000_00000010) == 0b000_00000010
+        (self.bitfield & 0b0000_00000010) == 0b0000_00000010
     }
     #[inline]
     pub fn disabled(&self) -> bool {
-        (self.bitfield & 0b000_00000100) == 0b000_00000100
+        (self.bitfield & 0b0000_00000100) == 0b0000_00000100
     }
     #[inline]
     pub fn invalid(&self) -> bool {
-        (self.bitfield & 0b000_00001000) == 0b000_00001000
+        (self.bitfield & 0b0000_00001000) == 0b0000_00001000
     }
     #[inline]
     pub fn can_encrypt(&self) -> bool {
-        (self.bitfield & 0b000_00010000) == 0b000_00010000
+        (self.bitfield & 0b0000_00010000) == 0b0000_00010000
     }
     #[inline]
     pub fn can_sign(&self) -> bool {
-        (self.bitfield & 0b000_00100000) == 0b000_00100000
+        (self.bitfield & 0b0000_00100000) == 0b0000_00100000
     }
     #[inline]
     pub fn can_certify(&self) -> bool {
-        (self.bitfield & 0b000_01000000) == 0b000_01000000
+        (self.bitfield & 0b0000_01000000) == 0b0000_01000000
     }
     #[inline]
     pub fn secret(&self) -> bool {
-        (self.bitfield & 0b000_10000000) == 0b000_10000000
+        (self.bitfield & 0b0000_10000000) == 0b0000_10000000
     }
     #[inline]
     pub fn can_authenticate(&self) -> bool {
-        (self.bitfield & 0b001_00000000) == 0b001_00000000
+        (self.bitfield & 0b0001_00000000) == 0b0001_00000000
     }
     #[inline]
     pub fn is_qualified(&self) -> bool {
-        (self.bitfield & 0b010_00000000) == 0b010_00000000
+        (self.bitfield & 0b0010_00000000) == 0b0010_00000000
     }
     #[inline]
     pub fn is_cardkey(&self) -> bool {
-        (self.bitfield & 0b100_00000000) == 0b100_00000000
+        (self.bitfield & 0b0100_00000000) == 0b0100_00000000
+    }
+    #[inline]
+    pub fn is_de_vs(&self) -> bool {
+        (self.bitfield & 0b1000_00000000) == 0b1000_00000000
     }
 }
 
@@ -209,18 +214,23 @@ pub struct _gpgme_user_id {
     pub address: *mut c_char,
     #[cfg(feature = "v1_7_0")]
     pub tofu: gpgme_tofu_info_t,
-
+    #[cfg(feature = "v1_9_0")]
+    pub last_update: c_ulong,
 }
 pub type gpgme_user_id_t = *mut _gpgme_user_id;
 
 impl _gpgme_user_id {
     #[inline]
     pub fn revoked(&self) -> bool {
-        (self.bitfield & 0b01) == 0b01
+        (self.bitfield & 0b0001) == 0b0001
     }
     #[inline]
     pub fn invalid(&self) -> bool {
-        (self.bitfield & 0b10) == 0b10
+        (self.bitfield & 0b0010) == 0b0010
+    }
+    #[inline]
+    pub fn origin(&self) -> u32 {
+        self.bitfield >> 27
     }
 }
 
@@ -241,6 +251,8 @@ pub struct _gpgme_key {
     pub keylist_mode: gpgme_keylist_mode_t,
     #[cfg(feature = "v1_7_0")]
     pub fpr: *mut c_char,
+    #[cfg(feature = "v1_9_0")]
+    pub last_update: c_ulong,
 }
 pub type gpgme_key_t = *mut _gpgme_key;
 
@@ -285,27 +297,55 @@ impl _gpgme_key {
     pub fn is_qualified(&self) -> bool {
         (self.bitfield & 0b10_00000000) == 0b10_00000000
     }
+    #[inline]
+    pub fn origin(&self) -> u32 {
+        self.bitfield >> 27
+    }
 }
 
-pub type gpgme_passphrase_cb_t = Option<extern fn(*mut c_void, *const c_char, *const c_char, c_int, c_int) -> gpgme_error_t>;
-pub type gpgme_progress_cb_t = Option<extern fn(*mut c_void, *const c_char, c_int, c_int, c_int)>;
-pub type gpgme_status_cb_t = Option<extern fn(*mut c_void, *const c_char, *const c_char) -> gpgme_error_t>;
-pub type gpgme_interact_cb_t = Option<extern fn(*mut c_void, *const c_char, *const c_char, c_int) -> gpgme_error_t>;
-pub type gpgme_edit_cb_t = Option<extern fn(*mut c_void, gpgme_status_code_t, *const c_char, c_int) -> gpgme_error_t>;
+pub type gpgme_passphrase_cb_t = Option<extern "C" fn(*mut c_void,
+                                                      *const c_char,
+                                                      *const c_char,
+                                                      c_int,
+                                                      c_int)
+                                                      -> gpgme_error_t>;
+pub type gpgme_progress_cb_t = Option<extern "C" fn(*mut c_void,
+                                                    *const c_char,
+                                                    c_int,
+                                                    c_int,
+                                                    c_int)>;
+pub type gpgme_status_cb_t = Option<extern "C" fn(*mut c_void, *const c_char, *const c_char)
+                                                  -> gpgme_error_t>;
+pub type gpgme_interact_cb_t = Option<extern "C" fn(*mut c_void,
+                                                    *const c_char,
+                                                    *const c_char,
+                                                    c_int)
+                                                    -> gpgme_error_t>;
+pub type gpgme_edit_cb_t = Option<extern "C" fn(*mut c_void,
+                                                gpgme_status_code_t,
+                                                *const c_char,
+                                                c_int)
+                                                -> gpgme_error_t>;
 
-pub type gpgme_io_cb_t = Option<extern fn(*mut c_void, c_int) -> gpgme_error_t>;
-pub type gpgme_register_io_cb_t = Option<extern fn(*mut c_void, c_int, c_int, gpgme_io_cb_t, *mut c_void, *mut *mut c_void) -> gpgme_error_t>;
-pub type gpgme_remove_io_cb_t = Option<extern fn(*mut c_void)>;
+pub type gpgme_io_cb_t = Option<extern "C" fn(*mut c_void, c_int) -> gpgme_error_t>;
+pub type gpgme_register_io_cb_t = Option<extern "C" fn(*mut c_void,
+                                                       c_int,
+                                                       c_int,
+                                                       gpgme_io_cb_t,
+                                                       *mut c_void,
+                                                       *mut *mut c_void)
+                                                       -> gpgme_error_t>;
+pub type gpgme_remove_io_cb_t = Option<extern "C" fn(*mut c_void)>;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct gpgme_io_event_done_data {
     pub err: gpgme_error_t,
-    pub op_err: gpgme_error_t
+    pub op_err: gpgme_error_t,
 }
 pub type gpgme_io_event_done_data_t = *mut gpgme_io_event_done_data;
 
-pub type gpgme_event_io_cb_t = Option<extern fn(*mut c_void, gpgme_event_io_t, *mut c_void)>;
+pub type gpgme_event_io_cb_t = Option<extern "C" fn(*mut c_void, gpgme_event_io_t, *mut c_void)>;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -314,38 +354,38 @@ pub struct gpgme_io_cbs {
     pub add_priv: *mut c_void,
     pub remove: gpgme_remove_io_cb_t,
     pub event: gpgme_event_io_cb_t,
-    pub event_priv: *mut c_void
+    pub event_priv: *mut c_void,
 }
 pub type gpgme_io_cbs_t = *mut gpgme_io_cbs;
 
-pub type gpgme_data_read_cb_t = Option<extern fn(*mut c_void, *mut c_void, size_t) -> ssize_t>;
-pub type gpgme_data_write_cb_t = Option<extern fn(*mut c_void, *const c_void, size_t) -> ssize_t>;
-pub type gpgme_data_seek_cb_t = Option<extern fn(*mut c_void, libc::off_t, c_int) -> libc::off_t>;
-pub type gpgme_data_release_cb_t = Option<extern fn(*mut c_void)>;
+pub type gpgme_data_read_cb_t = Option<extern "C" fn(*mut c_void, *mut c_void, size_t) -> ssize_t>;
+pub type gpgme_data_write_cb_t = Option<extern "C" fn(*mut c_void, *const c_void, size_t) -> ssize_t>;
+pub type gpgme_data_seek_cb_t = Option<extern "C" fn(*mut c_void, libc::off_t, c_int) -> libc::off_t>;
+pub type gpgme_data_release_cb_t = Option<extern "C" fn(*mut c_void)>;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct gpgme_data_cbs {
-  pub read: gpgme_data_read_cb_t,
-  pub write: gpgme_data_write_cb_t,
-  pub seek: gpgme_data_seek_cb_t,
-  pub release: gpgme_data_release_cb_t
+    pub read: gpgme_data_read_cb_t,
+    pub write: gpgme_data_write_cb_t,
+    pub seek: gpgme_data_seek_cb_t,
+    pub release: gpgme_data_release_cb_t,
 }
 pub type gpgme_data_cbs_t = *mut gpgme_data_cbs;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct _gpgme_invalid_key {
-  pub next: gpgme_invalid_key_t,
-  pub fpr: *mut c_char,
-  pub reason: gpgme_error_t
+    pub next: gpgme_invalid_key_t,
+    pub fpr: *mut c_char,
+    pub reason: gpgme_error_t,
 }
 pub type gpgme_invalid_key_t = *mut _gpgme_invalid_key;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct _gpgme_op_encrypt_result {
-  pub invalid_recipients: gpgme_invalid_key_t
+    pub invalid_recipients: gpgme_invalid_key_t,
 }
 pub type gpgme_encrypt_result_t = *mut _gpgme_op_encrypt_result;
 
@@ -356,7 +396,7 @@ pub struct _gpgme_recipient {
     pub keyid: *mut c_char,
     _keyid: [c_char; 17],
     pub pubkey_algo: gpgme_pubkey_algo_t,
-    pub status: gpgme_error_t
+    pub status: gpgme_error_t,
 }
 pub type gpgme_recipient_t = *mut _gpgme_recipient;
 
@@ -444,7 +484,7 @@ impl _gpgme_signature {
 #[derive(Copy, Clone)]
 pub struct _gpgme_op_verify_result {
     pub signatures: gpgme_signature_t,
-    pub file_name: *mut c_char
+    pub file_name: *mut c_char,
 }
 pub type gpgme_verify_result_t = *mut _gpgme_op_verify_result;
 
@@ -454,7 +494,7 @@ pub struct _gpgme_import_status {
     pub next: gpgme_import_status_t,
     pub fpr: *mut c_char,
     pub result: gpgme_error_t,
-    pub status: c_uint
+    pub status: c_uint,
 }
 pub type gpgme_import_status_t = *mut _gpgme_import_status;
 
@@ -511,7 +551,7 @@ impl _gpgme_op_genkey_result {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct _gpgme_op_keylist_result {
-    pub bitfield: u32
+    pub bitfield: u32,
 }
 pub type gpgme_keylist_result_t = *mut _gpgme_op_keylist_result;
 
@@ -534,18 +574,26 @@ pub struct _gpgme_trust_item {
     _owner_trust: [c_char; 2],
     pub validity: *mut c_char,
     _validity: [c_char; 2],
-    pub name: *mut c_char
+    pub name: *mut c_char,
 }
 pub type gpgme_trust_item_t = *mut _gpgme_trust_item;
 
-pub type gpgme_assuan_data_cb_t = Option<extern fn(*mut c_void, *const c_void, size_t) -> gpgme_error_t>;
-pub type gpgme_assuan_inquire_cb_t = Option<extern fn(*mut c_void, *const c_char, *const c_char, *mut gpgme_data_t) -> gpgme_error_t>;
-pub type gpgme_assuan_status_cb_t = Option<extern fn(*mut c_void, *const c_char, *const c_char) -> gpgme_error_t>;
+pub type gpgme_assuan_data_cb_t = Option<extern "C" fn(*mut c_void, *const c_void, size_t)
+                                                       -> gpgme_error_t>;
+pub type gpgme_assuan_inquire_cb_t = Option<extern "C" fn(*mut c_void,
+                                                          *const c_char,
+                                                          *const c_char,
+                                                          *mut gpgme_data_t)
+                                                          -> gpgme_error_t>;
+pub type gpgme_assuan_status_cb_t = Option<extern "C" fn(*mut c_void,
+                                                         *const c_char,
+                                                         *const c_char)
+                                                         -> gpgme_error_t>;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct _gpgme_op_vfs_mount_result {
-    pub mount_dir: *mut c_char
+    pub mount_dir: *mut c_char,
 }
 pub type gpgme_vfs_mount_result_t = *mut _gpgme_op_vfs_mount_result;
 
@@ -554,7 +602,7 @@ pub type gpgme_vfs_mount_result_t = *mut _gpgme_op_vfs_mount_result;
 pub struct gpgme_conf_arg {
     pub next: gpgme_conf_arg_t,
     pub no_arg: c_uint,
-    pub union: libc::uintptr_t
+    pub union: libc::uintptr_t,
 }
 pub type gpgme_conf_arg_t = *mut gpgme_conf_arg;
 
@@ -576,7 +624,7 @@ pub struct gpgme_conf_opt {
     pub value: gpgme_conf_arg_t,
     pub change_value: c_int,
     pub new_value: gpgme_conf_arg_t,
-    pub user_data: *mut c_void
+    pub user_data: *mut c_void,
 }
 pub type gpgme_conf_opt_t = *mut gpgme_conf_opt;
 
@@ -588,21 +636,21 @@ pub struct gpgme_conf_comp {
     pub name: *mut c_char,
     pub description: *mut c_char,
     pub program_name: *mut c_char,
-    pub options: gpgme_conf_opt_t
+    pub options: gpgme_conf_opt_t,
 }
 pub type gpgme_conf_comp_t = *mut gpgme_conf_comp;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct _gpgme_op_query_swdb_result {
-  pub next: *mut _gpgme_op_query_swdb_result,
-  pub name: *mut c_char,
-  pub iversion: *mut c_char,
-  pub created: c_ulong,
-  pub retrieved: c_ulong,
-  bitfield: u32,
-  pub version: *mut c_char,
-  pub reldate: c_ulong,
+    pub next: *mut _gpgme_op_query_swdb_result,
+    pub name: *mut c_char,
+    pub iversion: *mut c_char,
+    pub created: c_ulong,
+    pub retrieved: c_ulong,
+    bitfield: u32,
+    pub version: *mut c_char,
+    pub reldate: c_ulong,
 }
 
 impl _gpgme_op_query_swdb_result {

@@ -252,11 +252,17 @@ pub const GPGME_ENCRYPT_PREPARE: gpgme_encrypt_flags_t = 4;
 pub const GPGME_ENCRYPT_EXPECT_SIGN: gpgme_encrypt_flags_t = 8;
 pub const GPGME_ENCRYPT_NO_COMPRESS: gpgme_encrypt_flags_t = 16;
 pub const GPGME_ENCRYPT_SYMMETRIC: gpgme_encrypt_flags_t = 32;
+pub const GPGME_ENCRYPT_THROW_KEYIDS: gpgme_encrypt_flags_t = 64;
+pub const GPGME_ENCRYPT_WRAP: gpgme_encrypt_flags_t = 128;
+
+pub type gpgme_decrypt_flags_t = libc::c_uint;
+pub const GPGME_DECRYPT_VERIFY: gpgme_decrypt_flags_t = 1;
+pub const GPGME_DECRYPT_UNWRAP: gpgme_decrypt_flags_t = 128;
 
 pub type gpgme_sigsum_t = libc::c_uint;
 pub const GPGME_SIGSUM_VALID: gpgme_sigsum_t = 0x0001;
 pub const GPGME_SIGSUM_GREEN: gpgme_sigsum_t = 0x0002;
-pub const GPGME_SIGSUM_RED:  gpgme_sigsum_t = 0x0004;
+pub const GPGME_SIGSUM_RED: gpgme_sigsum_t = 0x0004;
 pub const GPGME_SIGSUM_KEY_REVOKED: gpgme_sigsum_t = 0x0010;
 pub const GPGME_SIGSUM_KEY_EXPIRED: gpgme_sigsum_t = 0x0020;
 pub const GPGME_SIGSUM_SIG_EXPIRED: gpgme_sigsum_t = 0x0040;
@@ -283,6 +289,7 @@ pub const GPGME_CREATE_NOSTORE: libc::c_uint = 1 << 9;
 pub const GPGME_CREATE_WANTPUB: libc::c_uint = 1 << 10;
 pub const GPGME_CREATE_WANTSEC: libc::c_uint = 1 << 11;
 pub const GPGME_CREATE_FORCE: libc::c_uint = 1 << 12;
+pub const GPGME_CREATE_NOEXPIRE: libc::c_uint = 1 << 13;
 
 pub const GPGME_KEYSIGN_LOCAL: libc::c_uint = 1 << 7;
 pub const GPGME_KEYSIGN_LFSEP: libc::c_uint = 1 << 8;

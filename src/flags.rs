@@ -31,6 +31,7 @@ bitflags! {
         const CREATE_WANTPUB = ffi::GPGME_CREATE_WANTPUB,
         const CREATE_WANTSEC = ffi::GPGME_CREATE_WANTSEC,
         const CREATE_FORCE = ffi::GPGME_CREATE_FORCE,
+        const CREATE_NOEXPIRE = ffi::GPGME_CREATE_NOEXPIRE,
     }
 }
 
@@ -70,6 +71,15 @@ bitflags! {
         const ENCRYPT_EXPECT_SIGN = ffi::GPGME_ENCRYPT_EXPECT_SIGN,
         const ENCRYPT_NO_COMPRESS= ffi::GPGME_ENCRYPT_NO_COMPRESS,
         const ENCRYPT_SYMMETRIC = ffi::GPGME_ENCRYPT_SYMMETRIC,
+        const ENCRYPT_THROW_KEYIDS = ffi::GPGME_ENCRYPT_THROW_KEYIDS,
+        const ENCRYPT_WRAP = ffi::GPGME_ENCRYPT_WRAP,
+    }
+}
+
+bitflags! {
+    pub flags DecryptFlags: ffi::gpgme_decrypt_flags_t {
+        const DECRYPT_VERIFY = ffi::GPGME_DECRYPT_VERIFY,
+        const DECRYPT_UNWRAP = ffi::GPGME_DECRYPT_UNWRAP,
     }
 }
 

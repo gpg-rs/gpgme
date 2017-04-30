@@ -18,7 +18,7 @@ name = "gpgme_sys"
 path = "lib.rs"
 
 [features]
-default = ["v1_8_0"]
+default = ["v1_9_0"]
 v1_3_0 = []
 v1_3_1 = ["v1_3_0"]
 v1_4_0 = ["v1_3_1"]
@@ -30,6 +30,7 @@ v1_6_0 = ["v1_5_1"]
 v1_7_0 = ["v1_6_0"]
 v1_7_1 = ["v1_7_0"]
 v1_8_0 = ["v1_7_1"]
+v1_9_0 = ["v1_8_0"]
 
 [build-dependencies]
 cfg-if = "0.1"

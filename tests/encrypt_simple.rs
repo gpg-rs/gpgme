@@ -18,8 +18,7 @@ test_case! {
         ctx.set_text_mode(true);
 
         let mut ciphertext = Vec::new();
-        fail_if_err!(ctx.encrypt_with_flags(Some(&key), gpgme::ENCRYPT_ALWAYS_TRUST,
-                                            "Hello World", &mut ciphertext));
+        fail_if_err!(ctx.encrypt_with_flags(Some(&key), "Hello World", &mut ciphertext, gpgme::ENCRYPT_ALWAYS_TRUST));
         assert!(ciphertext.starts_with(b"-----BEGIN PGP MESSAGE-----"));
         drop(ctx);
 

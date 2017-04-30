@@ -103,12 +103,12 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn as_raw(&self) -> ffi::gpgme_data_t {
-        *self.0
+        self.0.get()
     }
 
     #[inline]
     pub fn into_raw(self) -> ffi::gpgme_data_t {
-        let raw = *self.0;
+        let raw = self.0.get();
         mem::forget(self);
         raw
     }

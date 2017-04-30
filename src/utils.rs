@@ -82,7 +82,7 @@ macro_rules! impl_wrapper {
 
         #[inline]
         pub fn as_raw(&self) -> $T {
-            *self.0
+            self.0.get()
         }
     };
     ($Name:ident: $T:ty) => {
@@ -94,12 +94,12 @@ macro_rules! impl_wrapper {
 
         #[inline]
         pub fn as_raw(&self) -> $T {
-            *self.0
+            self.0.get()
         }
 
         #[inline]
         pub fn into_raw(self) -> $T {
-            let raw = *self.0;
+            let raw = self.0.get();
             ::std::mem::forget(self);
             raw
         }
@@ -324,7 +324,17 @@ impl Write for FdWriter {
 
 cfg_if! {
     if #[cfg(any(nightly, feature = "nightly"))] {
-        pub type NonZero<T> = ::core::nonzero::NonZero<T>;
+        pub struct NonZero<T>(::core::nonzero::NonZero<T>);
+        impl<T> NonZero<T> {
+            #[inline(always)]
+            pub unsafe fn new(inner: T) -> NonZero<T> {
+                NonZero(inner)
+            }
+
+            pub fn get(self) -> T {
+                *self.0
+            }
+        }
     } else {
         #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
         pub struct NonZero<T>(T);
@@ -334,13 +344,9 @@ cfg_if! {
             pub unsafe fn new(inner: T) -> NonZero<T> {
                 NonZero(inner)
             }
-        }
 
-        impl<T> ::std::ops::Deref for NonZero<T> {
-            type Target = T;
-
-            fn deref(&self) -> &T {
-                &self.0
+            pub fn get(self) -> T {
+                self.0
             }
         }
     }
