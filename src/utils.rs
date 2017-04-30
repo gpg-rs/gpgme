@@ -324,6 +324,7 @@ impl Write for FdWriter {
 
 cfg_if! {
     if #[cfg(any(nightly, feature = "nightly"))] {
+        #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
         pub struct NonZero<T>(::core::nonzero::NonZero<T>);
         impl<T> NonZero<T> {
             #[inline(always)]
