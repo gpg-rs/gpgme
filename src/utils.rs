@@ -82,7 +82,7 @@ macro_rules! impl_wrapper {
 
         #[inline]
         pub fn as_raw(&self) -> $T {
-            self.0.get()
+            *self.0.get()
         }
     };
     ($Name:ident: $T:ty) => {
@@ -94,12 +94,12 @@ macro_rules! impl_wrapper {
 
         #[inline]
         pub fn as_raw(&self) -> $T {
-            self.0.get()
+            *self.0.get()
         }
 
         #[inline]
         pub fn into_raw(self) -> $T {
-            let raw = self.0.get();
+            let raw = *self.0.get();
             ::std::mem::forget(self);
             raw
         }
@@ -324,16 +324,19 @@ impl Write for FdWriter {
 
 cfg_if! {
     if #[cfg(any(nightly, feature = "nightly"))] {
+        use core::nonzero::{self, Zeroable};
+
         #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-        pub struct NonZero<T>(::core::nonzero::NonZero<T>);
-        impl<T> NonZero<T> {
+        pub struct NonZero<T: Zeroable>(nonzero::NonZero<T>);
+
+        impl<T: Zeroable> NonZero<T> {
             #[inline(always)]
             pub unsafe fn new(inner: T) -> NonZero<T> {
-                NonZero(inner)
+                NonZero(nonzero::NonZero::new(inner))
             }
 
-            pub fn get(self) -> T {
-                *self.0
+            pub fn get(&self) -> &T {
+                &*self.0
             }
         }
     } else {
@@ -346,8 +349,8 @@ cfg_if! {
                 NonZero(inner)
             }
 
-            pub fn get(self) -> T {
-                self.0
+            pub fn get(&self) -> &T {
+                &self.0
             }
         }
     }
