@@ -44,12 +44,7 @@ impl TrustItem {
 
     #[inline]
     pub fn key_id_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw())
-                .keyid
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -60,12 +55,7 @@ impl TrustItem {
 
     #[inline]
     pub fn user_id_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw())
-                .name
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]

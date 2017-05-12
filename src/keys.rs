@@ -182,7 +182,7 @@ impl Key {
                     } else {
                         s
                     }
-                },
+                }
             )
     }
 
@@ -236,7 +236,7 @@ impl Key {
         let _ = ctx.set_key_list_mode(
             ::KEY_LIST_MODE_LOCAL | ::KEY_LIST_MODE_SIGS | ::KEY_LIST_MODE_SIG_NOTATIONS |
             ::KEY_LIST_MODE_VALIDATE |
-            ::KEY_LIST_MODE_WITH_TOFU,
+            ::KEY_LIST_MODE_WITH_TOFU
         );
         if self.has_secret() {
             ctx.get_secret_key(self)
@@ -287,12 +287,7 @@ impl<'a> Subkey<'a> {
 
     #[inline]
     pub fn id_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .keyid
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -418,12 +413,7 @@ impl<'a> Subkey<'a> {
     #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn keygrip_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .keygrip
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -462,12 +452,7 @@ impl<'a> Subkey<'a> {
     #[inline]
     #[cfg(feature = "v1_5_0")]
     pub fn curve_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .curve
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).curve.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -532,12 +517,7 @@ impl<'a> UserId<'a> {
 
     #[inline]
     pub fn name_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .name
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -548,12 +528,7 @@ impl<'a> UserId<'a> {
 
     #[inline]
     pub fn email_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .email
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).email.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -564,12 +539,7 @@ impl<'a> UserId<'a> {
 
     #[inline]
     pub fn comment_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .comment
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).comment.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -580,12 +550,7 @@ impl<'a> UserId<'a> {
 
     #[inline]
     pub fn address_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .address
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).address.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -670,12 +635,7 @@ impl<'a> UserIdSignature<'a> {
 
     #[inline]
     pub fn signer_key_id_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .keyid
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -747,12 +707,7 @@ impl<'a> UserIdSignature<'a> {
 
     #[inline]
     pub fn signer_name_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .name
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -763,12 +718,7 @@ impl<'a> UserIdSignature<'a> {
 
     #[inline]
     pub fn signer_email_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .email
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).email.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -779,12 +729,7 @@ impl<'a> UserIdSignature<'a> {
 
     #[inline]
     pub fn signer_comment_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .comment
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).comment.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]

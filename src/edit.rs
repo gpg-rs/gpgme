@@ -191,7 +191,7 @@ impl<E: Editor> EditInteractor for EditorWrapper<E> {
                             }
                         )
                         .and(Ok(state))
-                },
+                }
             );
         self.state.and(Ok(()))
     }

@@ -382,12 +382,7 @@ impl<'a> Recipient<'a> {
 
     #[inline]
     pub fn key_id_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .keyid
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -687,7 +682,7 @@ impl<'a> Signature<'a> {
                     |k| {
                         ffi::gpgme_key_ref(k);
                         ::Key::from_raw(k)
-                    },
+                    }
                 )
         }
     }
@@ -730,12 +725,7 @@ impl QuerySwdbResult {
 
     #[inline]
     pub fn name_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw())
-                .name
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -762,12 +752,7 @@ impl QuerySwdbResult {
 
     #[inline]
     pub fn latest_version_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw())
-                .version
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).version.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]

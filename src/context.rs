@@ -194,8 +194,7 @@ impl Context {
         let path = path.map(S1::into_native);
         let home_dir = home_dir.map(S2::into_native);
         unsafe {
-            let path = path.as_ref()
-                .map_or(ptr::null(), |s| s.as_ref().as_ptr());
+            let path = path.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
             let home_dir = home_dir
                 .as_ref()
                 .map_or(ptr::null(), |s| s.as_ref().as_ptr());
@@ -598,9 +597,7 @@ impl Context {
                     key.as_raw(),
                     userid.as_ref().as_ptr(),
                     name.as_ref().as_ptr(),
-                    value
-                        .as_ref()
-                        .map_or(ptr::null(), |s| s.as_ref().as_ptr()),
+                    value.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr()),
                 )
             );
         }
@@ -890,10 +887,7 @@ impl Context {
     fn export_<I>(&mut self, patterns: I, mode: ::ExportMode, dst: Option<&mut Data>) -> Result<()>
         where I: IntoIterator, I::Item: AsRef<CStr> {
         let dst = dst.map_or(ptr::null_mut(), |d| d.as_raw());
-        let mut patterns: Vec<_> = patterns
-            .into_iter()
-            .map(|s| s.as_ref().as_ptr())
-            .collect();
+        let mut patterns: Vec<_> = patterns.into_iter().map(|s| s.as_ref().as_ptr()).collect();
         let ptr = if !patterns.is_empty() {
             patterns.push(ptr::null());
             patterns.as_mut_ptr()
@@ -1365,8 +1359,7 @@ impl Context {
         let name = name.map(|s| s.into_native());
         let iversion = installed_ver.map(|s| s.into_native());
         unsafe {
-            let name = name.as_ref()
-                .map_or(ptr::null(), |s| s.as_ref().as_ptr());
+            let name = name.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
             let iversion = iversion
                 .as_ref()
                 .map_or(ptr::null(), |s| s.as_ref().as_ptr());
@@ -1441,7 +1434,7 @@ impl<'a> Keys<'a, ()> {
             Keys {
                 ctx: ctx,
                 _src: None,
-            },
+            }
         )
     }
 
@@ -1457,7 +1450,7 @@ impl<'a> Keys<'a, ()> {
             Keys {
                 ctx: ctx,
                 _src: Some(src),
-            },
+            }
         )
     }
 
@@ -1581,7 +1574,7 @@ impl<'a> Iterator for Signers<'a> {
                             self.current = None;
                             None
                         }
-                    },
+                    }
                 )
         }
     }

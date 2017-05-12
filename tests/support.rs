@@ -92,15 +92,11 @@ fn setup_agent(dir: &Path) {
     agent_conf
         .write_all(b"ignore-invalid-option allow-loopback-pinentry\n")
         .unwrap();
-    agent_conf
-        .write_all(b"allow-loopback-pinentry\n")
-        .unwrap();
+    agent_conf.write_all(b"allow-loopback-pinentry\n").unwrap();
     agent_conf
         .write_all(b"ignore-invalid-option pinentry-mode\n")
         .unwrap();
-    agent_conf
-        .write_all(b"pinentry-mode loopback\n")
-        .unwrap();
+    agent_conf.write_all(b"pinentry-mode loopback\n").unwrap();
     agent_conf.write_all(b"pinentry-program ").unwrap();
     agent_conf
         .write_all(pinentry.to_str().unwrap().as_ref())

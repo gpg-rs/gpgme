@@ -66,12 +66,7 @@ impl<'a> EngineInfo<'a> {
 
     #[inline]
     pub fn version_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw())
-                .version
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).version.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]

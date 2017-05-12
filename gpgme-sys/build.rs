@@ -75,12 +75,12 @@ fn main() {
     run(
         Command::new("git")
             .current_dir("libassuan")
-            .args(&["apply", "../libassuan-remove-doc.patch"]),
+            .args(&["apply", "../libassuan-remove-doc.patch"])
     );
     run(
         Command::new("git")
             .current_dir("gpgme")
-            .args(&["apply", "../gpgme-remove-doc.patch"]),
+            .args(&["apply", "../gpgme-remove-doc.patch"])
     );
 
     if try_build() || try_config("gpgme-config") {
@@ -126,7 +126,7 @@ fn parse_config_output(output: &str) {
                 Some(p.split_at(2))
             } else {
                 None
-            },
+            }
         );
 
     for (flag, val) in parts {
@@ -188,8 +188,8 @@ fn try_build() -> bool {
                         msys_compatible(&gpgerror_root)
                     ),
                     &format!("--prefix={}", msys_compatible(&dst)),
-                ],
-            ),
+                ]
+            )
     ) {
         return false;
     }
@@ -197,7 +197,7 @@ fn try_build() -> bool {
         Command::new("make")
             .current_dir(&build)
             .arg("-j")
-            .arg(env::var("NUM_JOBS").unwrap()),
+            .arg(env::var("NUM_JOBS").unwrap())
     ) {
         return false;
     }
@@ -234,7 +234,7 @@ fn try_build() -> bool {
                 ),
                 &format!("--with-libassuan-prefix={}", msys_compatible(&dst)),
                 &format!("--prefix={}", msys_compatible(&dst)),
-            ],
+            ]
         );
     if target.contains("windows") {
         configure.args(
@@ -242,7 +242,7 @@ fn try_build() -> bool {
                 "--disable-gpgsm-test",
                 "--disable-gpgconf-test",
                 "--disable-g13-test",
-            ],
+            ]
         );
     }
     if !run(&mut configure) {
@@ -252,7 +252,7 @@ fn try_build() -> bool {
         Command::new("make")
             .current_dir(&build)
             .arg("-j")
-            .arg(env::var("NUM_JOBS").unwrap()),
+            .arg(env::var("NUM_JOBS").unwrap())
     ) {
         return false;
     }

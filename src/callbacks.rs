@@ -96,7 +96,7 @@ pub extern "C" fn passphrase_cb<P: PassphraseProvider>(
                 .err()
                 .map_or(0, |err| err.raw());
             (provider, result)
-        },
+        }
     ) {
         Ok((provider, result)) => {
             wrapper.state = Some(Ok(provider));
@@ -179,7 +179,7 @@ pub extern "C" fn progress_cb<H: ProgressHandler>(
             };
             handler.handle(info);
             handler
-        },
+        }
     ) {
         Ok(handler) => wrapper.state = Some(Ok(handler)),
         Err(err) => wrapper.state = Some(Err(err)),
@@ -239,7 +239,7 @@ pub extern "C" fn status_cb<H: StatusHandler>(hook: *mut libc::c_void, keyword: 
                 .map(|err| err.raw())
                 .unwrap_or(0);
             (handler, result)
-        },
+        }
     ) {
         Ok((handler, result)) => {
             wrapper.state = Some(Ok(handler));
@@ -320,7 +320,7 @@ pub extern "C" fn edit_cb<E: EditInteractor>(
                 .map(|err| err.raw())
                 .unwrap_or(0);
             (interactor, result)
-        },
+        }
     ) {
         Ok((interactor, result)) => {
             wrapper.state = Some(Ok(interactor));
@@ -342,8 +342,7 @@ pub struct InteractionStatus<'a> {
 
 impl<'a> InteractionStatus<'a> {
     pub fn keyword(&self) -> Result<&'a str, Option<Utf8Error>> {
-        self.keyword
-            .map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.keyword.map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     pub fn keyword_raw(&self) -> Option<&'a CStr> {
@@ -410,7 +409,7 @@ pub extern "C" fn interact_cb<I: Interactor>(
                 .map(|err| err.raw())
                 .unwrap_or(0);
             (interactor, result)
-        },
+        }
     ) {
         Ok((interactor, result)) => {
             wrapper.state = Some(Ok(interactor));

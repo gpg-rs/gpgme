@@ -203,8 +203,8 @@ impl<'a> Data<'a> {
                 CallbackWrapper {
                     cbs: cbs,
                     inner: src,
-                },
-            ),
+                }
+            )
         );
         let cbs = &mut (*src).cbs as *mut _;
         let mut data = ptr::null_mut();
@@ -373,7 +373,9 @@ impl<'a> Data<'a> {
             let mut len = 0;
             ffi::gpgme_data_release_and_get_mem(self.into_raw(), &mut len)
                 .as_ref()
-                .map(|b| slice::from_raw_parts(b as *const _ as *const _, len).to_vec(),)
+                .map(
+                    |b| slice::from_raw_parts(b as *const _ as *const _, len).to_vec(),
+                )
         }
     }
 }
@@ -443,7 +445,7 @@ extern "C" fn read_callback<S: Read>(handle: *mut libc::c_void, buffer: *mut lib
                 |err| {
                     ffi::gpgme_err_set_errno(Error::from(err).to_errno());
                     -1
-                },
+                }
             )
     }
 }
@@ -461,7 +463,7 @@ extern "C" fn write_callback<S: Write>(handle: *mut libc::c_void, buffer: *const
                 |err| {
                     ffi::gpgme_err_set_errno(Error::from(err).to_errno());
                     -1
-                },
+                }
             )
     }
 }
@@ -487,7 +489,7 @@ extern "C" fn seek_callback<S: Seek>(handle: *mut libc::c_void, offset: libc::of
                 |err| {
                     ffi::gpgme_err_set_errno(Error::from(err).to_errno());
                     -1
-                },
+                }
             )
     }
 }

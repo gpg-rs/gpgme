@@ -70,8 +70,7 @@ fn main() {
 
     if mode.contains(gpgme::EXPORT_EXTERN) {
         println!("sending keys to keyserver");
-        ctx.export_keys_extern(&keys, mode)
-            .expect("export failed");
+        ctx.export_keys_extern(&keys, mode).expect("export failed");
     } else {
         let mut output = Vec::new();
         ctx.export_keys(&keys, mode, &mut output)

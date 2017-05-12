@@ -41,12 +41,7 @@ impl<'a> SignatureNotation<'a> {
 
     #[inline]
     pub fn name_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .name
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -57,12 +52,7 @@ impl<'a> SignatureNotation<'a> {
 
     #[inline]
     pub fn value_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .value
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { (*self.as_raw()).value.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }
 

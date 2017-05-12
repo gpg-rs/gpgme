@@ -353,8 +353,7 @@ impl Token {
         let path = path.map(S1::into_native);
         let home_dir = home_dir.map(S2::into_native);
         unsafe {
-            let path = path.as_ref()
-                .map_or(ptr::null(), |s| s.as_ref().as_ptr());
+            let path = path.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
             let home_dir = home_dir
                 .as_ref()
                 .map_or(ptr::null(), |s| s.as_ref().as_ptr());
