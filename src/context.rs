@@ -1305,7 +1305,7 @@ impl Context {
 
     #[inline]
     #[cfg(not(feature = "v1_9_0"))]
-    pub fn decrypt_with_flags<'c, 'p, C, P>(&mut self, ciphertext: C, plaintext: P, flags: ::DecryptFlags)
+    pub fn decrypt_with_flags<'c, 'p, C, P>(&mut self, _ciphertext: C, _plaintext: P, _flags: ::DecryptFlags)
         -> Result<results::DecryptionResult>
         where C: IntoData<'c>, P: IntoData<'p> {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
