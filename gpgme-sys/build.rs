@@ -12,7 +12,9 @@ use std::process::{self, Child, Command, Stdio};
 use std::str;
 
 cfg_if! {
-    if #[cfg(feature = "v1_8_0")] {
+    if #[cfg(feature = "v1_9_0")] {
+        const TARGET_VERSION: &'static str = "1.9.0";
+    } else if #[cfg(feature = "v1_8_0")] {
         const TARGET_VERSION: &'static str = "1.8.0";
     } else if #[cfg(feature = "v1_7_1")] {
         const TARGET_VERSION: &'static str = "1.7.1";
