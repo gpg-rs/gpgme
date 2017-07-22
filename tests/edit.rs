@@ -53,8 +53,7 @@ impl Editor for TestEditor {
                 Ok(State::Valid) => Ok(State::Uid),
                 Ok(State::Uid) => Ok(State::Primary),
                 Ok(State::Quit) => state,
-                Ok(State::Primary) |
-                Err(_) => Ok(State::Quit),
+                Ok(State::Primary) | Err(_) => Ok(State::Quit),
                 _ => Err(Error::from_code(error::GPG_ERR_GENERAL)),
             }
         } else if (status.args() == Ok(edit::KEY_VALID)) && (state == Ok(State::Expire)) {

@@ -172,18 +172,15 @@ impl Key {
 
     #[inline]
     pub fn short_id_raw(&self) -> Option<&CStr> {
-        self.id_raw()
-            .map(
-                |s| {
-                    let bytes = s.to_bytes_with_nul();
-                    if bytes.len() >= 9 {
-                        // One extra for the null terminator
-                        unsafe { CStr::from_bytes_with_nul_unchecked(&bytes[(bytes.len() - 9)..]) }
-                    } else {
-                        s
-                    }
-                }
-            )
+        self.id_raw().map(|s| {
+            let bytes = s.to_bytes_with_nul();
+            if bytes.len() >= 9 {
+                // One extra for the null terminator
+                unsafe { CStr::from_bytes_with_nul_unchecked(&bytes[(bytes.len() - 9)..]) }
+            } else {
+                s
+            }
+        })
     }
 
     #[inline]
@@ -235,8 +232,7 @@ impl Key {
         let mut ctx = try!(::Context::from_protocol(self.protocol()));
         let _ = ctx.set_key_list_mode(
             ::KEY_LIST_MODE_LOCAL | ::KEY_LIST_MODE_SIGS | ::KEY_LIST_MODE_SIG_NOTATIONS |
-            ::KEY_LIST_MODE_VALIDATE |
-            ::KEY_LIST_MODE_WITH_TOFU
+                ::KEY_LIST_MODE_VALIDATE | ::KEY_LIST_MODE_WITH_TOFU,
         );
         if self.has_secret() {
             ctx.get_secret_key(self)

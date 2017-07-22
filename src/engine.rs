@@ -8,7 +8,7 @@ use std::sync::RwLockReadGuard;
 
 use ffi;
 
-use {NonZero, Protocol, TOKEN, Token};
+use {NonZero, Protocol, Token, TOKEN};
 use error::Result;
 
 #[derive(Copy, Clone)]

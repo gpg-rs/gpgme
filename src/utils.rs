@@ -325,21 +325,6 @@ impl Write for FdWriter {
 cfg_if! {
     if #[cfg(any(nightly, feature = "nightly"))] {
         pub use core::nonzero::NonZero;
-        // use core::nonzero::{self, Zeroable};
-        //
-        // #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-        // pub struct NonZero<T: Zeroable>(nonzero::NonZero<T>);
-        //
-        // impl<T: Zeroable> NonZero<T> {
-        //     #[inline(always)]
-        //     pub unsafe fn new(inner: T) -> NonZero<T> {
-        //         NonZero(nonzero::NonZero::new(inner))
-        //     }
-        //
-        //     pub fn get(&self) -> &T {
-        //         &*self.0
-        //     }
-        // }
     } else {
         #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
         pub struct NonZero<T>(T);

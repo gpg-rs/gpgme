@@ -54,11 +54,9 @@ fn main() {
             println!("cargo:rustc-link-search=native={}", path.display());
         }
         match libs {
-            Some(libs) => {
-                for lib in env::split_paths(&libs) {
-                    println!("cargo:rustc-link-lib={0}={1}", mode, lib.display());
-                }
-            }
+            Some(libs) => for lib in env::split_paths(&libs) {
+                println!("cargo:rustc-link-lib={0}={1}", mode, lib.display());
+            },
             None => {
                 println!("cargo:rustc-link-lib={0}={1}", mode, "gpgme");
             }
@@ -77,12 +75,12 @@ fn main() {
     run(
         Command::new("git")
             .current_dir("libassuan")
-            .args(&["apply", "../libassuan-remove-doc.patch"])
+            .args(&["apply", "../libassuan-remove-doc.patch"]),
     );
     run(
         Command::new("git")
             .current_dir("gpgme")
-            .args(&["apply", "../gpgme-remove-doc.patch"])
+            .args(&["apply", "../gpgme-remove-doc.patch"]),
     );
 
     if try_build() || try_config("gpgme-config") {
@@ -121,15 +119,13 @@ fn try_config<S: AsRef<OsStr>>(path: S) -> bool {
 }
 
 fn parse_config_output(output: &str) {
-    let parts = output
-        .split(|c: char| c.is_whitespace())
-        .filter_map(
-            |p| if p.len() > 2 {
-                Some(p.split_at(2))
-            } else {
-                None
-            }
-        );
+    let parts = output.split(|c: char| c.is_whitespace()).filter_map(
+        |p| if p.len() > 2 {
+            Some(p.split_at(2))
+        } else {
+            None
+        },
+    );
 
     for (flag, val) in parts {
         match flag {
@@ -155,16 +151,11 @@ fn try_build() -> bool {
     let host = env::var("HOST").unwrap();
     let gpgerror_root = env::var("DEP_GPG_ERROR_ROOT").unwrap();
     let compiler = gcc::Config::new().get_compiler();
-    let cflags = compiler
-        .args()
-        .iter()
-        .fold(
-            OsString::new(), |mut c, a| {
-                c.push(a);
-                c.push(" ");
-                c
-            }
-        );
+    let cflags = compiler.args().iter().fold(OsString::new(), |mut c, a| {
+        c.push(a);
+        c.push(" ");
+        c
+    });
 
     let _ = fs::create_dir_all(&build);
 
@@ -177,21 +168,19 @@ fn try_build() -> bool {
             .env("CC", compiler.path())
             .env("CFLAGS", &cflags)
             .arg(msys_compatible(src.join("configure")))
-            .args(
-                &[
-                    "--build",
-                    gnu_target(&host),
-                    "--host",
-                    gnu_target(&target),
-                    "--enable-static",
-                    "--disable-shared",
-                    &format!(
-                        "--with-libgpg-error-prefix={}",
-                        msys_compatible(&gpgerror_root)
-                    ),
-                    &format!("--prefix={}", msys_compatible(&dst)),
-                ]
-            )
+            .args(&[
+                "--build",
+                gnu_target(&host),
+                "--host",
+                gnu_target(&target),
+                "--enable-static",
+                "--disable-shared",
+                &format!(
+                    "--with-libgpg-error-prefix={}",
+                    msys_compatible(&gpgerror_root)
+                ),
+                &format!("--prefix={}", msys_compatible(&dst)),
+            ]),
     ) {
         return false;
     }
@@ -199,7 +188,7 @@ fn try_build() -> bool {
         Command::new("make")
             .current_dir(&build)
             .arg("-j")
-            .arg(env::var("NUM_JOBS").unwrap())
+            .arg(env::var("NUM_JOBS").unwrap()),
     ) {
         return false;
     }
@@ -221,31 +210,27 @@ fn try_build() -> bool {
         .env("CC", compiler.path())
         .env("CFLAGS", &cflags)
         .arg(msys_compatible(src.join("configure")))
-        .args(
-            &[
-                "--build",
-                gnu_target(&host),
-                "--host",
-                gnu_target(&target),
-                "--enable-static",
-                "--disable-shared",
-                "--disable-languages",
-                &format!(
-                    "--with-libgpg-error-prefix={}",
-                    msys_compatible(&gpgerror_root)
-                ),
-                &format!("--with-libassuan-prefix={}", msys_compatible(&dst)),
-                &format!("--prefix={}", msys_compatible(&dst)),
-            ]
-        );
+        .args(&[
+            "--build",
+            gnu_target(&host),
+            "--host",
+            gnu_target(&target),
+            "--enable-static",
+            "--disable-shared",
+            "--disable-languages",
+            &format!(
+                "--with-libgpg-error-prefix={}",
+                msys_compatible(&gpgerror_root)
+            ),
+            &format!("--with-libassuan-prefix={}", msys_compatible(&dst)),
+            &format!("--prefix={}", msys_compatible(&dst)),
+        ]);
     if target.contains("windows") {
-        configure.args(
-            &[
-                "--disable-gpgsm-test",
-                "--disable-gpgconf-test",
-                "--disable-g13-test",
-            ]
-        );
+        configure.args(&[
+            "--disable-gpgsm-test",
+            "--disable-gpgconf-test",
+            "--disable-g13-test",
+        ]);
     }
     if !run(&mut configure) {
         return false;
@@ -254,7 +239,7 @@ fn try_build() -> bool {
         Command::new("make")
             .current_dir(&build)
             .arg("-j")
-            .arg(env::var("NUM_JOBS").unwrap())
+            .arg(env::var("NUM_JOBS").unwrap()),
     ) {
         return false;
     }
@@ -275,18 +260,17 @@ fn try_build() -> bool {
 fn test_version(version: &str) {
     let version = version.trim();
     for (x, y) in TARGET_VERSION
-            .split('.')
-            .zip(version.split('.').chain(iter::repeat("0"))) {
+        .split('.')
+        .zip(version.split('.').chain(iter::repeat("0")))
+    {
         let (x, y): (u8, u8) = (x.parse().unwrap(), y.parse().unwrap());
         match x.cmp(&y) {
             Ordering::Less => break,
-            Ordering::Greater => {
-                panic!(
-                    "GPGME version `{}` is less than requested `{}`",
-                    version,
-                    TARGET_VERSION
-                )
-            }
+            Ordering::Greater => panic!(
+                "GPGME version `{}` is less than requested `{}`",
+                version,
+                TARGET_VERSION
+            ),
             _ => (),
         }
     }
@@ -306,18 +290,16 @@ fn spawn(cmd: &mut Command) -> Option<Child> {
 fn run(cmd: &mut Command) -> bool {
     if let Some(mut child) = spawn(cmd) {
         match child.wait() {
-            Ok(status) => {
-                if !status.success() {
-                    println!(
-                        "command did not execute successfully: {:?}\n\
-                       expected success, got: {}",
-                        cmd,
-                        status
-                    );
-                } else {
-                    return true;
-                }
-            }
+            Ok(status) => if !status.success() {
+                println!(
+                    "command did not execute successfully: {:?}\n\
+                     expected success, got: {}",
+                    cmd,
+                    status
+                );
+            } else {
+                return true;
+            },
             Err(e) => {
                 println!("failed to execute command: {:?}\nerror: {}", cmd, e);
             }
@@ -329,18 +311,16 @@ fn run(cmd: &mut Command) -> bool {
 fn output(cmd: &mut Command) -> Option<String> {
     if let Some(child) = spawn(cmd.stdout(Stdio::piped())) {
         match child.wait_with_output() {
-            Ok(output) => {
-                if !output.status.success() {
-                    println!(
-                        "command did not execute successfully: {:?}\n\
-                       expected success, got: {}",
-                        cmd,
-                        output.status
-                    );
-                } else {
-                    return String::from_utf8(output.stdout).ok();
-                }
-            }
+            Ok(output) => if !output.status.success() {
+                println!(
+                    "command did not execute successfully: {:?}\n\
+                     expected success, got: {}",
+                    cmd,
+                    output.status
+                );
+            } else {
+                return String::from_utf8(output.stdout).ok();
+            },
             Err(e) => {
                 println!("failed to execute command: {:?}\nerror: {}", cmd, e);
             }

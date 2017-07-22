@@ -177,22 +177,17 @@ impl<E: Editor> EditInteractor for EditorWrapper<E> {
             .code
             .into_result()
             .and_then(|_| E::next_state(self.state, status, out.is_some()))
-            .and_then(
-                |state| {
-                    if old_state == Ok(state) {
-                        return Ok(state);
-                    }
-
-                    out.map_or(
-                            Ok(()), |mut out| {
-                                self.editor
-                                    .action(state, &mut out)
-                                    .and_then(|_| out.write_all(b"\n").map_err(Error::from))
-                            }
-                        )
-                        .and(Ok(state))
+            .and_then(|state| {
+                if old_state == Ok(state) {
+                    return Ok(state);
                 }
-            );
+
+                out.map_or(Ok(()), |mut out| {
+                    self.editor
+                        .action(state, &mut out)
+                        .and_then(|_| out.write_all(b"\n").map_err(Error::from))
+                }).and(Ok(state))
+            });
         self.state.and(Ok(()))
     }
 }

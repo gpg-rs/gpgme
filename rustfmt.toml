@@ -1,14 +1,8 @@
-array_layout = "Block"
 closure_block_indent_threshold = 2
-generics_indent = "Block"
 fn_args_density = "Compressed"
-fn_args_layout = "Block"
-fn_args_paren_newline = false
 fn_brace_style = "PreferSameLine"
-fn_call_style = "Block"
 fn_return_indent = "WithWhereClause"
 item_brace_style = "PreferSameLine"
-reorder_imported_names = true
+reorder_imports_in_group = true
 where_density = "Compressed"
 where_layout = "Mixed"
-write_mode = "Overwrite"

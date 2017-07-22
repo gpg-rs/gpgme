@@ -303,38 +303,30 @@ impl _gpgme_key {
     }
 }
 
-pub type gpgme_passphrase_cb_t = Option<extern "C" fn(*mut c_void,
-                                                      *const c_char,
-                                                      *const c_char,
-                                                      c_int,
-                                                      c_int)
-                                                      -> gpgme_error_t>;
-pub type gpgme_progress_cb_t = Option<extern "C" fn(*mut c_void,
-                                                    *const c_char,
-                                                    c_int,
-                                                    c_int,
-                                                    c_int)>;
-pub type gpgme_status_cb_t = Option<extern "C" fn(*mut c_void, *const c_char, *const c_char)
-                                                  -> gpgme_error_t>;
-pub type gpgme_interact_cb_t = Option<extern "C" fn(*mut c_void,
-                                                    *const c_char,
-                                                    *const c_char,
-                                                    c_int)
-                                                    -> gpgme_error_t>;
-pub type gpgme_edit_cb_t = Option<extern "C" fn(*mut c_void,
-                                                gpgme_status_code_t,
-                                                *const c_char,
-                                                c_int)
-                                                -> gpgme_error_t>;
+pub type gpgme_passphrase_cb_t = Option<
+    extern "C" fn(*mut c_void, *const c_char, *const c_char, c_int, c_int)
+        -> gpgme_error_t,
+>;
+pub type gpgme_progress_cb_t = Option<
+    extern "C" fn(*mut c_void, *const c_char, c_int, c_int, c_int),
+>;
+pub type gpgme_status_cb_t = Option<
+    extern "C" fn(*mut c_void, *const c_char, *const c_char) -> gpgme_error_t,
+>;
+pub type gpgme_interact_cb_t = Option<
+    extern "C" fn(*mut c_void, *const c_char, *const c_char, c_int)
+        -> gpgme_error_t,
+>;
+pub type gpgme_edit_cb_t = Option<
+    extern "C" fn(*mut c_void, gpgme_status_code_t, *const c_char, c_int)
+        -> gpgme_error_t,
+>;
 
 pub type gpgme_io_cb_t = Option<extern "C" fn(*mut c_void, c_int) -> gpgme_error_t>;
-pub type gpgme_register_io_cb_t = Option<extern "C" fn(*mut c_void,
-                                                       c_int,
-                                                       c_int,
-                                                       gpgme_io_cb_t,
-                                                       *mut c_void,
-                                                       *mut *mut c_void)
-                                                       -> gpgme_error_t>;
+pub type gpgme_register_io_cb_t = Option<
+    extern "C" fn(*mut c_void, c_int, c_int, gpgme_io_cb_t, *mut c_void, *mut *mut c_void)
+        -> gpgme_error_t,
+>;
 pub type gpgme_remove_io_cb_t = Option<extern "C" fn(*mut c_void)>;
 
 #[repr(C)]
@@ -359,8 +351,12 @@ pub struct gpgme_io_cbs {
 pub type gpgme_io_cbs_t = *mut gpgme_io_cbs;
 
 pub type gpgme_data_read_cb_t = Option<extern "C" fn(*mut c_void, *mut c_void, size_t) -> ssize_t>;
-pub type gpgme_data_write_cb_t = Option<extern "C" fn(*mut c_void, *const c_void, size_t) -> ssize_t>;
-pub type gpgme_data_seek_cb_t = Option<extern "C" fn(*mut c_void, libc::off_t, c_int) -> libc::off_t>;
+pub type gpgme_data_write_cb_t = Option<
+    extern "C" fn(*mut c_void, *const c_void, size_t) -> ssize_t,
+>;
+pub type gpgme_data_seek_cb_t = Option<
+    extern "C" fn(*mut c_void, libc::off_t, c_int) -> libc::off_t,
+>;
 pub type gpgme_data_release_cb_t = Option<extern "C" fn(*mut c_void)>;
 
 #[repr(C)]
@@ -578,17 +574,16 @@ pub struct _gpgme_trust_item {
 }
 pub type gpgme_trust_item_t = *mut _gpgme_trust_item;
 
-pub type gpgme_assuan_data_cb_t = Option<extern "C" fn(*mut c_void, *const c_void, size_t)
-                                                       -> gpgme_error_t>;
-pub type gpgme_assuan_inquire_cb_t = Option<extern "C" fn(*mut c_void,
-                                                          *const c_char,
-                                                          *const c_char,
-                                                          *mut gpgme_data_t)
-                                                          -> gpgme_error_t>;
-pub type gpgme_assuan_status_cb_t = Option<extern "C" fn(*mut c_void,
-                                                         *const c_char,
-                                                         *const c_char)
-                                                         -> gpgme_error_t>;
+pub type gpgme_assuan_data_cb_t = Option<
+    extern "C" fn(*mut c_void, *const c_void, size_t) -> gpgme_error_t,
+>;
+pub type gpgme_assuan_inquire_cb_t = Option<
+    extern "C" fn(*mut c_void, *const c_char, *const c_char, *mut gpgme_data_t)
+        -> gpgme_error_t,
+>;
+pub type gpgme_assuan_status_cb_t = Option<
+    extern "C" fn(*mut c_void, *const c_char, *const c_char) -> gpgme_error_t,
+>;
 
 #[repr(C)]
 #[derive(Copy, Clone)]

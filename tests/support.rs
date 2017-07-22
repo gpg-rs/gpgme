@@ -131,12 +131,13 @@ impl TestCase {
             homedir.as_ref().unwrap().path().join("S.gpg-agent")
         };
         let mut child = match Command::new("gpg-connect-agent")
-                  .arg("-S")
-                  .arg(socket)
-                  .stdin(Stdio::piped())
-                  .stdout(Stdio::null())
-                  .stderr(Stdio::null())
-                  .spawn() {
+            .arg("-S")
+            .arg(socket)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        {
             Ok(child) => child,
             Err(err) => {
                 println!("Unable to kill agent: {}", err);

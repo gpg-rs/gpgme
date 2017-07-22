@@ -44,7 +44,8 @@ pub trait PassphraseProvider: UnwindSafe + Send {
 }
 
 impl<T: UnwindSafe + Send> PassphraseProvider for T
-    where T: FnMut(PassphraseRequest, &mut io::Write) -> Result<(), Error> {
+where
+    T: FnMut(PassphraseRequest, &mut io::Write) -> Result<(), Error>, {
     fn get_passphrase<W: io::Write>(&mut self, request: PassphraseRequest, mut out: W)
         -> Result<(), Error> {
         (*self)(request, &mut out)
@@ -71,7 +72,7 @@ impl<P> Drop for PassphraseProviderWrapper<P> {
 
 pub extern "C" fn passphrase_cb<P: PassphraseProvider>(
     hook: *mut libc::c_void, uid_hint: *const libc::c_char, info: *const libc::c_char,
-    was_bad: libc::c_int, fd: libc::c_int
+    was_bad: libc::c_int, fd: libc::c_int,
 ) -> ffi::gpgme_error_t {
     let wrapper = unsafe { &mut *(hook as *mut PassphraseProviderWrapper<P>) };
     let mut provider = match wrapper.state.take() {
@@ -82,22 +83,20 @@ pub extern "C" fn passphrase_cb<P: PassphraseProvider>(
         }
     };
 
-    match panic::catch_unwind(
-        move || unsafe {
-            let info = PassphraseRequest {
-                uid_hint: uid_hint.as_ref().map(|s| CStr::from_ptr(s)),
-                desc: info.as_ref().map(|s| CStr::from_ptr(s)),
-                prev_attempt_failed: was_bad != 0,
-            };
-            let mut writer = FdWriter::new(fd);
-            let result = provider
-                .get_passphrase(info, &mut writer)
-                .and_then(|_| writer.write_all(b"\n").map_err(Error::from))
-                .err()
-                .map_or(0, |err| err.raw());
-            (provider, result)
-        }
-    ) {
+    match panic::catch_unwind(move || unsafe {
+        let info = PassphraseRequest {
+            uid_hint: uid_hint.as_ref().map(|s| CStr::from_ptr(s)),
+            desc: info.as_ref().map(|s| CStr::from_ptr(s)),
+            prev_attempt_failed: was_bad != 0,
+        };
+        let mut writer = FdWriter::new(fd);
+        let result = provider
+            .get_passphrase(info, &mut writer)
+            .and_then(|_| writer.write_all(b"\n").map_err(Error::from))
+            .err()
+            .map_or(0, |err| err.raw());
+        (provider, result)
+    }) {
         Ok((provider, result)) => {
             wrapper.state = Some(Ok(provider));
             result
@@ -132,7 +131,8 @@ pub trait ProgressHandler: UnwindSafe + Send {
 }
 
 impl<T: UnwindSafe + Send> ProgressHandler for T
-    where T: FnMut(ProgressInfo) {
+where
+    T: FnMut(ProgressInfo), {
     fn handle(&mut self, info: ProgressInfo) {
         (*self)(info);
     }
@@ -158,7 +158,7 @@ impl<H> Drop for ProgressHandlerWrapper<H> {
 
 pub extern "C" fn progress_cb<H: ProgressHandler>(
     hook: *mut libc::c_void, what: *const libc::c_char, typ: libc::c_int, current: libc::c_int,
-    total: libc::c_int
+    total: libc::c_int,
 ) {
     let wrapper = unsafe { &mut *(hook as *mut ProgressHandlerWrapper<H>) };
     let mut handler = match wrapper.state.take() {
@@ -169,18 +169,16 @@ pub extern "C" fn progress_cb<H: ProgressHandler>(
         }
     };
 
-    match panic::catch_unwind(
-        move || unsafe {
-            let info = ProgressInfo {
-                what: what.as_ref().map(|s| CStr::from_ptr(s)),
-                typ: typ.into(),
-                current: current.into(),
-                total: total.into(),
-            };
-            handler.handle(info);
-            handler
-        }
-    ) {
+    match panic::catch_unwind(move || unsafe {
+        let info = ProgressInfo {
+            what: what.as_ref().map(|s| CStr::from_ptr(s)),
+            typ: typ.into(),
+            current: current.into(),
+            total: total.into(),
+        };
+        handler.handle(info);
+        handler
+    }) {
         Ok(handler) => wrapper.state = Some(Ok(handler)),
         Err(err) => wrapper.state = Some(Err(err)),
     }
@@ -191,7 +189,8 @@ pub trait StatusHandler: UnwindSafe + Send {
 }
 
 impl<T: UnwindSafe + Send> StatusHandler for T
-    where T: FnMut(Option<&CStr>, Option<&CStr>) -> Result<(), Error> {
+where
+    T: FnMut(Option<&CStr>, Option<&CStr>) -> Result<(), Error>, {
     fn handle(&mut self, keyword: Option<&CStr>, args: Option<&CStr>) -> Result<(), Error> {
         (*self)(keyword, args)
     }
@@ -229,18 +228,16 @@ pub extern "C" fn status_cb<H: StatusHandler>(hook: *mut libc::c_void, keyword: 
         }
     };
 
-    match panic::catch_unwind(
-        move || unsafe {
-            let keyword = keyword.as_ref().map(|s| CStr::from_ptr(s));
-            let args = args.as_ref().map(|s| CStr::from_ptr(s));
-            let result = handler
-                .handle(args, keyword)
-                .err()
-                .map(|err| err.raw())
-                .unwrap_or(0);
-            (handler, result)
-        }
-    ) {
+    match panic::catch_unwind(move || unsafe {
+        let keyword = keyword.as_ref().map(|s| CStr::from_ptr(s));
+        let args = args.as_ref().map(|s| CStr::from_ptr(s));
+        let result = handler
+            .handle(args, keyword)
+            .err()
+            .map(|err| err.raw())
+            .unwrap_or(0);
+        (handler, result)
+    }) {
         Ok((handler, result)) => {
             wrapper.state = Some(Ok(handler));
             result
@@ -292,7 +289,7 @@ impl<'a, E> Drop for EditInteractorWrapper<'a, E> {
 
 pub extern "C" fn edit_cb<E: EditInteractor>(
     hook: *mut libc::c_void, status: ffi::gpgme_status_code_t, args: *const libc::c_char,
-    fd: libc::c_int
+    fd: libc::c_int,
 ) -> ffi::gpgme_error_t {
     let wrapper = unsafe { &mut *(hook as *mut EditInteractorWrapper<E>) };
     let response = wrapper.response;
@@ -304,24 +301,21 @@ pub extern "C" fn edit_cb<E: EditInteractor>(
         }
     };
 
-    match panic::catch_unwind(
-        move || unsafe {
-            let status = EditInteractionStatus {
-                code: edit::StatusCode::from_raw(status),
-                args: args.as_ref().map(|s| CStr::from_ptr(s)),
-                response: &mut *response,
-            };
-            let result = if fd < 0 {
-                    interactor.interact(status, None::<&mut io::Write>)
-                } else {
-                    interactor.interact(status, Some(FdWriter::new(fd)))
-                }
-                .err()
-                .map(|err| err.raw())
-                .unwrap_or(0);
-            (interactor, result)
-        }
-    ) {
+    match panic::catch_unwind(move || unsafe {
+        let status = EditInteractionStatus {
+            code: edit::StatusCode::from_raw(status),
+            args: args.as_ref().map(|s| CStr::from_ptr(s)),
+            response: &mut *response,
+        };
+        let result = if fd < 0 {
+            interactor.interact(status, None::<&mut io::Write>)
+        } else {
+            interactor.interact(status, Some(FdWriter::new(fd)))
+        }.err()
+            .map(|err| err.raw())
+            .unwrap_or(0);
+        (interactor, result)
+    }) {
         Ok((interactor, result)) => {
             wrapper.state = Some(Ok(interactor));
             result
@@ -381,7 +375,7 @@ impl<'a, I> Drop for InteractorWrapper<'a, I> {
 #[cfg(feature = "v1_7_0")]
 pub extern "C" fn interact_cb<I: Interactor>(
     hook: *mut libc::c_void, keyword: *const libc::c_char, args: *const libc::c_char,
-    fd: libc::c_int
+    fd: libc::c_int,
 ) -> ffi::gpgme_error_t {
     let wrapper = unsafe { &mut *(hook as *mut InteractorWrapper<I>) };
     let response = wrapper.response;
@@ -393,24 +387,21 @@ pub extern "C" fn interact_cb<I: Interactor>(
         }
     };
 
-    match panic::catch_unwind(
-        move || unsafe {
-            let status = InteractionStatus {
-                keyword: keyword.as_ref().map(|s| CStr::from_ptr(s)),
-                args: args.as_ref().map(|s| CStr::from_ptr(s)),
-                response: &mut *response,
-            };
-            let result = if fd < 0 {
-                    interactor.interact(status, None::<&mut io::Write>)
-                } else {
-                    interactor.interact(status, Some(FdWriter::new(fd)))
-                }
-                .err()
-                .map(|err| err.raw())
-                .unwrap_or(0);
-            (interactor, result)
-        }
-    ) {
+    match panic::catch_unwind(move || unsafe {
+        let status = InteractionStatus {
+            keyword: keyword.as_ref().map(|s| CStr::from_ptr(s)),
+            args: args.as_ref().map(|s| CStr::from_ptr(s)),
+            response: &mut *response,
+        };
+        let result = if fd < 0 {
+            interactor.interact(status, None::<&mut io::Write>)
+        } else {
+            interactor.interact(status, Some(FdWriter::new(fd)))
+        }.err()
+            .map(|err| err.raw())
+            .unwrap_or(0);
+        (interactor, result)
+    }) {
         Ok((interactor, result)) => {
             wrapper.state = Some(Ok(interactor));
             result

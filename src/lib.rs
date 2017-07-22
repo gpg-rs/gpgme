@@ -264,7 +264,8 @@ impl Token {
     /// Commonly supported values for `what` are specified in [`info`](info/).
     #[inline]
     pub fn get_dir_info<S>(&self, what: S) -> result::Result<&'static str, Option<Utf8Error>>
-        where S: IntoNativeString {
+    where
+        S: IntoNativeString, {
         self.get_dir_info_raw(what)
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -316,7 +317,8 @@ impl Token {
 
     #[inline]
     pub fn set_engine_path<S>(&self, proto: Protocol, path: S) -> Result<()>
-        where S: IntoNativeString {
+    where
+        S: IntoNativeString, {
         let path = path.into_native();
         unsafe {
             let _lock = self.0
@@ -326,14 +328,19 @@ impl Token {
             let home_dir = self.get_engine_info(proto)
                 .as_ref()
                 .map_or(ptr::null(), |e| (*e).home_dir);
-            return_err!(ffi::gpgme_set_engine_info(proto.raw(), path.as_ref().as_ptr(), home_dir));
+            return_err!(ffi::gpgme_set_engine_info(
+                proto.raw(),
+                path.as_ref().as_ptr(),
+                home_dir,
+            ));
         }
         Ok(())
     }
 
     #[inline]
     pub fn set_engine_home_dir<S>(&self, proto: Protocol, home_dir: S) -> Result<()>
-        where S: IntoNativeString {
+    where
+        S: IntoNativeString, {
         let home_dir = home_dir.into_native();
         unsafe {
             let _lock = self.0
@@ -343,7 +350,11 @@ impl Token {
             let path = self.get_engine_info(proto)
                 .as_ref()
                 .map_or(ptr::null(), |e| (*e).file_name);
-            return_err!(ffi::gpgme_set_engine_info(proto.raw(), path, home_dir.as_ref().as_ptr()));
+            return_err!(ffi::gpgme_set_engine_info(
+                proto.raw(),
+                path,
+                home_dir.as_ref().as_ptr(),
+            ));
         }
         Ok(())
     }
@@ -351,7 +362,9 @@ impl Token {
     #[inline]
     pub fn set_engine_info<S1, S2>(&self, proto: Protocol, path: Option<S1>, home_dir: Option<S2>)
         -> Result<()>
-        where S1: IntoNativeString, S2: IntoNativeString {
+    where
+        S1: IntoNativeString,
+        S2: IntoNativeString, {
         let path = path.map(S1::into_native);
         let home_dir = home_dir.map(S2::into_native);
         unsafe {
