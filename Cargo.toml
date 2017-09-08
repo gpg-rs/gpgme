@@ -6,8 +6,8 @@ license = "LGPL-2.1"
 description = "GPGme bindings for Rust"
 repository = "https://github.com/johnschug/rust-gpgme"
 documentation = "https://docs.rs/gpgme"
-keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 categories = ["api-bindings"]
+keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 readme = "README.md"
 
 [badges]
@@ -16,6 +16,7 @@ maintenance = { status = "experimental" }
 
 [features]
 default = ["v1_9_0"]
+nightly = ["lazy_static/nightly"]
 v1_3_0 = []
 v1_3_1 = ["v1_3_0", "gpgme-sys/v1_3_1"]
 v1_4_0 = ["v1_3_1", "gpgme-sys/v1_4_0"]
@@ -28,20 +29,23 @@ v1_7_0 = ["v1_6_0", "gpgme-sys/v1_7_0"]
 v1_7_1 = ["v1_7_0", "gpgme-sys/v1_7_1"]
 v1_8_0 = ["v1_7_1", "gpgme-sys/v1_8_0"]
 v1_9_0 = ["v1_8_0", "gpgme-sys/v1_9_0"]
-nightly = ["lazy_static/nightly"]
+
+[dev-dependencies]
+getopts = "0.2.15"
+tempdir = "0.3.5"
 
 [dependencies]
 libc = "0.2"
 cfg-if = "0.1"
-bitflags = "0.8"
+bitflags = "0.9"
 lazy_static = "0.2"
 conv = "0.3"
 gpg-error = "0.2"
-gpgme-sys = { path = "gpgme-sys", version = "0.6.0", default-features = false }
 
-[dev-dependencies]
-getopts = "0.2"
-tempdir = "0.3"
+[dependencies.gpgme-sys]
+default-features = false
+path = "gpgme-sys"
+version = "0.6.0"
 
 [[bin]]
 name = "pinentry"

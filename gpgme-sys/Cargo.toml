@@ -5,8 +5,8 @@ authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
 description = "Raw bindings for gpgme"
 repository = "https://github.com/johnschug/rust-gpgme"
-keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 categories = ["external-ffi-bindings"]
+keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 links = "gpgme"
 build = "build.rs"
 
