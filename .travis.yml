@@ -10,8 +10,8 @@ matrix:
           packages:
             - libgpgme11-dev
       script:
-        - travis-cargo build -- --no-default-features
-        - travis-cargo test -- --no-default-features --color always --no-fail-fast | tee
+        - cargo build --no-default-features
+        - cargo test --no-default-features --color always --no-fail-fast | tee
     - os: linux
       rust: stable
       before_install:
@@ -29,13 +29,12 @@ matrix:
         - make -j2 >/dev/null
         - make install >/dev/null
         - popd
-        - export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
+        - export PATH=${HOME}/.local/bin:$PATH
+        - export LD_LIBRARY_PATH=${HOME}/.local/lib:$LD_LIBRARY_PATH
       script:
-        - travis-cargo build -- --verbose --verbose
-        - travis-cargo test -- --no-fail-fast
-        - travis-cargo doc
-      after_success:
-        - travis-cargo doc-upload
+        - cargo build --verbose --verbose
+        - cargo test --no-fail-fast
+        - cargo doc
     - os: linux
       rust: nightly
       before_install:
@@ -53,25 +52,21 @@ matrix:
         - make -j2 >/dev/null
         - make install >/dev/null
         - popd
-        - export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
+        - export PATH=${HOME}/.local/bin:$PATH
+        - export LD_LIBRARY_PATH=${HOME}/.local/lib:$LD_LIBRARY_PATH
       script:
-        - travis-cargo build -- --verbose --verbose
-        - travis-cargo test -- --no-fail-fast
-        - travis-cargo doc
+        - cargo build --features nightly --verbose --verbose
+        - cargo test --features nightly --no-fail-fast
+        - cargo doc
 before_script:
   - gpg --version || true
   - gpg2 --version || true
   - gpg-agent --version || true
-  - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
 env:
   global:
     - GPGME_DEBUG=9
     - AUTOMAKE_VERSION=1.14.1
     - GETTEXT_VERSION=0.19.3
-    - TRAVIS_CARGO_NIGHTLY_FEATURE=nightly
-    - secure: KKPYXC3dn8CR8YRPuqkBSEu9VUjt7qSTLENnPYz4B2+lFT0iI265MqZGaHFhBv3YHjV/ONjvOj6Tn1l1JFIzLyBbiJ9EeY/5u/kh+tN2fjR8AniaqPG+SZuRERZwe92T/8xr+fGdzlG9hKr7XgAXQAdB7hAlQoU+cuiwuB0+FDMBciDELnLokIRCoKzW0LSY5EvQQ2BkPHuWv3n04isd7WF11IsidqN0HMDtSaVSC6FbfpW/MdlRqVzey/VxG/BpY0FWvCkRayB7NVLEWXtr/rWyn3jY6pKqev+I0w6eIL/hvKrQUrmSP3y0RJcCgq/7asdNQDeIFXbT1emFXw3dKmA9ZdSzBnm5Z2NO18DNAb3yUQjCJztSWaCfyEbKFbrV/V6cl8I61gHzGzS8kWG8kAbC6dSQxaAtm3wrcrPI1q4bHj0JAXJ27ICKAHoxMUWX50+tMZDchv8exQjBPu35gPi+5tJGCuGeSnZ33w+XHPTdJtb1Hqt87CSEs8umJyZbjT/NpIWzgKJz/2dTX1dpvEnJ0THRMTd2W2TQra9Y9e6GxUZlV6MVI6pDSBKdee6fGTxAtfmVzgL6Bfey5vP+70RanHmLTN/FJXw/thEfZaSsZnK298XsmJ6WXksCEBo40E0wINDe6R7R4egzTzoFqUzsv/uPNu/0QXXrM8DWTo4=
 branches:
   except:
     - /^v[0-9]/
-notifications:
-    email: false

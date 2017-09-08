@@ -2,16 +2,17 @@
 name = "gpgme-sys"
 version = "0.6.0"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
-repository = "https://github.com/johnschug/rust-gpgme"
 license = "LGPL-2.1"
+description = "Raw bindings for gpgme"
+repository = "https://github.com/johnschug/rust-gpgme"
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 categories = ["external-ffi-bindings"]
-description = "Raw bindings for gpgme"
 links = "gpgme"
 build = "build.rs"
 
 [badges]
 travis-ci = { repository = "johnschug/rust-gpgme" }
+maintenance = { status = "experimental" }
 
 [lib]
 name = "gpgme_sys"

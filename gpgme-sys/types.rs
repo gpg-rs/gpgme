@@ -1,5 +1,4 @@
 extern crate libc;
-extern crate libgpg_error_sys;
 
 use libc::{c_char, c_int, c_long, c_short, c_uchar, c_uint, c_ulong, c_ushort, c_void, size_t,
            ssize_t};
@@ -100,10 +99,8 @@ pub struct _gpgme_subkey {
     pub timestamp: c_long,
     pub expires: c_long,
     pub card_number: *mut c_char,
-    #[cfg(feature = "v1_5_0")]
-    pub curve: *mut c_char,
-    #[cfg(feature = "v1_7_0")]
-    pub keygrip: *mut c_char,
+    #[cfg(feature = "v1_5_0")] pub curve: *mut c_char,
+    #[cfg(feature = "v1_7_0")] pub keygrip: *mut c_char,
 }
 pub type gpgme_subkey_t = *mut _gpgme_subkey;
 
@@ -212,10 +209,8 @@ pub struct _gpgme_user_id {
     pub signatures: gpgme_key_sig_t,
     _last_keysig: gpgme_key_sig_t,
     pub address: *mut c_char,
-    #[cfg(feature = "v1_7_0")]
-    pub tofu: gpgme_tofu_info_t,
-    #[cfg(feature = "v1_9_0")]
-    pub last_update: c_ulong,
+    #[cfg(feature = "v1_7_0")] pub tofu: gpgme_tofu_info_t,
+    #[cfg(feature = "v1_9_0")] pub last_update: c_ulong,
 }
 pub type gpgme_user_id_t = *mut _gpgme_user_id;
 
@@ -249,10 +244,8 @@ pub struct _gpgme_key {
     _last_subkey: gpgme_subkey_t,
     _last_uid: gpgme_user_id_t,
     pub keylist_mode: gpgme_keylist_mode_t,
-    #[cfg(feature = "v1_7_0")]
-    pub fpr: *mut c_char,
-    #[cfg(feature = "v1_9_0")]
-    pub last_update: c_ulong,
+    #[cfg(feature = "v1_7_0")] pub fpr: *mut c_char,
+    #[cfg(feature = "v1_9_0")] pub last_update: c_ulong,
 }
 pub type gpgme_key_t = *mut _gpgme_key;
 
@@ -403,8 +396,7 @@ pub struct _gpgme_op_decrypt_result {
     pub bitfield: u32,
     pub recipients: gpgme_recipient_t,
     pub file_name: *mut c_char,
-    #[cfg(feature = "v1_8_0")]
-    pub session_key: *mut c_char,
+    #[cfg(feature = "v1_8_0")] pub session_key: *mut c_char,
 }
 pub type gpgme_decrypt_result_t = *mut _gpgme_op_decrypt_result;
 
@@ -454,8 +446,7 @@ pub struct _gpgme_signature {
     pub pubkey_algo: gpgme_pubkey_algo_t,
     pub hash_algo: gpgme_hash_algo_t,
     pub pka_address: *mut c_char,
-    #[cfg(feature = "v1_7_0")]
-    pub key: gpgme_key_t,
+    #[cfg(feature = "v1_7_0")] pub key: gpgme_key_t,
 }
 pub type gpgme_signature_t = *mut _gpgme_signature;
 
@@ -520,10 +511,8 @@ pub type gpgme_import_result_t = *mut _gpgme_op_import_result;
 pub struct _gpgme_op_genkey_result {
     pub bitfield: u32,
     pub fpr: *mut c_char,
-    #[cfg(feature = "v1_7_0")]
-    pub pubkey: gpgme_data_t,
-    #[cfg(feature = "v1_7_0")]
-    pub seckey: gpgme_data_t,
+    #[cfg(feature = "v1_7_0")] pub pubkey: gpgme_data_t,
+    #[cfg(feature = "v1_7_0")] pub seckey: gpgme_data_t,
 }
 pub type gpgme_genkey_result_t = *mut _gpgme_op_genkey_result;
 

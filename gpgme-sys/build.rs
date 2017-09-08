@@ -119,13 +119,13 @@ fn try_config<S: AsRef<OsStr>>(path: S) -> bool {
 }
 
 fn parse_config_output(output: &str) {
-    let parts = output.split(|c: char| c.is_whitespace()).filter_map(
-        |p| if p.len() > 2 {
+    let parts = output
+        .split(|c: char| c.is_whitespace())
+        .filter_map(|p| if p.len() > 2 {
             Some(p.split_at(2))
         } else {
             None
-        },
-    );
+        });
 
     for (flag, val) in parts {
         match flag {

@@ -1,7 +1,7 @@
+extern crate gpgme;
 #[macro_use]
 extern crate lazy_static;
 extern crate tempdir;
-extern crate gpgme;
 
 use std::io::prelude::*;
 
@@ -37,8 +37,9 @@ struct TestEditor;
 impl Editor for TestEditor {
     type State = TestEditorState;
 
-    fn next_state(state: Result<Self::State>, status: EditInteractionStatus, need_response: bool)
-        -> Result<Self::State> {
+    fn next_state(
+        state: Result<Self::State>, status: EditInteractionStatus, need_response: bool
+    ) -> Result<Self::State> {
         use self::TestEditorState as State;
 
         println!("[-- Code: {:?}, {:?} --]", status.code, status.args());

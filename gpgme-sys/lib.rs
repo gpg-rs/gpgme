@@ -1,6 +1,4 @@
-#![allow(non_camel_case_types)]
-#![allow(unused_imports)]
-
+#![allow(non_upper_case_globals, non_camel_case_types, unused_imports)]
 extern crate libc;
 extern crate libgpg_error_sys;
 

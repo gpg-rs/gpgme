@@ -1,6 +1,4 @@
-#![allow(non_upper_case_globals)]
 extern crate libc;
-extern crate libgpg_error_sys;
 
 pub use libgpg_error_sys::gpg_err_source_t as gpgme_err_source_t;
 pub use libgpg_error_sys::gpg_err_code_t as gpgme_err_code_t;

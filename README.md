@@ -25,7 +25,7 @@ Put this in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gpgme = "0.5"
+gpgme = "0.6"
 ```
 
 And this in your crate root:
@@ -51,4 +51,4 @@ valid  0: Unknown
 ```
 
 [upstream]: https://www.gnupg.org/\(it\)/related_software/gpgme/index.html
-[docs]: http://johnschug.github.io/rust-gpgme
+[docs]: https://docs.rs/gpgme

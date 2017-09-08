@@ -1,8 +1,7 @@
-
+extern crate gpgme;
 #[macro_use]
 extern crate lazy_static;
 extern crate tempdir;
-extern crate gpgme;
 
 use self::support::passphrase_cb;
 
