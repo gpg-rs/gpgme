@@ -1,10 +1,11 @@
 [package]
 name = "gpgme-sys"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
 description = "Raw bindings for gpgme"
 repository = "https://github.com/johnschug/rust-gpgme"
+documentation = "https://docs.rs/gpgme-sys"
 categories = ["external-ffi-bindings"]
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 links = "gpgme"
