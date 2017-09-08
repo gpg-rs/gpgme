@@ -1,16 +1,17 @@
 #![warn(trivial_numeric_casts)]
 #![deny(missing_debug_implementations)]
-#![cfg_attr(any(nightly, feature="nightly"), feature(nonzero))]
-extern crate core;
-extern crate libc;
-#[macro_use]
-extern crate cfg_if;
+#![cfg_attr(any(nightly, feature = "nightly"), feature(nonzero))]
 #[macro_use]
 extern crate bitflags;
 #[macro_use]
-extern crate lazy_static;
+extern crate cfg_if;
 extern crate conv;
+#[cfg(any(nightly, feature = "nightly"))]
+extern crate core;
 extern crate gpgme_sys as ffi;
+#[macro_use]
+extern crate lazy_static;
+extern crate libc;
 #[macro_use]
 pub extern crate gpg_error as error;
 
@@ -265,7 +266,7 @@ impl Token {
     #[inline]
     pub fn get_dir_info<S>(&self, what: S) -> result::Result<&'static str, Option<Utf8Error>>
     where
-        S: IntoNativeString, {
+        S: IntoNativeString {
         self.get_dir_info_raw(what)
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -318,7 +319,7 @@ impl Token {
     #[inline]
     pub fn set_engine_path<S>(&self, proto: Protocol, path: S) -> Result<()>
     where
-        S: IntoNativeString, {
+        S: IntoNativeString {
         let path = path.into_native();
         unsafe {
             let _lock = self.0
@@ -340,7 +341,7 @@ impl Token {
     #[inline]
     pub fn set_engine_home_dir<S>(&self, proto: Protocol, home_dir: S) -> Result<()>
     where
-        S: IntoNativeString, {
+        S: IntoNativeString {
         let home_dir = home_dir.into_native();
         unsafe {
             let _lock = self.0
@@ -360,8 +361,9 @@ impl Token {
     }
 
     #[inline]
-    pub fn set_engine_info<S1, S2>(&self, proto: Protocol, path: Option<S1>, home_dir: Option<S2>)
-        -> Result<()>
+    pub fn set_engine_info<S1, S2>(
+        &self, proto: Protocol, path: Option<S1>, home_dir: Option<S2>
+    ) -> Result<()>
     where
         S1: IntoNativeString,
         S2: IntoNativeString, {

@@ -150,8 +150,9 @@ pub const KEY_CURVE: &'static str = "keygen.curve";
 pub trait Editor: UnwindSafe + Send {
     type State: fmt::Debug + Default + Eq + Copy + UnwindSafe + Send;
 
-    fn next_state(state: Result<Self::State>, status: EditInteractionStatus, need_response: bool)
-        -> Result<Self::State>;
+    fn next_state(
+        state: Result<Self::State>, status: EditInteractionStatus, need_response: bool
+    ) -> Result<Self::State>;
     fn action<W: Write>(&self, state: Self::State, out: W) -> Result<()>;
 }
 

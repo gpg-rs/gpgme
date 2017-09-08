@@ -99,7 +99,7 @@ impl Context {
     #[inline]
     pub fn get_flag<S>(&self, name: S) -> result::Result<&str, Option<Utf8Error>>
     where
-        S: IntoNativeString, {
+        S: IntoNativeString {
         self.get_flag_raw(name)
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -107,8 +107,7 @@ impl Context {
     #[inline]
     #[cfg(feature = "v1_8_0")]
     pub fn get_flag_raw<S>(&self, name: S) -> Option<&CStr>
-    where
-        S: IntoNativeString, {
+    where S: IntoNativeString {
         let name = name.into_native();
         unsafe {
             ffi::gpgme_get_ctx_flag(self.as_raw(), name.as_ref().as_ptr())
@@ -120,8 +119,7 @@ impl Context {
     #[inline]
     #[cfg(not(feature = "v1_8_0"))]
     pub fn get_flag_raw<S>(&self, _name: S) -> Option<&CStr>
-    where
-        S: IntoNativeString, {
+    where S: IntoNativeString {
         None
     }
 
@@ -159,8 +157,7 @@ impl Context {
 
     #[inline]
     pub fn set_engine_path<S>(&mut self, path: S) -> Result<()>
-    where
-        S: IntoNativeString, {
+    where S: IntoNativeString {
         let path = path.into_native();
         let home_dir = self.engine_info()
             .home_dir_raw()
@@ -178,8 +175,7 @@ impl Context {
 
     #[inline]
     pub fn set_engine_home_dir<S>(&mut self, home_dir: S) -> Result<()>
-    where
-        S: IntoNativeString, {
+    where S: IntoNativeString {
         let path = self.engine_info()
             .path_raw()
             .map_or(ptr::null(), CStr::as_ptr);
@@ -196,7 +192,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn set_engine_info<S1, S2>(&mut self, path: Option<S1>, home_dir: Option<S2>) -> Result<()>
+    pub fn set_engine_info<S1, S2>(
+        &mut self, path: Option<S1>, home_dir: Option<S2>
+    ) -> Result<()>
     where
         S1: IntoNativeString,
         S2: IntoNativeString, {
@@ -327,8 +325,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn find_trust_items<S: IntoNativeString>(&mut self, pattern: S, max_level: i32)
-        -> Result<TrustItems> {
+    pub fn find_trust_items<S: IntoNativeString>(
+        &mut self, pattern: S, max_level: i32
+    ) -> Result<TrustItems> {
         let pattern = pattern.into_native();
         unsafe {
             return_err!(ffi::gpgme_op_trustlist_start(
@@ -462,14 +461,14 @@ impl Context {
     /// ```
     #[inline]
     pub fn read_keys<'d, D>(&mut self, src: D) -> Result<Keys<D::Output>>
-    where
-        D: IntoData<'d>, {
+    where D: IntoData<'d> {
         Keys::from_data(self, src)
     }
 
     #[inline]
-    pub fn generate_key<'d1, 'd2, S, D1, D2>(&mut self, params: S, public: Option<D1>, secret: Option<D2>)
-        -> Result<results::KeyGenerationResult>
+    pub fn generate_key<'d1, 'd2, S, D1, D2>(
+        &mut self, params: S, public: Option<D1>, secret: Option<D2>
+    ) -> Result<results::KeyGenerationResult>
     where
         S: IntoNativeString,
         D1: IntoData<'d1>,
@@ -483,18 +482,19 @@ impl Context {
                 params.as_ref().as_ptr(),
                 public
                     .as_mut()
-                    .map_or(ptr::null_mut(), |mut d| { d.borrow_mut().as_raw() }),
+                    .map_or(ptr::null_mut(), |d| d.borrow_mut().as_raw()),
                 secret
                     .as_mut()
-                    .map_or(ptr::null_mut(), |mut d| { d.borrow_mut().as_raw() }),
+                    .map_or(ptr::null_mut(), |d| d.borrow_mut().as_raw()),
             ));
         }
         Ok(self.get_result().unwrap())
     }
 
     #[inline]
-    pub fn create_key<S1, S2>(&mut self, userid: S1, algo: S2, expires: Option<SystemTime>)
-        -> Result<results::KeyGenerationResult>
+    pub fn create_key<S1, S2>(
+        &mut self, userid: S1, algo: S2, expires: Option<SystemTime>
+    ) -> Result<results::KeyGenerationResult>
     where
         S1: IntoNativeString,
         S2: IntoNativeString, {
@@ -503,8 +503,9 @@ impl Context {
 
     #[inline]
     #[cfg(feature = "v1_7_0")]
-    pub fn create_key_with_flags<S1, S2>(&mut self, userid: S1, algo: S2, expires: Option<SystemTime>, flags: ::CreateKeyFlags)
-        -> Result<results::KeyGenerationResult>
+    pub fn create_key_with_flags<S1, S2>(
+        &mut self, userid: S1, algo: S2, expires: Option<SystemTime>, flags: ::CreateKeyFlags
+    ) -> Result<results::KeyGenerationResult>
     where
         S1: IntoNativeString,
         S2: IntoNativeString, {
@@ -530,8 +531,9 @@ impl Context {
 
     #[inline]
     #[cfg(not(feature = "v1_7_0"))]
-    pub fn create_key_with_flags<S1, S2>(&mut self, _userid: S1, _algo: S2, _expires: Option<SystemTime>, _flags: ::CreateKeyFlags)
-        -> Result<results::KeyGenerationResult>
+    pub fn create_key_with_flags<S1, S2>(
+        &mut self, _userid: S1, _algo: S2, _expires: Option<SystemTime>, _flags: ::CreateKeyFlags
+    ) -> Result<results::KeyGenerationResult>
     where
         S1: IntoNativeString,
         S2: IntoNativeString, {
@@ -540,8 +542,9 @@ impl Context {
 
     #[inline]
     #[cfg(feature = "v1_7_0")]
-    pub fn create_subkey<S>(&mut self, key: &Key, algo: S, expires: Option<SystemTime>)
-        -> Result<results::KeyGenerationResult>
+    pub fn create_subkey<S>(
+        &mut self, key: &Key, algo: S, expires: Option<SystemTime>
+    ) -> Result<results::KeyGenerationResult>
     where
         S: IntoNativeString, {
         self.create_subkey_with_flags(key, algo, expires, ::CreateKeyFlags::empty())
@@ -549,8 +552,9 @@ impl Context {
 
     #[inline]
     #[cfg(feature = "v1_7_0")]
-    pub fn create_subkey_with_flags<S>(&mut self, key: &Key, algo: S, expires: Option<SystemTime>, flags: ::CreateKeyFlags)
-        -> Result<results::KeyGenerationResult>
+    pub fn create_subkey_with_flags<S>(
+        &mut self, key: &Key, algo: S, expires: Option<SystemTime>, flags: ::CreateKeyFlags
+    ) -> Result<results::KeyGenerationResult>
     where
         S: IntoNativeString, {
         let algo = algo.into_native();
@@ -573,8 +577,9 @@ impl Context {
 
     #[inline]
     #[cfg(not(feature = "v1_7_0"))]
-    pub fn create_subkey_with_flags<S>(&mut self, _key: &Key, _algo: S, _expires: Option<SystemTime>, _flags: ::CreateKeyFlags)
-        -> Result<results::KeyGenerationResult>
+    pub fn create_subkey_with_flags<S>(
+        &mut self, _key: &Key, _algo: S, _expires: Option<SystemTime>, _flags: ::CreateKeyFlags
+    ) -> Result<results::KeyGenerationResult>
     where
         S: IntoNativeString, {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
@@ -583,8 +588,7 @@ impl Context {
     #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn add_uid<S>(&mut self, key: &Key, userid: S) -> Result<()>
-    where
-        S: IntoNativeString, {
+    where S: IntoNativeString {
         let userid = userid.into_native();
         unsafe {
             return_err!(ffi::gpgme_op_adduid(
@@ -600,16 +604,14 @@ impl Context {
     #[inline]
     #[cfg(not(feature = "v1_7_0"))]
     pub fn add_uid<S>(&mut self, _key: &Key, _userid: S) -> Result<()>
-    where
-        S: IntoNativeString, {
+    where S: IntoNativeString {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn revoke_uid<S>(&mut self, key: &Key, userid: S) -> Result<()>
-    where
-        S: IntoNativeString, {
+    where S: IntoNativeString {
         let userid = userid.into_native();
         unsafe {
             return_err!(ffi::gpgme_op_revuid(
@@ -625,15 +627,15 @@ impl Context {
     #[inline]
     #[cfg(not(feature = "v1_7_0"))]
     pub fn revoke_uid<S>(&mut self, _key: &Key, _userid: S) -> Result<()>
-    where
-        S: IntoNativeString, {
+    where S: IntoNativeString {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     #[inline]
     #[cfg(feature = "v1_9_0")]
-    pub fn set_uid_flag<S1, S2, S3>(&mut self, key: &Key, userid: S1, name: S2, value: Option<S3>)
-        -> Result<()>
+    pub fn set_uid_flag<S1, S2, S3>(
+        &mut self, key: &Key, userid: S1, name: S2, value: Option<S3>
+    ) -> Result<()>
     where
         S1: IntoNativeString,
         S2: IntoNativeString,
@@ -655,8 +657,9 @@ impl Context {
 
     #[inline]
     #[cfg(not(feature = "v1_9_0"))]
-    pub fn set_uid_flag<S1, S2, S3>(&mut self, _key: &Key, _userid: S1, _name: S2, _value: Option<S3>)
-        -> Result<()>
+    pub fn set_uid_flag<S1, S2, S3>(
+        &mut self, _key: &Key, _userid: S1, _name: S2, _value: Option<S3>
+    ) -> Result<()>
     where
         S1: IntoNativeString,
         S2: IntoNativeString,
@@ -665,7 +668,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn sign_key<I>(&mut self, key: &Key, userids: I, expires: Option<SystemTime>) -> Result<()>
+    pub fn sign_key<I>(
+        &mut self, key: &Key, userids: I, expires: Option<SystemTime>
+    ) -> Result<()>
     where
         I: IntoIterator,
         I::Item: AsRef<[u8]>, {
@@ -673,8 +678,9 @@ impl Context {
     }
 
     #[cfg(feature = "v1_7_0")]
-    pub fn sign_key_with_flags<I>(&mut self, key: &Key, userids: I, expires: Option<SystemTime>, flags: ::KeySigningFlags)
-        -> Result<()>
+    pub fn sign_key_with_flags<I>(
+        &mut self, key: &Key, userids: I, expires: Option<SystemTime>, flags: ::KeySigningFlags
+    ) -> Result<()>
     where
         I: IntoIterator,
         I::Item: AsRef<[u8]>, {
@@ -714,8 +720,9 @@ impl Context {
 
     #[inline]
     #[cfg(not(feature = "v1_7_0"))]
-    pub fn sign_key_with_flags<I>(&mut self, _key: &Key, _userids: I, _expires: Option<SystemTime>, _flags: ::KeySigningFlags)
-        -> Result<()>
+    pub fn sign_key_with_flags<I>(
+        &mut self, _key: &Key, _userids: I, _expires: Option<SystemTime>, _flags: ::KeySigningFlags
+    ) -> Result<()>
     where
         I: IntoIterator,
         I::Item: AsRef<[u8]>, {
@@ -852,7 +859,9 @@ impl Context {
 
     #[inline]
     #[cfg(feature = "v1_7_0")]
-    pub fn interact_with_card<'a, I, D>(&mut self, key: &Key, interactor: I, data: D) -> Result<()>
+    pub fn interact_with_card<'a, I, D>(
+        &mut self, key: &Key, interactor: I, data: D
+    ) -> Result<()>
     where
         I: ::Interactor,
         D: IntoData<'a>, {
@@ -876,8 +885,9 @@ impl Context {
 
     #[inline]
     #[cfg(not(feature = "v1_7_0"))]
-    pub fn interact_with_card<'a, I, D>(&mut self, _key: &Key, _interactor: I, _data: D)
-        -> Result<()>
+    pub fn interact_with_card<'a, I, D>(
+        &mut self, _key: &Key, _interactor: I, _data: D
+    ) -> Result<()>
     where
         I: ::Interactor,
         D: IntoData<'a>, {
@@ -902,8 +912,7 @@ impl Context {
 
     #[inline]
     pub fn import<'a, D>(&mut self, src: D) -> Result<results::ImportResult>
-    where
-        D: IntoData<'a>, {
+    where D: IntoData<'a> {
         let mut src = try!(src.into_data());
         unsafe {
             return_err!(ffi::gpgme_op_import(
@@ -916,7 +925,7 @@ impl Context {
 
     pub fn import_keys<'k, I>(&mut self, keys: I) -> Result<results::ImportResult>
     where
-        I: IntoIterator<Item = &'k Key>, {
+        I: IntoIterator<Item = &'k Key> {
         let mut ptrs: Vec<_> = keys.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
@@ -950,7 +959,7 @@ impl Context {
     #[inline]
     pub fn export_all<'a, D>(&mut self, mode: ::ExportMode, dst: D) -> Result<()>
     where
-        D: IntoData<'a>, {
+        D: IntoData<'a> {
         let mut dst = try!(dst.into_data());
         self.export_(None::<&CStr>, mode, Some(dst.borrow_mut()))
     }
@@ -966,7 +975,9 @@ impl Context {
         self.export_(&patterns, mode, Some(dst.borrow_mut()))
     }
 
-    fn export_<I>(&mut self, patterns: I, mode: ::ExportMode, dst: Option<&mut Data>) -> Result<()>
+    fn export_<I>(
+        &mut self, patterns: I, mode: ::ExportMode, dst: Option<&mut Data>
+    ) -> Result<()>
     where
         I: IntoIterator,
         I::Item: AsRef<CStr>, {
@@ -992,7 +1003,7 @@ impl Context {
     #[inline]
     pub fn export_keys_extern<'k, I>(&mut self, keys: I, mode: ::ExportMode) -> Result<()>
     where
-        I: IntoIterator<Item = &'k Key>, {
+        I: IntoIterator<Item = &'k Key> {
         self.export_keys_(keys, mode | ::EXPORT_EXTERN, None)
     }
 
@@ -1005,8 +1016,9 @@ impl Context {
         self.export_keys_(keys, mode, Some(dst.borrow_mut()))
     }
 
-    fn export_keys_<'k, I>(&mut self, keys: I, mode: ::ExportMode, dst: Option<&mut Data>)
-        -> Result<()>
+    fn export_keys_<'k, I>(
+        &mut self, keys: I, mode: ::ExportMode, dst: Option<&mut Data>
+    ) -> Result<()>
     where
         I: IntoIterator<Item = &'k Key>, {
         let dst = dst.map_or(ptr::null_mut(), |d| d.as_raw());
@@ -1113,8 +1125,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn add_signature_notation<S1, S2>(&mut self, name: S1, value: S2, flags: ::SignatureNotationFlags)
-        -> Result<()>
+    pub fn add_signature_notation<S1, S2>(
+        &mut self, name: S1, value: S2, flags: ::SignatureNotationFlags
+    ) -> Result<()>
     where
         S1: IntoNativeString,
         S2: IntoNativeString, {
@@ -1134,7 +1147,7 @@ impl Context {
     #[inline]
     pub fn add_signature_policy_url<S>(&mut self, url: S, critical: bool) -> Result<()>
     where
-        S: IntoNativeString, {
+        S: IntoNativeString {
         let url = url.into_native();
         unsafe {
             let critical = if critical {
@@ -1178,8 +1191,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn sign_clear<'p, 't, P, T>(&mut self, plaintext: P, signedtext: T)
-        -> Result<results::SigningResult>
+    pub fn sign_clear<'p, 't, P, T>(
+        &mut self, plaintext: P, signedtext: T
+    ) -> Result<results::SigningResult>
     where
         P: IntoData<'p>,
         T: IntoData<'t>, {
@@ -1187,8 +1201,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn sign_detached<'p, 's, P, S>(&mut self, plaintext: P, signature: S)
-        -> Result<results::SigningResult>
+    pub fn sign_detached<'p, 's, P, S>(
+        &mut self, plaintext: P, signature: S
+    ) -> Result<results::SigningResult>
     where
         P: IntoData<'p>,
         S: IntoData<'s>, {
@@ -1196,8 +1211,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn sign_normal<'p, 't, P, T>(&mut self, plaintext: P, signedtext: T)
-        -> Result<results::SigningResult>
+    pub fn sign_normal<'p, 't, P, T>(
+        &mut self, plaintext: P, signedtext: T
+    ) -> Result<results::SigningResult>
     where
         P: IntoData<'p>,
         T: IntoData<'t>, {
@@ -1205,8 +1221,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn sign<'p, 's, P, S>(&mut self, mode: ::SignMode, plaintext: P, signature: S)
-        -> Result<results::SigningResult>
+    pub fn sign<'p, 's, P, S>(
+        &mut self, mode: ::SignMode, plaintext: P, signature: S
+    ) -> Result<results::SigningResult>
     where
         P: IntoData<'p>,
         S: IntoData<'s>, {
@@ -1224,8 +1241,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn verify_detached<'s, 't, S, T>(&mut self, signature: S, signedtext: T)
-        -> Result<results::VerificationResult>
+    pub fn verify_detached<'s, 't, S, T>(
+        &mut self, signature: S, signedtext: T
+    ) -> Result<results::VerificationResult>
     where
         S: IntoData<'s>,
         T: IntoData<'t>, {
@@ -1235,8 +1253,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn verify_opaque<'s, 'p, S, P>(&mut self, signedtext: S, plaintext: P)
-        -> Result<results::VerificationResult>
+    pub fn verify_opaque<'s, 'p, S, P>(
+        &mut self, signedtext: S, plaintext: P
+    ) -> Result<results::VerificationResult>
     where
         S: IntoData<'s>,
         P: IntoData<'p>, {
@@ -1275,8 +1294,9 @@ impl Context {
     /// ctx.encrypt(Some(&key), &mut plaintext, &mut ciphertext).unwrap();
     /// ```
     #[inline]
-    pub fn encrypt<'k, 'p, 'c, I, P, C>(&mut self, recp: I, plaintext: P, ciphertext: C)
-        -> Result<results::EncryptionResult>
+    pub fn encrypt<'k, 'p, 'c, I, P, C>(
+        &mut self, recp: I, plaintext: P, ciphertext: C
+    ) -> Result<results::EncryptionResult>
     where
         I: IntoIterator<Item = &'k Key>,
         P: IntoData<'p>,
@@ -1284,8 +1304,9 @@ impl Context {
         self.encrypt_with_flags(recp, plaintext, ciphertext, ::EncryptFlags::empty())
     }
 
-    pub fn encrypt_with_flags<'k, 'p, 'c, I, P, C>(&mut self, recp: I, plaintext: P, ciphertext: C, flags: ::EncryptFlags)
-        -> Result<results::EncryptionResult>
+    pub fn encrypt_with_flags<'k, 'p, 'c, I, P, C>(
+        &mut self, recp: I, plaintext: P, ciphertext: C, flags: ::EncryptFlags
+    ) -> Result<results::EncryptionResult>
     where
         I: IntoIterator<Item = &'k Key>,
         P: IntoData<'p>,
@@ -1321,8 +1342,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn encrypt_symmetric_with_flags<'p, 'c, P, C>(&mut self, plaintext: P, ciphertext: C, flags: ::EncryptFlags)
-        -> Result<()>
+    pub fn encrypt_symmetric_with_flags<'p, 'c, P, C>(
+        &mut self, plaintext: P, ciphertext: C, flags: ::EncryptFlags
+    ) -> Result<()>
     where
         P: IntoData<'p>,
         C: IntoData<'c>, {
@@ -1343,8 +1365,9 @@ impl Context {
     /// ctx.sign_and_encrypt(Some(&key), &mut plaintext, &mut ciphertext).unwrap();
     /// ```
     #[inline]
-    pub fn sign_and_encrypt<'k, 'p, 'c, I, P, C>(&mut self, recp: I, plaintext: P, ciphertext: C)
-        -> Result<(results::EncryptionResult, results::SigningResult)>
+    pub fn sign_and_encrypt<'k, 'p, 'c, I, P, C>(
+        &mut self, recp: I, plaintext: P, ciphertext: C
+    ) -> Result<(results::EncryptionResult, results::SigningResult)>
     where
         I: IntoIterator<Item = &'k Key>,
         P: IntoData<'p>,
@@ -1352,8 +1375,9 @@ impl Context {
         self.sign_and_encrypt_with_flags(recp, plaintext, ciphertext, ::EncryptFlags::empty())
     }
 
-    pub fn sign_and_encrypt_with_flags<'k, 'p, 'c, I, P, C>(&mut self, recp: I, plaintext: P, ciphertext: C, flags: ::EncryptFlags)
-        -> Result<(results::EncryptionResult, results::SigningResult)>
+    pub fn sign_and_encrypt_with_flags<'k, 'p, 'c, I, P, C>(
+        &mut self, recp: I, plaintext: P, ciphertext: C, flags: ::EncryptFlags
+    ) -> Result<(results::EncryptionResult, results::SigningResult)>
     where
         I: IntoIterator<Item = &'k Key>,
         P: IntoData<'p>,
@@ -1393,8 +1417,9 @@ impl Context {
     /// ctx.decrypt(&mut cipher, &mut plain).unwrap();
     /// ```
     #[inline]
-    pub fn decrypt<'c, 'p, C, P>(&mut self, ciphertext: C, plaintext: P)
-        -> Result<results::DecryptionResult>
+    pub fn decrypt<'c, 'p, C, P>(
+        &mut self, ciphertext: C, plaintext: P
+    ) -> Result<results::DecryptionResult>
     where
         C: IntoData<'c>,
         P: IntoData<'p>, {
@@ -1412,8 +1437,9 @@ impl Context {
 
     #[inline]
     #[cfg(feature = "v1_9_0")]
-    pub fn decrypt_with_flags<'c, 'p, C, P>(&mut self, ciphertext: C, plaintext: P, flags: ::DecryptFlags)
-        -> Result<results::DecryptionResult>
+    pub fn decrypt_with_flags<'c, 'p, C, P>(
+        &mut self, ciphertext: C, plaintext: P, flags: ::DecryptFlags
+    ) -> Result<results::DecryptionResult>
     where
         C: IntoData<'c>,
         P: IntoData<'p>, {
@@ -1432,8 +1458,9 @@ impl Context {
 
     #[inline]
     #[cfg(not(feature = "v1_9_0"))]
-    pub fn decrypt_with_flags<'c, 'p, C, P>(&mut self, _ciphertext: C, _plaintext: P, _flags: ::DecryptFlags)
-        -> Result<results::DecryptionResult>
+    pub fn decrypt_with_flags<'c, 'p, C, P>(
+        &mut self, _ciphertext: C, _plaintext: P, _flags: ::DecryptFlags
+    ) -> Result<results::DecryptionResult>
     where
         C: IntoData<'c>,
         P: IntoData<'p>, {
@@ -1453,8 +1480,9 @@ impl Context {
     /// ctx.decrypt_and_verify(&mut cipher, &mut plain).unwrap();
     /// ```
     #[inline]
-    pub fn decrypt_and_verify<'c, 'p, C, P>(&mut self, ciphertext: C, plaintext: P)
-        -> Result<(results::DecryptionResult, results::VerificationResult)>
+    pub fn decrypt_and_verify<'c, 'p, C, P>(
+        &mut self, ciphertext: C, plaintext: P
+    ) -> Result<(results::DecryptionResult, results::VerificationResult)>
     where
         C: IntoData<'c>,
         P: IntoData<'p>, {
@@ -1471,8 +1499,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn decrypt_and_verify_with_flags<'c, 'p, C, P>(&mut self, ciphertext: C, plaintext: P, flags: ::DecryptFlags)
-        -> Result<(results::DecryptionResult, results::VerificationResult)>
+    pub fn decrypt_and_verify_with_flags<'c, 'p, C, P>(
+        &mut self, ciphertext: C, plaintext: P, flags: ::DecryptFlags
+    ) -> Result<(results::DecryptionResult, results::VerificationResult)>
     where
         C: IntoData<'c>,
         P: IntoData<'p>, {
@@ -1482,8 +1511,9 @@ impl Context {
 
     #[inline]
     #[cfg(feature = "v1_8_0")]
-    pub fn query_swdb<S1, S2>(&mut self, name: Option<S1>, installed_ver: Option<S2>)
-        -> Result<results::QuerySwdbResult>
+    pub fn query_swdb<S1, S2>(
+        &mut self, name: Option<S1>, installed_ver: Option<S2>
+    ) -> Result<results::QuerySwdbResult>
     where
         S1: IntoNativeString,
         S2: IntoNativeString, {
@@ -1501,8 +1531,9 @@ impl Context {
 
     #[inline]
     #[cfg(not(feature = "v1_8_0"))]
-    pub fn query_swdb<S1, S2>(&mut self, _name: Option<S1>, _installed_ver: Option<S2>)
-        -> Result<results::QuerySwdbResult>
+    pub fn query_swdb<S1, S2>(
+        &mut self, _name: Option<S1>, _installed_ver: Option<S2>
+    ) -> Result<results::QuerySwdbResult>
     where
         S1: IntoNativeString,
         S2: IntoNativeString, {
@@ -1512,7 +1543,7 @@ impl Context {
     #[inline]
     pub fn get_audit_log<'a, D>(&mut self, dst: D, flags: ::AuditLogFlags) -> Result<()>
     where
-        D: IntoData<'a>, {
+        D: IntoData<'a> {
         let mut dst = try!(dst.into_data());
         unsafe {
             return_err!(ffi::gpgme_op_getauditlog(
@@ -1578,7 +1609,7 @@ impl<'a> Keys<'a, ()> {
     #[cfg(feature = "v1_9_0")]
     pub fn from_data<'d, D>(ctx: &mut Context, src: D) -> Result<Keys<D::Output>>
     where
-        D: IntoData<'d>, {
+        D: IntoData<'d> {
         let mut src = try!(src.into_data());
         unsafe {
             return_err!(ffi::gpgme_op_keylist_from_data_start(
@@ -1597,7 +1628,7 @@ impl<'a> Keys<'a, ()> {
     #[cfg(not(feature = "v1_9_0"))]
     pub fn from_data<'d, D>(_ctx: &mut Context, _src: D) -> Result<Keys<D::Output>>
     where
-        D: IntoData<'d>, {
+        D: IntoData<'d> {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 }

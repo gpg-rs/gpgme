@@ -39,15 +39,17 @@ impl<'a> PassphraseRequest<'a> {
 }
 
 pub trait PassphraseProvider: UnwindSafe + Send {
-    fn get_passphrase<W: io::Write>(&mut self, request: PassphraseRequest, out: W)
-        -> Result<(), Error>;
+    fn get_passphrase<W: io::Write>(
+        &mut self, request: PassphraseRequest, out: W
+    ) -> Result<(), Error>;
 }
 
 impl<T: UnwindSafe + Send> PassphraseProvider for T
 where
     T: FnMut(PassphraseRequest, &mut io::Write) -> Result<(), Error>, {
-    fn get_passphrase<W: io::Write>(&mut self, request: PassphraseRequest, mut out: W)
-        -> Result<(), Error> {
+    fn get_passphrase<W: io::Write>(
+        &mut self, request: PassphraseRequest, mut out: W
+    ) -> Result<(), Error> {
         (*self)(request, &mut out)
     }
 }
@@ -217,8 +219,9 @@ impl<H> Drop for StatusHandlerWrapper<H> {
 }
 
 #[cfg(feature = "v1_6_0")]
-pub extern "C" fn status_cb<H: StatusHandler>(hook: *mut libc::c_void, keyword: *const libc::c_char, args: *const libc::c_char)
-    -> ffi::gpgme_error_t {
+pub extern "C" fn status_cb<H: StatusHandler>(
+    hook: *mut libc::c_void, keyword: *const libc::c_char, args: *const libc::c_char
+) -> ffi::gpgme_error_t {
     let wrapper = unsafe { &mut *(hook as *mut StatusHandlerWrapper<H>) };
     let mut handler = match wrapper.state.take() {
         Some(Ok(handler)) => handler,
@@ -270,8 +273,9 @@ impl<'a> EditInteractionStatus<'a> {
 }
 
 pub trait EditInteractor: UnwindSafe + Send {
-    fn interact<W: io::Write>(&mut self, status: EditInteractionStatus, out: Option<W>)
-        -> Result<(), Error>;
+    fn interact<W: io::Write>(
+        &mut self, status: EditInteractionStatus, out: Option<W>
+    ) -> Result<(), Error>;
 }
 
 pub struct EditInteractorWrapper<'a, E> {
@@ -353,8 +357,9 @@ impl<'a> InteractionStatus<'a> {
 }
 
 pub trait Interactor: UnwindSafe + Send + 'static {
-    fn interact<W: io::Write>(&mut self, status: InteractionStatus, out: Option<W>)
-        -> Result<(), Error>;
+    fn interact<W: io::Write>(
+        &mut self, status: InteractionStatus, out: Option<W>
+    ) -> Result<(), Error>;
 }
 
 #[cfg(feature = "v1_7_0")]

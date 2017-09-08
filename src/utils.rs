@@ -76,8 +76,7 @@ macro_rules! impl_wrapper {
     (@phantom $Name:ident: $T:ty) => {
         #[inline]
         pub unsafe fn from_raw(raw: $T) -> Self {
-            debug_assert!(!raw.is_null());
-            $Name(NonZero::new(raw), PhantomData)
+            $Name(NonZero::new(raw).unwrap(), PhantomData)
         }
 
         #[inline]
@@ -88,8 +87,7 @@ macro_rules! impl_wrapper {
     ($Name:ident: $T:ty) => {
         #[inline]
         pub unsafe fn from_raw(raw: $T) -> Self {
-            debug_assert!(!raw.is_null());
-            $Name(NonZero::new(raw))
+            $Name(NonZero::new(raw).unwrap())
         }
 
         #[inline]
@@ -326,13 +324,35 @@ cfg_if! {
     if #[cfg(any(nightly, feature = "nightly"))] {
         pub use core::nonzero::NonZero;
     } else {
-        #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-        pub struct NonZero<T>(T);
+        pub unsafe trait Zeroable {
+            fn is_zero(&self) -> bool;
+        }
 
-        impl<T> NonZero<T> {
+        unsafe impl<T: ?Sized> Zeroable for *mut T {
+            #[inline]
+            fn is_zero(&self) -> bool {
+                (*self as *mut u8).is_null()
+            }
+        }
+
+        unsafe impl<T: ?Sized> Zeroable for *const T {
+            #[inline]
+            fn is_zero(&self) -> bool {
+                (*self as *mut u8).is_null()
+            }
+        }
+
+        #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+        pub struct NonZero<T: Zeroable>(T);
+
+        impl<T: Zeroable> NonZero<T> {
             #[inline(always)]
-            pub unsafe fn new(inner: T) -> NonZero<T> {
-                NonZero(inner)
+            pub fn new(inner: T) -> Option<Self> {
+                if inner.is_zero() {
+                    None
+                } else {
+                    Some(NonZero(inner))
+                }
             }
 
             pub fn get(self) -> T {
