@@ -17,8 +17,9 @@ use libc;
 use conv::{UnwrapOrSaturate, ValueInto};
 use ffi;
 
-use {IntoNativeString, NonZero};
+use NonZero;
 use error::{self, Error, Result};
+use utils::CStrArgument;
 
 ffi_enum_wrapper! {
     pub enum Encoding: ffi::gpgme_data_encoding_t {
@@ -140,8 +141,8 @@ impl<'a> Data<'a> {
     /// Constructs a data object and fills it with the contents of the file
     /// referenced by `path`.
     #[inline]
-    pub fn load<P: IntoNativeString>(path: P) -> Result<Data<'static>> {
-        let path = path.into_native();
+    pub fn load<P: CStrArgument>(path: P) -> Result<Data<'static>> {
+        let path = path.into_cstr();
         unsafe {
             let mut data = ptr::null_mut();
             return_err!(ffi::gpgme_data_new_from_file(
@@ -317,8 +318,8 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    pub fn set_filename<S: IntoNativeString>(&mut self, name: S) -> Result<()> {
-        let name = name.into_native();
+    pub fn set_filename<S: CStrArgument>(&mut self, name: S) -> Result<()> {
+        let name = name.into_cstr();
         unsafe {
             return_err!(ffi::gpgme_data_set_file_name(
                 self.as_raw(),
@@ -343,10 +344,10 @@ impl<'a> Data<'a> {
     #[cfg(feature = "v1_7_0")]
     pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString, {
-        let name = name.into_native();
-        let value = value.into_native();
+        S1: CStrArgument,
+        S2: CStrArgument, {
+        let name = name.into_cstr();
+        let value = value.into_cstr();
         unsafe {
             return_err!(ffi::gpgme_data_set_flag(
                 self.as_raw(),
@@ -361,8 +362,8 @@ impl<'a> Data<'a> {
     #[cfg(not(feature = "v1_7_0"))]
     pub fn set_flag<S1, S2>(&mut self, _name: S1, _value: S2) -> Result<()>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString, {
+        S1: CStrArgument,
+        S2: CStrArgument, {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 

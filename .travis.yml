@@ -57,7 +57,7 @@ matrix:
       script:
         - cargo build --features nightly --verbose --verbose
         - cargo test --features nightly --no-fail-fast
-        - cargo doc
+        - cargo doc --features nightly
 before_script:
   - gpg --version || true
   - gpg2 --version || true

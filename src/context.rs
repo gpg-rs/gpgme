@@ -13,12 +13,13 @@ use conv::ValueInto;
 use conv::UnwrapOrSaturate;
 use ffi;
 
-use {Data, EditInteractor, Error, IntoData, IntoNativeString, Key, KeyListMode, NonZero,
+use {Data, EditInteractor, Error, IntoData, Key, KeyListMode, NonZero,
      PassphraseProvider, ProgressHandler, Protocol, Result, SignMode, TrustItem};
 use {callbacks, edit, error};
 use engine::EngineInfo;
 use notation::SignatureNotations;
 use results;
+use utils::CStrArgument;
 
 /// A context for cryptographic operations
 #[must_use]
@@ -99,7 +100,7 @@ impl Context {
     #[inline]
     pub fn get_flag<S>(&self, name: S) -> result::Result<&str, Option<Utf8Error>>
     where
-        S: IntoNativeString {
+        S: CStrArgument {
         self.get_flag_raw(name)
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -107,8 +108,8 @@ impl Context {
     #[inline]
     #[cfg(feature = "v1_8_0")]
     pub fn get_flag_raw<S>(&self, name: S) -> Option<&CStr>
-    where S: IntoNativeString {
-        let name = name.into_native();
+    where S: CStrArgument {
+        let name = name.into_cstr();
         unsafe {
             ffi::gpgme_get_ctx_flag(self.as_raw(), name.as_ref().as_ptr())
                 .as_ref()
@@ -119,7 +120,7 @@ impl Context {
     #[inline]
     #[cfg(not(feature = "v1_8_0"))]
     pub fn get_flag_raw<S>(&self, _name: S) -> Option<&CStr>
-    where S: IntoNativeString {
+    where S: CStrArgument {
         None
     }
 
@@ -127,10 +128,10 @@ impl Context {
     #[cfg(feature = "v1_7_0")]
     pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString, {
-        let name = name.into_native();
-        let value = value.into_native();
+        S1: CStrArgument,
+        S2: CStrArgument, {
+        let name = name.into_cstr();
+        let value = value.into_cstr();
         unsafe {
             return_err!(ffi::gpgme_set_ctx_flag(
                 self.as_raw(),
@@ -145,8 +146,8 @@ impl Context {
     #[cfg(not(feature = "v1_7_0"))]
     pub fn set_flag<S1, S2>(&mut self, _name: S1, _value: S2) -> Result<()>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString, {
+        S1: CStrArgument,
+        S2: CStrArgument, {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
@@ -157,8 +158,8 @@ impl Context {
 
     #[inline]
     pub fn set_engine_path<S>(&mut self, path: S) -> Result<()>
-    where S: IntoNativeString {
-        let path = path.into_native();
+    where S: CStrArgument {
+        let path = path.into_cstr();
         let home_dir = self.engine_info()
             .home_dir_raw()
             .map_or(ptr::null(), CStr::as_ptr);
@@ -175,11 +176,11 @@ impl Context {
 
     #[inline]
     pub fn set_engine_home_dir<S>(&mut self, home_dir: S) -> Result<()>
-    where S: IntoNativeString {
+    where S: CStrArgument {
         let path = self.engine_info()
             .path_raw()
             .map_or(ptr::null(), CStr::as_ptr);
-        let home_dir = home_dir.into_native();
+        let home_dir = home_dir.into_cstr();
         unsafe {
             return_err!(ffi::gpgme_ctx_set_engine_info(
                 self.as_raw(),
@@ -196,10 +197,10 @@ impl Context {
         &mut self, path: Option<S1>, home_dir: Option<S2>
     ) -> Result<()>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString, {
-        let path = path.map(S1::into_native);
-        let home_dir = home_dir.map(S2::into_native);
+        S1: CStrArgument,
+        S2: CStrArgument, {
+        let path = path.map(S1::into_cstr);
+        let home_dir = home_dir.map(S2::into_cstr);
         unsafe {
             let path = path.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
             let home_dir = home_dir
@@ -325,10 +326,10 @@ impl Context {
     }
 
     #[inline]
-    pub fn find_trust_items<S: IntoNativeString>(
+    pub fn find_trust_items<S: CStrArgument>(
         &mut self, pattern: S, max_level: i32
     ) -> Result<TrustItems> {
-        let pattern = pattern.into_native();
+        let pattern = pattern.into_cstr();
         unsafe {
             return_err!(ffi::gpgme_op_trustlist_start(
                 self.as_raw(),
@@ -395,8 +396,8 @@ impl Context {
     /// Returns the public key with the specified fingerprint, if such a key can
     /// be found. Otherwise, an error is returned.
     #[inline]
-    pub fn find_key<S: IntoNativeString>(&self, fingerprint: S) -> Result<Key> {
-        let fingerprint = fingerprint.into_native();
+    pub fn find_key<S: CStrArgument>(&self, fingerprint: S) -> Result<Key> {
+        let fingerprint = fingerprint.into_cstr();
         unsafe {
             let mut key = ptr::null_mut();
             return_err!(ffi::gpgme_get_key(
@@ -412,8 +413,8 @@ impl Context {
     /// Returns the secret key with the specified fingerprint, if such a key can
     /// be found. Otherwise, an error is returned.
     #[inline]
-    pub fn find_secret_key<S: IntoNativeString>(&self, fingerprint: S) -> Result<Key> {
-        let fingerprint = fingerprint.into_native();
+    pub fn find_secret_key<S: CStrArgument>(&self, fingerprint: S) -> Result<Key> {
+        let fingerprint = fingerprint.into_cstr();
         unsafe {
             let mut key = ptr::null_mut();
             return_err!(ffi::gpgme_get_key(
@@ -432,7 +433,7 @@ impl Context {
     pub fn find_keys<I>(&mut self, patterns: I) -> Result<Keys>
     where
         I: IntoIterator,
-        I::Item: IntoNativeString, {
+        I::Item: CStrArgument, {
         Keys::new(self, patterns, false)
     }
 
@@ -442,7 +443,7 @@ impl Context {
     pub fn find_secret_keys<I>(&mut self, patterns: I) -> Result<Keys>
     where
         I: IntoIterator,
-        I::Item: IntoNativeString, {
+        I::Item: CStrArgument, {
         Keys::new(self, patterns, true)
     }
 
@@ -470,10 +471,10 @@ impl Context {
         &mut self, params: S, public: Option<D1>, secret: Option<D2>
     ) -> Result<results::KeyGenerationResult>
     where
-        S: IntoNativeString,
+        S: CStrArgument,
         D1: IntoData<'d1>,
         D2: IntoData<'d2>, {
-        let params = params.into_native();
+        let params = params.into_cstr();
         let mut public = try!(public.map_or(Ok(None), |d| d.into_data().map(Some)));
         let mut secret = try!(secret.map_or(Ok(None), |d| d.into_data().map(Some)));
         unsafe {
@@ -496,8 +497,8 @@ impl Context {
         &mut self, userid: S1, algo: S2, expires: Option<SystemTime>
     ) -> Result<results::KeyGenerationResult>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString, {
+        S1: CStrArgument,
+        S2: CStrArgument, {
         self.create_key_with_flags(userid, algo, expires, ::CreateKeyFlags::empty())
     }
 
@@ -507,10 +508,10 @@ impl Context {
         &mut self, userid: S1, algo: S2, expires: Option<SystemTime>, flags: ::CreateKeyFlags
     ) -> Result<results::KeyGenerationResult>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString, {
-        let userid = userid.into_native();
-        let algo = algo.into_native();
+        S1: CStrArgument,
+        S2: CStrArgument, {
+        let userid = userid.into_cstr();
+        let algo = algo.into_cstr();
         let expires = expires
             .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
             .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
@@ -535,8 +536,8 @@ impl Context {
         &mut self, _userid: S1, _algo: S2, _expires: Option<SystemTime>, _flags: ::CreateKeyFlags
     ) -> Result<results::KeyGenerationResult>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString, {
+        S1: CStrArgument,
+        S2: CStrArgument, {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
@@ -546,7 +547,7 @@ impl Context {
         &mut self, key: &Key, algo: S, expires: Option<SystemTime>
     ) -> Result<results::KeyGenerationResult>
     where
-        S: IntoNativeString, {
+        S: CStrArgument, {
         self.create_subkey_with_flags(key, algo, expires, ::CreateKeyFlags::empty())
     }
 
@@ -556,8 +557,8 @@ impl Context {
         &mut self, key: &Key, algo: S, expires: Option<SystemTime>, flags: ::CreateKeyFlags
     ) -> Result<results::KeyGenerationResult>
     where
-        S: IntoNativeString, {
-        let algo = algo.into_native();
+        S: CStrArgument, {
+        let algo = algo.into_cstr();
         let expires = expires
             .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
             .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
@@ -581,15 +582,15 @@ impl Context {
         &mut self, _key: &Key, _algo: S, _expires: Option<SystemTime>, _flags: ::CreateKeyFlags
     ) -> Result<results::KeyGenerationResult>
     where
-        S: IntoNativeString, {
+        S: CStrArgument, {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn add_uid<S>(&mut self, key: &Key, userid: S) -> Result<()>
-    where S: IntoNativeString {
-        let userid = userid.into_native();
+    where S: CStrArgument {
+        let userid = userid.into_cstr();
         unsafe {
             return_err!(ffi::gpgme_op_adduid(
                 self.as_raw(),
@@ -604,15 +605,15 @@ impl Context {
     #[inline]
     #[cfg(not(feature = "v1_7_0"))]
     pub fn add_uid<S>(&mut self, _key: &Key, _userid: S) -> Result<()>
-    where S: IntoNativeString {
+    where S: CStrArgument {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     #[inline]
     #[cfg(feature = "v1_7_0")]
     pub fn revoke_uid<S>(&mut self, key: &Key, userid: S) -> Result<()>
-    where S: IntoNativeString {
-        let userid = userid.into_native();
+    where S: CStrArgument {
+        let userid = userid.into_cstr();
         unsafe {
             return_err!(ffi::gpgme_op_revuid(
                 self.as_raw(),
@@ -627,7 +628,7 @@ impl Context {
     #[inline]
     #[cfg(not(feature = "v1_7_0"))]
     pub fn revoke_uid<S>(&mut self, _key: &Key, _userid: S) -> Result<()>
-    where S: IntoNativeString {
+    where S: CStrArgument {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
@@ -637,12 +638,12 @@ impl Context {
         &mut self, key: &Key, userid: S1, name: S2, value: Option<S3>
     ) -> Result<()>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString,
-        S3: IntoNativeString, {
-        let userid = userid.into_native();
-        let name = name.into_native();
-        let value = value.map(IntoNativeString::into_native);
+        S1: CStrArgument,
+        S2: CStrArgument,
+        S3: CStrArgument, {
+        let userid = userid.into_cstr();
+        let name = name.into_cstr();
+        let value = value.map(CStrArgument::into_cstr);
         unsafe {
             return_err!(ffi::gpgme_op_set_uid_flag(
                 self.as_raw(),
@@ -661,9 +662,9 @@ impl Context {
         &mut self, _key: &Key, _userid: S1, _name: S2, _value: Option<S3>
     ) -> Result<()>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString,
-        S3: IntoNativeString, {
+        S1: CStrArgument,
+        S2: CStrArgument,
+        S3: CStrArgument, {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
@@ -702,7 +703,7 @@ impl Context {
                 _ => panic!("no userids provided"),
             }
         };
-        let userids = userids.into_native();
+        let userids = userids.into_cstr();
         let expires = expires
             .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
             .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
@@ -943,7 +944,7 @@ impl Context {
     pub fn export_all_extern<'a, I>(&mut self, mode: ::ExportMode) -> Result<()>
     where
         I: IntoIterator,
-        I::Item: IntoNativeString, {
+        I::Item: CStrArgument, {
         self.export_(None::<&CStr>, mode | ::EXPORT_EXTERN, None)
     }
 
@@ -951,8 +952,8 @@ impl Context {
     pub fn export_extern<'a, I>(&mut self, patterns: I, mode: ::ExportMode) -> Result<()>
     where
         I: IntoIterator,
-        I::Item: IntoNativeString, {
-        let patterns: Vec<_> = patterns.into_iter().map(|s| s.into_native()).collect();
+        I::Item: CStrArgument, {
+        let patterns: Vec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
         self.export_(&patterns, mode | ::EXPORT_EXTERN, None)
     }
 
@@ -968,10 +969,10 @@ impl Context {
     pub fn export<'a, I, D>(&mut self, patterns: I, mode: ::ExportMode, dst: D) -> Result<()>
     where
         I: IntoIterator,
-        I::Item: IntoNativeString,
+        I::Item: CStrArgument,
         D: IntoData<'a>, {
         let mut dst = try!(dst.into_data());
-        let patterns: Vec<_> = patterns.into_iter().map(|s| s.into_native()).collect();
+        let patterns: Vec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
         self.export_(&patterns, mode, Some(dst.borrow_mut()))
     }
 
@@ -1057,8 +1058,8 @@ impl Context {
 
     #[inline]
     #[cfg(feature = "v1_8_0")]
-    pub fn set_sender<S: IntoNativeString>(&mut self, sender: S) -> Result<()> {
-        let sender = sender.into_native();
+    pub fn set_sender<S: CStrArgument>(&mut self, sender: S) -> Result<()> {
+        let sender = sender.into_cstr();
         unsafe {
             return_err!(ffi::gpgme_set_sender(
                 self.as_raw(),
@@ -1070,7 +1071,7 @@ impl Context {
 
     #[inline]
     #[cfg(not(feature = "v1_8_0"))]
-    pub fn set_sender<S: IntoNativeString>(&mut self, _sender: S) -> Result<()> {
+    pub fn set_sender<S: CStrArgument>(&mut self, _sender: S) -> Result<()> {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
@@ -1129,10 +1130,10 @@ impl Context {
         &mut self, name: S1, value: S2, flags: ::SignatureNotationFlags
     ) -> Result<()>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString, {
-        let name = name.into_native();
-        let value = value.into_native();
+        S1: CStrArgument,
+        S2: CStrArgument, {
+        let name = name.into_cstr();
+        let value = value.into_cstr();
         unsafe {
             return_err!(ffi::gpgme_sig_notation_add(
                 self.as_raw(),
@@ -1147,8 +1148,8 @@ impl Context {
     #[inline]
     pub fn add_signature_policy_url<S>(&mut self, url: S, critical: bool) -> Result<()>
     where
-        S: IntoNativeString {
-        let url = url.into_native();
+        S: CStrArgument {
+        let url = url.into_cstr();
         unsafe {
             let critical = if critical {
                 ffi::GPGME_SIG_NOTATION_CRITICAL
@@ -1515,10 +1516,10 @@ impl Context {
         &mut self, name: Option<S1>, installed_ver: Option<S2>
     ) -> Result<results::QuerySwdbResult>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString, {
-        let name = name.map(|s| s.into_native());
-        let iversion = installed_ver.map(|s| s.into_native());
+        S1: CStrArgument,
+        S2: CStrArgument, {
+        let name = name.map(|s| s.into_cstr());
+        let iversion = installed_ver.map(|s| s.into_cstr());
         unsafe {
             let name = name.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
             let iversion = iversion
@@ -1535,8 +1536,8 @@ impl Context {
         &mut self, _name: Option<S1>, _installed_ver: Option<S2>
     ) -> Result<results::QuerySwdbResult>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString, {
+        S1: CStrArgument,
+        S2: CStrArgument, {
         Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
@@ -1582,8 +1583,8 @@ impl<'a> Keys<'a, ()> {
     fn new<I>(ctx: &mut Context, patterns: I, secret_only: bool) -> Result<Keys<()>>
     where
         I: IntoIterator,
-        I::Item: IntoNativeString, {
-        let patterns: Vec<_> = patterns.into_iter().map(|s| s.into_native()).collect();
+        I::Item: CStrArgument, {
+        let patterns: Vec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
         let mut patterns: Vec<_> = patterns.iter().map(|s| s.as_ref().as_ptr()).collect();
         let ptr = if !patterns.is_empty() {
             patterns.push(ptr::null());

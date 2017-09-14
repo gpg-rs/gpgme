@@ -3,32 +3,22 @@ name = "gpgme"
 version = "0.6.1"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
-description = "GPGme bindings for Rust"
+readme = "README.md"
 repository = "https://github.com/johnschug/rust-gpgme"
 documentation = "https://docs.rs/gpgme"
 categories = ["api-bindings"]
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
-readme = "README.md"
+description = "GPGme bindings for Rust"
 
 [badges]
 travis-ci = { repository = "johnschug/rust-gpgme" }
 maintenance = { status = "experimental" }
 
 [features]
-default = ["v1_9_0"]
 nightly = ["lazy_static/nightly"]
-v1_3_0 = []
-v1_3_1 = ["v1_3_0", "gpgme-sys/v1_3_1"]
-v1_4_0 = ["v1_3_1", "gpgme-sys/v1_4_0"]
-v1_4_2 = ["v1_4_0", "gpgme-sys/v1_4_2"]
-v1_4_3 = ["v1_4_2", "gpgme-sys/v1_4_3"]
-v1_5_0 = ["v1_4_3", "gpgme-sys/v1_5_0"]
-v1_5_1 = ["v1_5_0", "gpgme-sys/v1_5_1"]
-v1_6_0 = ["v1_5_1", "gpgme-sys/v1_6_0"]
-v1_7_0 = ["v1_6_0", "gpgme-sys/v1_7_0"]
-v1_7_1 = ["v1_7_0", "gpgme-sys/v1_7_1"]
-v1_8_0 = ["v1_7_1", "gpgme-sys/v1_8_0"]
-v1_9_0 = ["v1_8_0", "gpgme-sys/v1_9_0"]
+
+[build-dependencies]
+semver = "0.8"
 
 [dev-dependencies]
 getopts = "0.2"
@@ -40,10 +30,10 @@ cfg-if = "0.1"
 bitflags = "0.9"
 lazy_static = "0.2"
 conv = "0.3"
+cstr-argument = "0.0.2"
 gpg-error = "0.2"
 
 [dependencies.gpgme-sys]
-default-features = false
 path = "gpgme-sys"
 version = "0.6.1"
 

@@ -229,7 +229,7 @@ impl Key {
 
     #[inline]
     pub fn updated(&self) -> ::Result<Key> {
-        let mut ctx = try!(::Context::from_protocol(self.protocol()));
+        let mut ctx = ::Context::from_protocol(self.protocol())?;
         let _ = ctx.set_key_list_mode(
             ::KEY_LIST_MODE_LOCAL | ::KEY_LIST_MODE_SIGS | ::KEY_LIST_MODE_SIG_NOTATIONS |
                 ::KEY_LIST_MODE_VALIDATE | ::KEY_LIST_MODE_WITH_TOFU,

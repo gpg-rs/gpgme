@@ -12,6 +12,7 @@ extern crate gpgme_sys as ffi;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
+extern crate cstr_argument;
 #[macro_use]
 pub extern crate gpg_error as error;
 
@@ -24,9 +25,9 @@ use std::str::Utf8Error;
 use std::sync::{Arc, RwLock};
 
 use self::engine::EngineInfoGuard;
+use self::utils::CStrArgument;
 
 pub use self::flags::*;
-pub use self::utils::IntoNativeString;
 pub use self::error::{Error, Result};
 pub use self::data::{Data, IntoData};
 pub use self::context::Context;
@@ -57,7 +58,6 @@ pub mod tofu;
 pub mod edit;
 
 /// Constants for use with `Token::get_dir_info`.
-#[cfg(feature = "v1_5_0")]
 pub mod info {
     pub const HOME_DIR: &'static str = "homedir";
     pub const AGENT_SOCKET: &'static str = "agent-socket";
@@ -133,36 +133,6 @@ impl fmt::Display for Validity {
     }
 }
 
-cfg_if! {
-    if #[cfg(feature = "v1_9_0")] {
-        const TARGET_VERSION: &'static str = "1.9.0\0";
-    } else if #[cfg(feature = "v1_8_0")] {
-        const TARGET_VERSION: &'static str = "1.8.0\0";
-    } else if #[cfg(feature = "v1_7_1")] {
-        const TARGET_VERSION: &'static str = "1.7.1\0";
-    } else if #[cfg(feature = "v1_7_0")] {
-        const TARGET_VERSION: &'static str = "1.7.0\0";
-    } else if #[cfg(feature = "v1_6_0")] {
-        const TARGET_VERSION: &'static str = "1.6.0\0";
-    } else if #[cfg(feature = "v1_5_1")] {
-        const TARGET_VERSION: &'static str = "1.5.1\0";
-    } else if #[cfg(feature = "v1_5_0")] {
-        const TARGET_VERSION: &'static str = "1.5.0\0";
-    } else if #[cfg(feature = "v1_4_3")] {
-        const TARGET_VERSION: &'static str = "1.4.3\0";
-    } else if #[cfg(feature = "v1_4_2")] {
-        const TARGET_VERSION: &'static str = "1.4.2\0";
-    } else if #[cfg(feature = "v1_4_0")] {
-        const TARGET_VERSION: &'static str = "1.4.0\0";
-    } else if #[cfg(feature = "v1_3_1")] {
-        const TARGET_VERSION: &'static str = "1.3.1\0";
-    } else if #[cfg(feature = "v1_3_0")] {
-        const TARGET_VERSION: &'static str = "1.3.0\0";
-    } else {
-        const TARGET_VERSION: &'static str = "1.2.0\0";
-    }
-}
-
 struct TokenImp {
     version: &'static str,
     engine_info: RwLock<()>,
@@ -180,10 +150,8 @@ lazy_static! {
             let base: ffi::_gpgme_signature = mem::zeroed();
             let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
 
-            let result = ffi::gpgme_check_version_internal(TARGET_VERSION.as_ptr() as *const _,
-                                                           offset);
-            assert!(!result.is_null(), "gpgme library could not be initialized for version: {}",
-                    TARGET_VERSION);
+            let result = ffi::gpgme_check_version_internal(ptr::null(), offset);
+            assert!(!result.is_null(), "gpgme library could not be initialized");
             CStr::from_ptr(result).to_str().expect("gpgme version string is not valid utf-8")
         };
         Token(Arc::new(TokenImp { version: version, engine_info: RwLock::new(()) }))
@@ -212,9 +180,9 @@ cfg_if! {
         }
 
         pub fn set_flag<S1, S2>(name: S1, val: S2) -> Result<()>
-        where S1: IntoNativeString, S2: IntoNativeString {
-            let name = name.into_native();
-            let val = val.into_native();
+        where S1: CStrArgument, S2: CStrArgument {
+            let name = name.into_cstr();
+            let val = val.into_cstr();
             let _lock = FLAG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
             unsafe {
                 if ffi::gpgme_set_global_flag(name.as_ref().as_ptr(), val.as_ref().as_ptr()) == 0 {
@@ -226,7 +194,7 @@ cfg_if! {
         }
     } else {
         pub fn set_flag<S1, S2>(_name: S1, _val: S2) -> Result<()>
-        where S1: IntoNativeString, S2: IntoNativeString {
+        where S1: CStrArgument, S2: CStrArgument {
             Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
         }
     }
@@ -249,8 +217,8 @@ impl Token {
     /// assert!(gpgme.check_version("1.4.0"));
     /// ```
     #[inline]
-    pub fn check_version<S: IntoNativeString>(&self, version: S) -> bool {
-        let version = version.into_native();
+    pub fn check_version<S: CStrArgument>(&self, version: S) -> bool {
+        let version = version.into_cstr();
         unsafe { !ffi::gpgme_check_version(version.as_ref().as_ptr()).is_null() }
     }
 
@@ -266,7 +234,7 @@ impl Token {
     #[inline]
     pub fn get_dir_info<S>(&self, what: S) -> result::Result<&'static str, Option<Utf8Error>>
     where
-        S: IntoNativeString {
+        S: CStrArgument {
         self.get_dir_info_raw(what)
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -276,8 +244,8 @@ impl Token {
     /// Commonly supported values for `what` are specified in [`info`](info/).
     #[inline]
     #[cfg(feature = "v1_5_0")]
-    pub fn get_dir_info_raw<S: IntoNativeString>(&self, what: S) -> Option<&'static CStr> {
-        let what = what.into_native();
+    pub fn get_dir_info_raw<S: CStrArgument>(&self, what: S) -> Option<&'static CStr> {
+        let what = what.into_cstr();
         unsafe {
             ffi::gpgme_get_dirinfo(what.as_ref().as_ptr())
                 .as_ref()
@@ -290,7 +258,7 @@ impl Token {
     /// Commonly supported values for `what` are specified in [`info`](info/).
     #[inline]
     #[cfg(not(feature = "v1_5_0"))]
-    pub fn get_dir_info_raw<S: IntoNativeString>(&self, _what: S) -> Option<&'static CStr> {
+    pub fn get_dir_info_raw<S: CStrArgument>(&self, _what: S) -> Option<&'static CStr> {
         None
     }
 
@@ -319,8 +287,8 @@ impl Token {
     #[inline]
     pub fn set_engine_path<S>(&self, proto: Protocol, path: S) -> Result<()>
     where
-        S: IntoNativeString {
-        let path = path.into_native();
+        S: CStrArgument {
+        let path = path.into_cstr();
         unsafe {
             let _lock = self.0
                 .engine_info
@@ -341,8 +309,8 @@ impl Token {
     #[inline]
     pub fn set_engine_home_dir<S>(&self, proto: Protocol, home_dir: S) -> Result<()>
     where
-        S: IntoNativeString {
-        let home_dir = home_dir.into_native();
+        S: CStrArgument {
+        let home_dir = home_dir.into_cstr();
         unsafe {
             let _lock = self.0
                 .engine_info
@@ -365,10 +333,10 @@ impl Token {
         &self, proto: Protocol, path: Option<S1>, home_dir: Option<S2>
     ) -> Result<()>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString, {
-        let path = path.map(S1::into_native);
-        let home_dir = home_dir.map(S2::into_native);
+        S1: CStrArgument,
+        S2: CStrArgument, {
+        let path = path.map(S1::into_cstr);
+        let home_dir = home_dir.map(S2::into_cstr);
         unsafe {
             let path = path.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
             let home_dir = home_dir
