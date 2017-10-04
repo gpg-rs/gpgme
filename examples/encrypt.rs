@@ -1,4 +1,3 @@
-#![allow(unused_must_use)]
 extern crate getopts;
 extern crate gpgme;
 
@@ -14,7 +13,7 @@ use gpgme::{Context, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] FILENAME", program);
-    write!(io::stderr(), "{}", opts.usage(&brief));
+    eprintln!("{}", opts.usage(&brief));
 }
 
 fn main() {
@@ -38,7 +37,7 @@ fn main() {
         Ok(matches) => matches,
         Err(fail) => {
             print_usage(program, &opts);
-            writeln!(io::stderr(), "{}", fail);
+            eprintln!("{}", fail);
             exit(1);
         }
     };
