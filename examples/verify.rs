@@ -1,11 +1,8 @@
-#![allow(unused_must_use)]
 extern crate getopts;
 extern crate gpgme;
 
 use std::env;
 use std::fs::File;
-use std::io;
-use std::io::prelude::*;
 use std::process::exit;
 
 use getopts::Options;
@@ -14,7 +11,7 @@ use gpgme::{Context, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] [SIGFILE] FILE", program);
-    write!(io::stderr(), "{}", opts.usage(&brief));
+    eprintln!("{}", opts.usage(&brief));
 }
 
 fn print_summary(summary: gpgme::SignatureSummary) {
@@ -102,7 +99,7 @@ fn main() {
         Ok(matches) => matches,
         Err(fail) => {
             print_usage(program, &opts);
-            writeln!(io::stderr(), "{}", fail);
+            eprintln!("{}", fail);
             exit(1);
         }
     };
@@ -128,8 +125,7 @@ fn main() {
     let signature = match File::open(&matches.free[0]) {
         Ok(file) => file,
         Err(err) => {
-            writeln!(
-                io::stderr(),
+            eprintln!(
                 "{}: can't open '{}': {}",
                 program,
                 &matches.free[0],
@@ -143,8 +139,7 @@ fn main() {
         let signed = match File::open(&matches.free[1]) {
             Ok(file) => file,
             Err(err) => {
-                writeln!(
-                    io::stderr(),
+                eprintln!(
                     "{}: can't open '{}': {}",
                     program,
                     &matches.free[1],
@@ -161,7 +156,7 @@ fn main() {
     match result {
         Ok(result) => print_result(&result),
         Err(err) => {
-            writeln!(io::stderr(), "{}: verification failed: {}", program, err);
+            eprintln!("{}: verification failed: {}", program, err);
             exit(1);
         }
     }

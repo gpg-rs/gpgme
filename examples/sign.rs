@@ -1,4 +1,3 @@
-#![allow(unused_must_use)]
 extern crate getopts;
 extern crate gpgme;
 
@@ -14,7 +13,7 @@ use gpgme::{Context, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] FILENAME", program);
-    write!(io::stderr(), "{}", opts.usage(&brief));
+    eprintln!("{}", opts.usage(&brief));
 }
 
 fn print_result(result: &gpgme::SigningResult) {
@@ -45,7 +44,7 @@ fn main() {
         Ok(matches) => matches,
         Err(fail) => {
             print_usage(program, &opts);
-            writeln!(io::stderr(), "{}", fail);
+            eprintln!("{}", fail);
             exit(1);
         }
     };
@@ -84,7 +83,7 @@ fn main() {
             let key = ctx.find_secret_key(key).unwrap();
             ctx.add_signer(&key).unwrap();
         } else {
-            writeln!(io::stderr(), "ignoring --key in UI-server mode");
+            eprintln!("ignoring --key in UI-server mode");
         }
     }
 

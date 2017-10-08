@@ -2,8 +2,6 @@ extern crate getopts;
 extern crate gpgme;
 
 use std::env;
-use std::io;
-use std::io::prelude::*;
 use std::process::exit;
 
 use getopts::Options;
@@ -12,7 +10,7 @@ use gpgme::{Context, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] [name] [version]", program);
-    let _ = write!(io::stderr(), "{}", opts.usage(&brief));
+    let _ = eprintln!("{}", opts.usage(&brief));
 }
 
 fn main() {
@@ -26,7 +24,7 @@ fn main() {
         Ok(matches) => matches,
         Err(fail) => {
             print_usage(program, &opts);
-            let _ = writeln!(io::stderr(), "{}", fail);
+            let _ = eprintln!("{}", fail);
             exit(1);
         }
     };
