@@ -27,7 +27,7 @@ tempdir = "0.3"
 [dependencies]
 libc = "0.2"
 cfg-if = "0.1"
-bitflags = "0.9"
+bitflags = "1"
 lazy_static = "0.2"
 conv = "0.3"
 cstr-argument = "0.0.2"

@@ -183,27 +183,24 @@ impl Key {
         })
     }
 
-    #[inline]
-    pub fn fingerprint(&self) -> Result<&str, Option<Utf8Error>> {
-        self.fingerprint_raw()
-            .map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
+    require_gpgme_ver! {
+        (1, 7) => {
+            #[inline]
+            pub fn fingerprint(&self) -> Result<&str, Option<Utf8Error>> {
+                self.fingerprint_raw()
+                    .map_or(Err(None), |s| s.to_str().map_err(Some))
+            }
 
-    #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn fingerprint_raw(&self) -> Option<&CStr> {
-        self.primary_key().and_then(|k| k.fingerprint_raw())
-    }
-
-    #[inline]
-    #[cfg(feature = "v1_7_0")]
-    pub fn fingerprint_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw())
-                .fpr
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-                .or_else(|| self.primary_key().and_then(|k| k.fingerprint_raw()))
+            #[inline]
+            pub fn fingerprint_raw(&self) -> Option<&CStr> {
+                unsafe {
+                    (*self.as_raw())
+                        .fpr
+                        .as_ref()
+                        .map(|s| CStr::from_ptr(s))
+                        .or_else(|| self.primary_key().and_then(|k| k.fingerprint_raw()))
+                }
+            }
         }
     }
 
@@ -231,8 +228,8 @@ impl Key {
     pub fn updated(&self) -> ::Result<Key> {
         let mut ctx = ::Context::from_protocol(self.protocol())?;
         let _ = ctx.set_key_list_mode(
-            ::KEY_LIST_MODE_LOCAL | ::KEY_LIST_MODE_SIGS | ::KEY_LIST_MODE_SIG_NOTATIONS |
-                ::KEY_LIST_MODE_VALIDATE | ::KEY_LIST_MODE_WITH_TOFU,
+            KeyListMode::LOCAL | KeyListMode::SIGS | KeyListMode::SIG_NOTATIONS
+                | KeyListMode::VALIDATE | KeyListMode::WITH_TOFU,
         );
         if self.has_secret() {
             ctx.get_secret_key(self)
@@ -383,7 +380,6 @@ impl<'a> Subkey<'a> {
     }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn algorithm_name(&self) -> ::Result<String> {
         unsafe {
             match ffi::gpgme_pubkey_algo_string(self.as_raw()).as_mut() {
@@ -400,22 +396,20 @@ impl<'a> Subkey<'a> {
         }
     }
 
-    #[inline]
-    pub fn keygrip(&self) -> Result<&'a str, Option<Utf8Error>> {
-        self.keygrip_raw()
-            .map_or(Err(None), |s| s.to_str().map_err(Some))
-    }
 
-    #[inline]
-    #[cfg(feature = "v1_7_0")]
-    pub fn keygrip_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.as_raw()).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
-    }
+    require_gpgme_ver! {
+        (1, 7) => {
+            #[inline]
+            pub fn keygrip(&self) -> Result<&'a str, Option<Utf8Error>> {
+                self.keygrip_raw()
+                    .map_or(Err(None), |s| s.to_str().map_err(Some))
+            }
 
-    #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn keygrip_raw(&self) -> Option<&'a CStr> {
-        None
+            #[inline]
+            pub fn keygrip_raw(&self) -> Option<&'a CStr> {
+                unsafe { (*self.as_raw()).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
+            }
+        }
     }
 
     #[inline]
@@ -445,16 +439,13 @@ impl<'a> Subkey<'a> {
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    #[inline]
-    #[cfg(feature = "v1_5_0")]
-    pub fn curve_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.as_raw()).curve.as_ref().map(|s| CStr::from_ptr(s)) }
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_5_0"))]
-    pub fn curve_raw(&self) -> Option<&'a CStr> {
-        None
+    require_gpgme_ver! {
+        (1,5) => {
+            #[inline]
+            pub fn curve_raw(&self) -> Option<&'a CStr> {
+                unsafe { (*self.as_raw()).curve.as_ref().map(|s| CStr::from_ptr(s)) }
+            }
+        }
     }
 }
 
@@ -569,21 +560,18 @@ impl<'a> UserId<'a> {
         unsafe { UserIdSignatures::from_list((*self.as_raw()).signatures) }
     }
 
-    #[inline]
-    #[cfg(feature = "v1_7_0")]
-    pub fn tofu_info(&self) -> Option<::TofuInfo> {
-        unsafe {
-            (*self.as_raw())
-                .tofu
-                .as_mut()
-                .map(|t| ::TofuInfo::from_raw(t))
+    require_gpgme_ver! {
+        (1,7) => {
+            #[inline]
+            pub fn tofu_info(&self) -> Option<::TofuInfo> {
+                unsafe {
+                    (*self.as_raw())
+                        .tofu
+                        .as_mut()
+                        .map(|t| ::TofuInfo::from_raw(t))
+                }
+            }
         }
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn tofu_info(&self) -> Option<::TofuInfo> {
-        None
     }
 }
 

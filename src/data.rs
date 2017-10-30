@@ -164,7 +164,9 @@ impl<'a> Data<'a> {
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf, len, 1));
             Data::from_raw(data)
         };
-        let _ = data.set_flag("size-hint", bytes.len().to_string());
+        require_gpgme_ver!((1, 7) => {
+            let _ = data.set_flag("size-hint", bytes.len().to_string());
+        });
         Ok(data)
     }
 
@@ -178,7 +180,9 @@ impl<'a> Data<'a> {
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf, len, 0));
             Data::from_raw(data)
         };
-        let _ = data.set_flag("size-hint", buf.len().to_string());
+        require_gpgme_ver!((1,7) => {
+            let _ = data.set_flag("size-hint", buf.len().to_string());
+        });
         Ok(data)
     }
 
@@ -341,7 +345,6 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
     where
         S1: CStrArgument,
@@ -359,24 +362,8 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn set_flag<S1, S2>(&mut self, _name: S1, _value: S2) -> Result<()>
-    where
-        S1: CStrArgument,
-        S2: CStrArgument, {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
-    }
-
-    #[inline]
-    #[cfg(feature = "v1_4_3")]
     pub fn identify(&mut self) -> Type {
         unsafe { Type::from_raw(ffi::gpgme_data_identify(self.as_raw(), 0)) }
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_4_3"))]
-    pub fn identify(&mut self) -> Type {
-        Type::Unknown
     }
 
     #[inline]

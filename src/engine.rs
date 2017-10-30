@@ -4,11 +4,11 @@ use std::marker::PhantomData;
 use std::ptr;
 use std::result;
 use std::str::Utf8Error;
-use std::sync::RwLockReadGuard;
+use std::sync::{RwLock, RwLockReadGuard};
 
 use ffi;
 
-use {NonZero, Protocol, Token, TOKEN};
+use {NonZero, Protocol};
 use error::Result;
 
 #[derive(Copy, Clone)]
@@ -104,12 +104,8 @@ impl_list_iterator!(EngineInfos, EngineInfo, ffi::gpgme_engine_info_t);
 pub struct EngineInfoGuard(RwLockReadGuard<'static, ()>);
 
 impl EngineInfoGuard {
-    pub fn new(_token: &Token) -> Result<EngineInfoGuard> {
-        let lock = TOKEN
-            .0
-            .engine_info
-            .read()
-            .expect("Engine info lock could not be acquired");
+    pub fn new(lock: &'static RwLock<()>) -> Result<EngineInfoGuard> {
+        let lock = lock.read().expect("Engine info lock could not be acquired");
         unsafe {
             let mut info = ptr::null_mut();
             return_err!(ffi::gpgme_get_engine_info(&mut info));

@@ -671,21 +671,18 @@ impl<'a> Signature<'a> {
         unsafe { SignatureNotations::from_list((*self.as_raw()).notations) }
     }
 
-    #[inline]
-    #[cfg(feature = "v1_7_0")]
-    pub fn key(&self) -> Option<::Key> {
-        unsafe {
-            (*self.as_raw()).key.as_mut().map(|k| {
-                ffi::gpgme_key_ref(k);
-                ::Key::from_raw(k)
-            })
+    require_gpgme_ver! {
+        (1, 7) => {
+            #[inline]
+            pub fn key(&self) -> Option<::Key> {
+                unsafe {
+                    (*self.as_raw()).key.as_mut().map(|k| {
+                        ffi::gpgme_key_ref(k);
+                        ::Key::from_raw(k)
+                    })
+                }
+            }
         }
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn key(&self) -> Option<::Key> {
-        None
     }
 }
 
@@ -707,12 +704,7 @@ impl<'a> fmt::Debug for Signature<'a> {
     }
 }
 
-#[cfg(feature = "v1_8_0")]
 impl_result!(QuerySwdbResult: ffi::gpgme_query_swdb_result_t = ffi::gpgme_op_query_swdb_result);
-#[cfg(not(feature = "v1_8_0"))]
-impl_result!(
-    QuerySwdbResult: ffi::gpgme_query_swdb_result_t = |_| -> ffi::gpgme_query_swdb_result_t { unreachable!() }
-);
 impl QuerySwdbResult {
     #[inline]
     pub fn name(&self) -> result::Result<&str, Option<Utf8Error>> {

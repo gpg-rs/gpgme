@@ -3,18 +3,14 @@ use std::ffi::CStr;
 use std::fmt;
 use std::{mem, ptr, result};
 use std::str::Utf8Error;
-use std::time::SystemTime;
-#[cfg(feature = "v1_7_0")]
-use std::time::UNIX_EPOCH;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use libc;
-use conv::ValueInto;
-#[cfg(feature = "v1_4_3")]
-use conv::UnwrapOrSaturate;
+use conv::{UnwrapOrSaturate, ValueInto};
 use ffi;
 
-use {Data, EditInteractor, Error, IntoData, Key, KeyListMode, NonZero,
-     PassphraseProvider, ProgressHandler, Protocol, Result, SignMode, TrustItem};
+use {Data, EditInteractor, Error, ExportMode, IntoData, Key, KeyListMode, NonZero, PassphraseProvider,
+     ProgressHandler, Protocol, Result, SignMode, TrustItem};
 use {callbacks, edit, error};
 use engine::EngineInfo;
 use notation::SignatureNotations;
@@ -84,13 +80,11 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(feature = "v1_6_0")]
     pub fn offline(&self) -> bool {
         unsafe { ffi::gpgme_get_offline(self.as_raw()) != 0 }
     }
 
     #[inline]
-    #[cfg(feature = "v1_6_0")]
     pub fn set_offline(&mut self, enabled: bool) {
         unsafe {
             ffi::gpgme_set_offline(self.as_raw(), if enabled { 1 } else { 0 });
@@ -106,7 +100,6 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(feature = "v1_8_0")]
     pub fn get_flag_raw<S>(&self, name: S) -> Option<&CStr>
     where S: CStrArgument {
         let name = name.into_cstr();
@@ -118,14 +111,6 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(not(feature = "v1_8_0"))]
-    pub fn get_flag_raw<S>(&self, _name: S) -> Option<&CStr>
-    where S: CStrArgument {
-        None
-    }
-
-    #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
     where
         S1: CStrArgument,
@@ -140,15 +125,6 @@ impl Context {
             ));
         }
         Ok(())
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn set_flag<S1, S2>(&mut self, _name: S1, _value: S2) -> Result<()>
-    where
-        S1: CStrArgument,
-        S2: CStrArgument, {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     #[inline]
@@ -217,30 +193,16 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(feature = "v1_4_0")]
     pub fn pinentry_mode(self) -> ::PinentryMode {
         unsafe { ::PinentryMode::from_raw(ffi::gpgme_get_pinentry_mode(self.as_raw())) }
     }
 
     #[inline]
-    #[cfg(not(feature = "v1_4_0"))]
-    pub fn pinentry_mode(self) -> ::PinentryMode {
-        ::PinentryMode::Default
-    }
-
-    #[inline]
-    #[cfg(feature = "v1_4_0")]
     pub fn set_pinentry_mode(&mut self, mode: ::PinentryMode) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_set_pinentry_mode(self.as_raw(), mode.raw()));
         }
         Ok(())
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_4_0"))]
-    pub fn set_pinentry_mode(&mut self, _mode: ::PinentryMode) -> Result<()> {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     /// Uses the specified provider to handle passphrase requests for the duration of the
@@ -303,7 +265,6 @@ impl Context {
         }
     }
 
-    #[cfg(feature = "v1_6_0")]
     pub fn with_status_handler<H, F, R>(&mut self, handler: H, f: F) -> R
     where
         H: ::StatusHandler,
@@ -503,7 +464,6 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn create_key_with_flags<S1, S2>(
         &mut self, userid: S1, algo: S2, expires: Option<SystemTime>, flags: ::CreateKeyFlags
     ) -> Result<results::KeyGenerationResult>
@@ -530,19 +490,8 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
-    #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn create_key_with_flags<S1, S2>(
-        &mut self, _userid: S1, _algo: S2, _expires: Option<SystemTime>, _flags: ::CreateKeyFlags
-    ) -> Result<results::KeyGenerationResult>
-    where
-        S1: CStrArgument,
-        S2: CStrArgument, {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
-    }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn create_subkey<S>(
         &mut self, key: &Key, algo: S, expires: Option<SystemTime>
     ) -> Result<results::KeyGenerationResult>
@@ -552,7 +501,6 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn create_subkey_with_flags<S>(
         &mut self, key: &Key, algo: S, expires: Option<SystemTime>, flags: ::CreateKeyFlags
     ) -> Result<results::KeyGenerationResult>
@@ -576,18 +524,8 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
-    #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn create_subkey_with_flags<S>(
-        &mut self, _key: &Key, _algo: S, _expires: Option<SystemTime>, _flags: ::CreateKeyFlags
-    ) -> Result<results::KeyGenerationResult>
-    where
-        S: CStrArgument, {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
-    }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn add_uid<S>(&mut self, key: &Key, userid: S) -> Result<()>
     where S: CStrArgument {
         let userid = userid.into_cstr();
@@ -603,14 +541,6 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn add_uid<S>(&mut self, _key: &Key, _userid: S) -> Result<()>
-    where S: CStrArgument {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
-    }
-
-    #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn revoke_uid<S>(&mut self, key: &Key, userid: S) -> Result<()>
     where S: CStrArgument {
         let userid = userid.into_cstr();
@@ -626,14 +556,6 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn revoke_uid<S>(&mut self, _key: &Key, _userid: S) -> Result<()>
-    where S: CStrArgument {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
-    }
-
-    #[inline]
-    #[cfg(feature = "v1_9_0")]
     pub fn set_uid_flag<S1, S2, S3>(
         &mut self, key: &Key, userid: S1, name: S2, value: Option<S3>
     ) -> Result<()>
@@ -656,17 +578,6 @@ impl Context {
         Ok(())
     }
 
-    #[inline]
-    #[cfg(not(feature = "v1_9_0"))]
-    pub fn set_uid_flag<S1, S2, S3>(
-        &mut self, _key: &Key, _userid: S1, _name: S2, _value: Option<S3>
-    ) -> Result<()>
-    where
-        S1: CStrArgument,
-        S2: CStrArgument,
-        S3: CStrArgument, {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
-    }
 
     #[inline]
     pub fn sign_key<I>(
@@ -678,7 +589,6 @@ impl Context {
         self.sign_key_with_flags(key, userids, expires, ::KeySigningFlags::empty())
     }
 
-    #[cfg(feature = "v1_7_0")]
     pub fn sign_key_with_flags<I>(
         &mut self, key: &Key, userids: I, expires: Option<SystemTime>, flags: ::KeySigningFlags
     ) -> Result<()>
@@ -697,7 +607,7 @@ impl Context {
                             acc
                         },
                     ),
-                    ::KEY_SIGN_LFSEP | flags,
+                    ::KeySigningFlags::LFSEP | flags,
                 ),
                 (Some(first), None) => (first.as_ref().to_owned(), flags),
                 _ => panic!("no userids provided"),
@@ -719,19 +629,8 @@ impl Context {
         Ok(())
     }
 
-    #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn sign_key_with_flags<I>(
-        &mut self, _key: &Key, _userids: I, _expires: Option<SystemTime>, _flags: ::KeySigningFlags
-    ) -> Result<()>
-    where
-        I: IntoIterator,
-        I::Item: AsRef<[u8]>, {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
-    }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn change_key_tofu_policy(&mut self, key: &Key, policy: ::TofuPolicy) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_op_tofu_policy(
@@ -743,26 +642,14 @@ impl Context {
         Ok(())
     }
 
-    #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn change_key_tofu_policy(&mut self, _key: &Key, _policy: ::TofuPolicy) -> Result<()> {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
-    }
 
     // Only works with GPG >= 2.0.15
     #[inline]
-    #[cfg(feature = "v1_3_0")]
     pub fn change_key_passphrase(&mut self, key: &Key) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_op_passwd(self.as_raw(), key.as_raw(), 0));
         }
         Ok(())
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_3_0"))]
-    pub fn change_key_passphrase(&mut self, _key: &Key) -> Result<()> {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     #[inline]
@@ -826,7 +713,6 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn interact<'a, I, D>(&mut self, key: &Key, interactor: I, data: D) -> Result<()>
     where
         I: ::Interactor,
@@ -850,16 +736,6 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn interact<'a, I, D>(&mut self, _key: &Key, _interactor: I, _data: D) -> Result<()>
-    where
-        I: ::Interactor,
-        D: IntoData<'a>, {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
-    }
-
-    #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn interact_with_card<'a, I, D>(
         &mut self, key: &Key, interactor: I, data: D
     ) -> Result<()>
@@ -882,17 +758,6 @@ impl Context {
             ));
         }
         Ok(())
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn interact_with_card<'a, I, D>(
-        &mut self, _key: &Key, _interactor: I, _data: D
-    ) -> Result<()>
-    where
-        I: ::Interactor,
-        D: IntoData<'a>, {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     #[inline]
@@ -941,24 +806,24 @@ impl Context {
     }
 
     #[inline]
-    pub fn export_all_extern<'a, I>(&mut self, mode: ::ExportMode) -> Result<()>
+    pub fn export_all_extern<'a, I>(&mut self, mode: ExportMode) -> Result<()>
     where
         I: IntoIterator,
         I::Item: CStrArgument, {
-        self.export_(None::<&CStr>, mode | ::EXPORT_EXTERN, None)
+        self.export_(None::<&CStr>, mode | ExportMode::EXTERN, None)
     }
 
     #[inline]
-    pub fn export_extern<'a, I>(&mut self, patterns: I, mode: ::ExportMode) -> Result<()>
+    pub fn export_extern<'a, I>(&mut self, patterns: I, mode: ExportMode) -> Result<()>
     where
         I: IntoIterator,
         I::Item: CStrArgument, {
         let patterns: Vec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
-        self.export_(&patterns, mode | ::EXPORT_EXTERN, None)
+        self.export_(&patterns, mode | ExportMode::EXTERN, None)
     }
 
     #[inline]
-    pub fn export_all<'a, D>(&mut self, mode: ::ExportMode, dst: D) -> Result<()>
+    pub fn export_all<'a, D>(&mut self, mode: ExportMode, dst: D) -> Result<()>
     where
         D: IntoData<'a> {
         let mut dst = try!(dst.into_data());
@@ -966,7 +831,7 @@ impl Context {
     }
 
     #[inline]
-    pub fn export<'a, I, D>(&mut self, patterns: I, mode: ::ExportMode, dst: D) -> Result<()>
+    pub fn export<'a, I, D>(&mut self, patterns: I, mode: ExportMode, dst: D) -> Result<()>
     where
         I: IntoIterator,
         I::Item: CStrArgument,
@@ -977,7 +842,7 @@ impl Context {
     }
 
     fn export_<I>(
-        &mut self, patterns: I, mode: ::ExportMode, dst: Option<&mut Data>
+        &mut self, patterns: I, mode: ExportMode, dst: Option<&mut Data>
     ) -> Result<()>
     where
         I: IntoIterator,
@@ -1002,14 +867,14 @@ impl Context {
     }
 
     #[inline]
-    pub fn export_keys_extern<'k, I>(&mut self, keys: I, mode: ::ExportMode) -> Result<()>
+    pub fn export_keys_extern<'k, I>(&mut self, keys: I, mode: ExportMode) -> Result<()>
     where
         I: IntoIterator<Item = &'k Key> {
-        self.export_keys_(keys, mode | ::EXPORT_EXTERN, None)
+        self.export_keys_(keys, mode | ExportMode::EXTERN, None)
     }
 
     #[inline]
-    pub fn export_keys<'k, 'a, I, D>(&mut self, keys: I, mode: ::ExportMode, dst: D) -> Result<()>
+    pub fn export_keys<'k, 'a, I, D>(&mut self, keys: I, mode: ExportMode, dst: D) -> Result<()>
     where
         I: IntoIterator<Item = &'k Key>,
         D: IntoData<'a>, {
@@ -1018,7 +883,7 @@ impl Context {
     }
 
     fn export_keys_<'k, I>(
-        &mut self, keys: I, mode: ::ExportMode, dst: Option<&mut Data>
+        &mut self, keys: I, mode: ExportMode, dst: Option<&mut Data>
     ) -> Result<()>
     where
         I: IntoIterator<Item = &'k Key>, {
@@ -1042,7 +907,6 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(feature = "v1_8_0")]
     pub fn clear_sender(&mut self) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_set_sender(self.as_raw(), ptr::null()));
@@ -1051,13 +915,6 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(not(feature = "v1_8_0"))]
-    pub fn clear_sender(&mut self) -> Result<()> {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
-    }
-
-    #[inline]
-    #[cfg(feature = "v1_8_0")]
     pub fn set_sender<S: CStrArgument>(&mut self, sender: S) -> Result<()> {
         let sender = sender.into_cstr();
         unsafe {
@@ -1070,31 +927,18 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(not(feature = "v1_8_0"))]
-    pub fn set_sender<S: CStrArgument>(&mut self, _sender: S) -> Result<()> {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
-    }
-
-    #[inline]
     pub fn sender(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.sender_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    #[cfg(feature = "v1_8_0")]
     pub fn sender_raw(&self) -> Option<&CStr> {
         unsafe {
             ffi::gpgme_get_sender(self.as_raw())
                 .as_ref()
                 .map(|s| CStr::from_ptr(s))
         }
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_8_0"))]
-    pub fn sender_raw(&self) -> Option<&CStr> {
-        None
     }
 
     #[inline]
@@ -1437,7 +1281,6 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(feature = "v1_9_0")]
     pub fn decrypt_with_flags<'c, 'p, C, P>(
         &mut self, ciphertext: C, plaintext: P, flags: ::DecryptFlags
     ) -> Result<results::DecryptionResult>
@@ -1455,17 +1298,6 @@ impl Context {
             ));
         }
         Ok(self.get_result().unwrap())
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_9_0"))]
-    pub fn decrypt_with_flags<'c, 'p, C, P>(
-        &mut self, _ciphertext: C, _plaintext: P, _flags: ::DecryptFlags
-    ) -> Result<results::DecryptionResult>
-    where
-        C: IntoData<'c>,
-        P: IntoData<'p>, {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     /// Decrypts and verifies a message.
@@ -1511,7 +1343,6 @@ impl Context {
     }
 
     #[inline]
-    #[cfg(feature = "v1_8_0")]
     pub fn query_swdb<S1, S2>(
         &mut self, name: Option<S1>, installed_ver: Option<S2>
     ) -> Result<results::QuerySwdbResult>
@@ -1528,17 +1359,6 @@ impl Context {
             return_err!(ffi::gpgme_op_query_swdb(self.as_raw(), name, iversion, 0));
         }
         Ok(self.get_result().unwrap())
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_8_0"))]
-    pub fn query_swdb<S1, S2>(
-        &mut self, _name: Option<S1>, _installed_ver: Option<S2>
-    ) -> Result<results::QuerySwdbResult>
-    where
-        S1: CStrArgument,
-        S2: CStrArgument, {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 
     #[inline]
@@ -1607,7 +1427,6 @@ impl<'a> Keys<'a, ()> {
     }
 
     #[inline]
-    #[cfg(feature = "v1_9_0")]
     pub fn from_data<'d, D>(ctx: &mut Context, src: D) -> Result<Keys<D::Output>>
     where
         D: IntoData<'d> {
@@ -1623,14 +1442,6 @@ impl<'a> Keys<'a, ()> {
             ctx: ctx,
             _src: Some(src),
         })
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_9_0"))]
-    pub fn from_data<'d, D>(_ctx: &mut Context, _src: D) -> Result<Keys<D::Output>>
-    where
-        D: IntoData<'d> {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
     }
 }
 
@@ -1757,21 +1568,23 @@ impl<'a> Iterator for Signers<'a> {
         self.next()
     }
 
-    #[inline]
-    #[cfg(feature = "v1_4_3")]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.current.map_or((0, Some(0)), |c| {
-            let count = unsafe {
-                (ffi::gpgme_signers_count(self.ctx.as_raw()) - c as libc::c_uint).value_into()
-            };
-            (count.unwrap_or_saturate(), count.ok())
-        })
-    }
+    require_gpgme_ver! {
+        (1, 5) => {
+            #[inline]
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                self.current.map_or((0, Some(0)), |c| {
+                    let count = unsafe {
+                        (ffi::gpgme_signers_count(self.ctx.as_raw()) - c as libc::c_uint).value_into()
+                    };
+                    (count.unwrap_or_saturate(), count.ok())
+                })
+            }
 
-    #[inline]
-    #[cfg(feature = "v1_4_3")]
-    fn count(self) -> usize {
-        self.size_hint().0
+            #[inline]
+            fn count(self) -> usize {
+                self.size_hint().0
+            }
+        }
     }
 }
 

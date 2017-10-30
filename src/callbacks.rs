@@ -198,14 +198,12 @@ where
     }
 }
 
-#[cfg(feature = "v1_6_0")]
 pub struct StatusHandlerWrapper<H> {
     pub ctx: ffi::gpgme_ctx_t,
     pub old: (ffi::gpgme_status_cb_t, *mut libc::c_void),
     pub state: Option<thread::Result<H>>,
 }
 
-#[cfg(feature = "v1_6_0")]
 impl<H> Drop for StatusHandlerWrapper<H> {
     fn drop(&mut self) {
         unsafe {
@@ -218,7 +216,6 @@ impl<H> Drop for StatusHandlerWrapper<H> {
     }
 }
 
-#[cfg(feature = "v1_6_0")]
 pub extern "C" fn status_cb<H: StatusHandler>(
     hook: *mut libc::c_void, keyword: *const libc::c_char, args: *const libc::c_char
 ) -> ffi::gpgme_error_t {
@@ -362,13 +359,11 @@ pub trait Interactor: UnwindSafe + Send + 'static {
     ) -> Result<(), Error>;
 }
 
-#[cfg(feature = "v1_7_0")]
 pub struct InteractorWrapper<'a, I> {
     pub state: Option<thread::Result<I>>,
     pub response: *mut Data<'a>,
 }
 
-#[cfg(feature = "v1_7_0")]
 impl<'a, I> Drop for InteractorWrapper<'a, I> {
     fn drop(&mut self) {
         if let Some(Err(err)) = self.state.take() {
@@ -377,7 +372,6 @@ impl<'a, I> Drop for InteractorWrapper<'a, I> {
     }
 }
 
-#[cfg(feature = "v1_7_0")]
 pub extern "C" fn interact_cb<I: Interactor>(
     hook: *mut libc::c_void, keyword: *const libc::c_char, args: *const libc::c_char,
     fd: libc::c_int,

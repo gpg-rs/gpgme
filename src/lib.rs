@@ -8,11 +8,11 @@ extern crate cfg_if;
 extern crate conv;
 #[cfg(any(nightly, feature = "nightly"))]
 extern crate core;
+extern crate cstr_argument;
 extern crate gpgme_sys as ffi;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
-extern crate cstr_argument;
 #[macro_use]
 pub extern crate gpg_error as error;
 
@@ -22,7 +22,7 @@ use std::mem;
 use std::ptr;
 use std::result;
 use std::str::Utf8Error;
-use std::sync::{Arc, RwLock};
+use std::sync::{Mutex, Once, RwLock, ONCE_INIT};
 
 use self::engine::EngineInfoGuard;
 use self::utils::CStrArgument;
@@ -59,13 +59,13 @@ pub mod edit;
 
 /// Constants for use with `Token::get_dir_info`.
 pub mod info {
-    pub const HOME_DIR: &'static str = "homedir";
-    pub const AGENT_SOCKET: &'static str = "agent-socket";
-    pub const UISERVER_SOCKET: &'static str = "uiserver-socket";
-    pub const GPGCONF_NAME: &'static str = "gpgconf-name";
-    pub const GPG_NAME: &'static str = "gpg-name";
-    pub const GPGSM_NAME: &'static str = "gpgsm-name";
-    pub const G13_NAME: &'static str = "g13-name";
+    pub const HOME_DIR: &str = "homedir";
+    pub const AGENT_SOCKET: &str = "agent-socket";
+    pub const UISERVER_SOCKET: &str = "uiserver-socket";
+    pub const GPGCONF_NAME: &str = "gpgconf-name";
+    pub const GPG_NAME: &str = "gpg-name";
+    pub const GPGSM_NAME: &str = "gpgsm-name";
+    pub const G13_NAME: &str = "g13-name";
 }
 
 ffi_enum_wrapper! {
@@ -133,29 +133,24 @@ impl fmt::Display for Validity {
     }
 }
 
-struct TokenImp {
-    version: &'static str,
-    engine_info: RwLock<()>,
-}
-
-impl fmt::Debug for TokenImp {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Token")
-    }
-}
-
 lazy_static! {
-    static ref TOKEN: Token = {
-        let version = unsafe {
-            let base: ffi::_gpgme_signature = mem::zeroed();
-            let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
+    static ref FLAG_LOCK: Mutex<()> = Mutex::default();
+}
 
-            let result = ffi::gpgme_check_version_internal(ptr::null(), offset);
-            assert!(!result.is_null(), "gpgme library could not be initialized");
-            CStr::from_ptr(result).to_str().expect("gpgme version string is not valid utf-8")
-        };
-        Token(Arc::new(TokenImp { version: version, engine_info: RwLock::new(()) }))
-    };
+pub fn set_flag<S1, S2>(name: S1, val: S2) -> Result<()>
+where
+    S1: CStrArgument,
+    S2: CStrArgument, {
+    let name = name.into_cstr();
+    let val = val.into_cstr();
+    let _lock = FLAG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    unsafe {
+        if ffi::gpgme_set_global_flag(name.as_ref().as_ptr(), val.as_ref().as_ptr()) == 0 {
+            Ok(())
+        } else {
+            Err(Error::new(error::GPG_ERR_GENERAL))
+        }
+    }
 }
 
 /// Initializes the gpgme library.
@@ -168,41 +163,37 @@ lazy_static! {
 /// ```
 #[inline]
 pub fn init() -> Token {
-    TOKEN.clone()
-}
+    static INIT: Once = ONCE_INIT;
+    static mut VERSION: Option<&str> = None;
+    static mut ENGINE_LOCK: Option<mem::ManuallyDrop<RwLock<()>>> = None;
 
-cfg_if! {
-    if #[cfg(feature = "v1_4_0")] {
-        use std::sync::Mutex;
+    INIT.call_once(|| unsafe {
+        VERSION = Some({
+            let base: ffi::_gpgme_signature = mem::zeroed();
+            let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
 
-        lazy_static! {
-            static ref FLAG_LOCK: Mutex<()> = Mutex::default();
-        }
-
-        pub fn set_flag<S1, S2>(name: S1, val: S2) -> Result<()>
-        where S1: CStrArgument, S2: CStrArgument {
-            let name = name.into_cstr();
-            let val = val.into_cstr();
-            let _lock = FLAG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-            unsafe {
-                if ffi::gpgme_set_global_flag(name.as_ref().as_ptr(), val.as_ref().as_ptr()) == 0 {
-                    Ok(())
-                } else {
-                    Err(Error::new(error::GPG_ERR_GENERAL))
-                }
-            }
-        }
-    } else {
-        pub fn set_flag<S1, S2>(_name: S1, _val: S2) -> Result<()>
-        where S1: CStrArgument, S2: CStrArgument {
-            Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
+            let result = ffi::gpgme_check_version_internal(ptr::null(), offset);
+            assert!(!result.is_null(), "gpgme library could not be initialized");
+            CStr::from_ptr(result)
+                .to_str()
+                .expect("gpgme version string is not valid utf-8")
+        });
+        ENGINE_LOCK = Some(mem::ManuallyDrop::new(RwLock::default()));
+    });
+    unsafe {
+        Token {
+            version: VERSION.as_ref().unwrap(),
+            engine_lock: ENGINE_LOCK.as_ref().unwrap(),
         }
     }
 }
 
 /// A type for managing the library's configuration.
 #[derive(Debug, Clone)]
-pub struct Token(Arc<TokenImp>);
+pub struct Token {
+    version: &'static str,
+    engine_lock: &'static RwLock<()>,
+}
 
 impl Token {
     /// Checks that the linked version of the library is at least the
@@ -225,7 +216,7 @@ impl Token {
     /// Returns the version string for the library.
     #[inline]
     pub fn version(&self) -> &'static str {
-        self.0.version
+        self.version
     }
 
     /// Returns the default value for specified configuration option.
@@ -243,7 +234,6 @@ impl Token {
     ///
     /// Commonly supported values for `what` are specified in [`info`](info/).
     #[inline]
-    #[cfg(feature = "v1_5_0")]
     pub fn get_dir_info_raw<S: CStrArgument>(&self, what: S) -> Option<&'static CStr> {
         let what = what.into_cstr();
         unsafe {
@@ -251,15 +241,6 @@ impl Token {
                 .as_ref()
                 .map(|s| CStr::from_ptr(s))
         }
-    }
-
-    /// Returns the default value for specified configuration option.
-    ///
-    /// Commonly supported values for `what` are specified in [`info`](info/).
-    #[inline]
-    #[cfg(not(feature = "v1_5_0"))]
-    pub fn get_dir_info_raw<S: CStrArgument>(&self, _what: S) -> Option<&'static CStr> {
-        None
     }
 
     /// Checks that the engine implementing the specified protocol is supported by the library.
@@ -272,7 +253,7 @@ impl Token {
 
     #[inline]
     pub fn engine_info(&self) -> Result<EngineInfoGuard> {
-        EngineInfoGuard::new(&TOKEN)
+        EngineInfoGuard::new(self.engine_lock)
     }
 
     unsafe fn get_engine_info(&self, proto: Protocol) -> ffi::gpgme_engine_info_t {
@@ -286,14 +267,12 @@ impl Token {
 
     #[inline]
     pub fn set_engine_path<S>(&self, proto: Protocol, path: S) -> Result<()>
-    where
-        S: CStrArgument {
+    where S: CStrArgument {
         let path = path.into_cstr();
         unsafe {
-            let _lock = self.0
-                .engine_info
+            let _lock = self.engine_lock
                 .write()
-                .expect("Engine info lock could not be acquired");
+                .expect("engine info lock was poisoned");
             let home_dir = self.get_engine_info(proto)
                 .as_ref()
                 .map_or(ptr::null(), |e| (*e).home_dir);
@@ -312,10 +291,9 @@ impl Token {
         S: CStrArgument {
         let home_dir = home_dir.into_cstr();
         unsafe {
-            let _lock = self.0
-                .engine_info
+            let _lock = self.engine_lock
                 .write()
-                .expect("Engine info lock could not be acquired");
+                .expect("engine info lock was poisoned");
             let path = self.get_engine_info(proto)
                 .as_ref()
                 .map_or(ptr::null(), |e| (*e).file_name);
@@ -342,10 +320,9 @@ impl Token {
             let home_dir = home_dir
                 .as_ref()
                 .map_or(ptr::null(), |s| s.as_ref().as_ptr());
-            let _lock = self.0
-                .engine_info
+            let _lock = self.engine_lock
                 .write()
-                .expect("Engine info lock could not be acquired");
+                .expect("engine info lock was poisoned");
             return_err!(ffi::gpgme_set_engine_info(proto.raw(), path, home_dir));
         }
         Ok(())

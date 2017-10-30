@@ -8,7 +8,7 @@ use error::Error;
 
 pub use cstr_argument::CStrArgument;
 
-include!(concat!(env!("OUT_DIR"), "version.rs"));
+include!(concat!(env!("OUT_DIR"), "/version.rs"));
 
 macro_rules! try_opt {
     ($e:expr) => (match $e { Some(v) => v, None => return None });
