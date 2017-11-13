@@ -217,13 +217,13 @@ impl Context {
 
     #[inline]
     #[cfg(feature = "v1_4_0")]
-    pub fn pinentry_mode(self) -> ::PinentryMode {
+    pub fn pinentry_mode(&self) -> ::PinentryMode {
         unsafe { ::PinentryMode::from_raw(ffi::gpgme_get_pinentry_mode(self.as_raw())) }
     }
 
     #[inline]
     #[cfg(not(feature = "v1_4_0"))]
-    pub fn pinentry_mode(self) -> ::PinentryMode {
+    pub fn pinentry_mode(&self) -> ::PinentryMode {
         ::PinentryMode::Default
     }
 
