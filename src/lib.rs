@@ -27,21 +27,24 @@ use std::sync::{Mutex, Once, RwLock, ONCE_INIT};
 use self::engine::EngineInfoGuard;
 use self::utils::CStrArgument;
 
-pub use self::flags::*;
-pub use self::error::{Error, Result};
-pub use self::data::{Data, IntoData};
+pub use self::callbacks::{
+    EditInteractionStatus, EditInteractor, InteractionStatus, Interactor, PassphraseProvider,
+    PassphraseRequest, ProgressHandler, ProgressInfo, StatusHandler,
+};
 pub use self::context::Context;
+pub use self::data::{Data, IntoData};
+pub use self::engine::EngineInfo;
+pub use self::error::{Error, Result};
+pub use self::flags::*;
 pub use self::keys::{Key, Subkey, UserId, UserIdSignature};
 pub use self::notation::SignatureNotation;
-pub use self::trust::TrustItem;
+pub use self::results::{
+    DecryptionResult, EncryptionResult, Import, ImportResult, InvalidKey, KeyGenerationResult,
+    KeyListResult, NewSignature, PkaTrust, QuerySwdbResult, Recipient, Signature, SigningResult,
+    VerificationResult,
+};
 pub use self::tofu::{TofuInfo, TofuPolicy};
-pub use self::callbacks::{EditInteractionStatus, EditInteractor, InteractionStatus, Interactor,
-                          PassphraseProvider, PassphraseRequest, ProgressHandler, ProgressInfo,
-                          StatusHandler};
-pub use self::results::{DecryptionResult, EncryptionResult, Import, ImportResult, InvalidKey,
-                        KeyGenerationResult, KeyListResult, NewSignature, PkaTrust,
-                        QuerySwdbResult, Recipient, Signature, SigningResult, VerificationResult};
-pub use self::engine::EngineInfo;
+pub use self::trust::TrustItem;
 
 #[macro_use]
 mod utils;
@@ -148,7 +151,7 @@ where
         if ffi::gpgme_set_global_flag(name.as_ref().as_ptr(), val.as_ref().as_ptr()) == 0 {
             Ok(())
         } else {
-            Err(Error::new(error::GPG_ERR_GENERAL))
+            Err(Error::GENERAL)
         }
     }
 }
@@ -224,8 +227,7 @@ impl Token {
     /// Commonly supported values for `what` are specified in [`info`](info/).
     #[inline]
     pub fn get_dir_info<S>(&self, what: S) -> result::Result<&'static str, Option<Utf8Error>>
-    where
-        S: CStrArgument {
+    where S: CStrArgument {
         self.get_dir_info_raw(what)
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -287,8 +289,7 @@ impl Token {
 
     #[inline]
     pub fn set_engine_home_dir<S>(&self, proto: Protocol, home_dir: S) -> Result<()>
-    where
-        S: CStrArgument {
+    where S: CStrArgument {
         let home_dir = home_dir.into_cstr();
         unsafe {
             let _lock = self.engine_lock

@@ -9,7 +9,7 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Context, Protocol};
+use gpgme::{Context, ExportMode, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] USERID+", program);
@@ -44,9 +44,9 @@ fn main() {
     }
 
     let mode = if matches.opt_present("extern") {
-        gpgme::EXPORT_EXTERN
+        ExportMode::EXTERN
     } else {
-        gpgme::ExportMode::empty()
+        ExportMode::empty()
     };
 
     let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
@@ -68,7 +68,7 @@ fn main() {
         keys
     };
 
-    if mode.contains(gpgme::EXPORT_EXTERN) {
+    if mode.contains(ExportMode::EXTERN) {
         println!("sending keys to keyserver");
         ctx.export_keys_extern(&keys, mode).expect("export failed");
     } else {

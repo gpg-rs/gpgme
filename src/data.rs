@@ -13,12 +13,11 @@ use std::result;
 use std::slice;
 use std::str::Utf8Error;
 
-use libc;
 use conv::{UnwrapOrSaturate, ValueInto};
 use ffi;
+use libc;
 
-use NonZero;
-use error::{self, Error, Result};
+use {Error, NonZero, Result};
 use utils::CStrArgument;
 
 ffi_enum_wrapper! {
@@ -206,8 +205,7 @@ impl<'a> Data<'a> {
     unsafe fn from_callbacks<S>(
         cbs: ffi::gpgme_data_cbs, src: S
     ) -> result::Result<Self, WrappedError<S>>
-    where
-        S: Send + 'a, {
+    where S: Send + 'a {
         let src = Box::into_raw(Box::new(CallbackWrapper {
             cbs: cbs,
             inner: src,
@@ -236,8 +234,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_seekable_reader<R>(r: R) -> result::Result<Self, WrappedError<R>>
-    where
-        R: Read + Seek + Send + 'a {
+    where R: Read + Seek + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -261,8 +258,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_seekable_writer<W>(w: W) -> result::Result<Self, WrappedError<W>>
-    where
-        W: Write + Seek + Send + 'a {
+    where W: Write + Seek + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -274,8 +270,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_stream<S: Send>(s: S) -> result::Result<Self, WrappedError<S>>
-    where
-        S: Read + Write + Send + 'a {
+    where S: Read + Write + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -287,8 +282,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_seekable_stream<S>(s: S) -> result::Result<Self, WrappedError<S>>
-    where
-        S: Read + Write + Seek + Send + 'a {
+    where S: Read + Write + Seek + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -372,9 +366,7 @@ impl<'a> Data<'a> {
             let mut len = 0;
             ffi::gpgme_data_release_and_get_mem(self.into_raw(), &mut len)
                 .as_ref()
-                .map(|b| {
-                    slice::from_raw_parts(b as *const _ as *const _, len).to_vec()
-                })
+                .map(|b| slice::from_raw_parts(b as *const _ as *const _, len).to_vec())
         }
     }
 }
@@ -474,7 +466,7 @@ extern "C" fn seek_callback<S: Seek>(
         libc::SEEK_END => io::SeekFrom::End(offset.value_into().unwrap_or_saturate()),
         libc::SEEK_CUR => io::SeekFrom::Current(offset.value_into().unwrap_or_saturate()),
         _ => unsafe {
-            ffi::gpgme_err_set_errno(ffi::gpgme_err_code_to_errno(error::GPG_ERR_EINVAL));
+            ffi::gpgme_err_set_errno(Error::EINVAL.to_errno());
             return -1;
         },
     };

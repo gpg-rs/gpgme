@@ -6,7 +6,6 @@ use std::panic::UnwindSafe;
 use ffi;
 
 use {Error, Result};
-use error;
 
 pub use {EditInteractionStatus, EditInteractor};
 
@@ -117,9 +116,9 @@ ffi_enum_wrapper! {
 impl StatusCode {
     pub fn into_result(self) -> Result<()> {
         match self {
-            StatusCode::MissingPassphrase => Err(Error::new(error::GPG_ERR_NO_PASSPHRASE)),
-            StatusCode::AlreadySigned => Err(Error::new(error::GPG_ERR_USER_1)),
-            StatusCode::SigExpired => Err(Error::new(error::GPG_ERR_SIG_EXPIRED)),
+            StatusCode::MissingPassphrase => Err(Error::NO_PASSPHRASE),
+            StatusCode::AlreadySigned => Err(Error::USER_1),
+            StatusCode::SigExpired => Err(Error::SIG_EXPIRED),
             _ => Ok(()),
         }
     }

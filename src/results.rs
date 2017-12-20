@@ -6,12 +6,13 @@ use std::result;
 use std::str::Utf8Error;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use libc;
 use ffi;
+use libc;
 
-use {Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm, NonZero, OpResult, Result,
-     SignMode, SignatureSummary, Validity};
-use error;
+use {
+    Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm, NonZero, OpResult, Result, SignMode,
+    SignatureSummary, Validity,
+};
 use notation::SignatureNotations;
 
 macro_rules! impl_result {
@@ -90,9 +91,9 @@ impl<'a> InvalidKey<'a> {
     #[inline]
     pub fn reason(&self) -> Option<Error> {
         unsafe {
-            match (*self.as_raw()).reason {
-                error::GPG_ERR_NO_ERROR => None,
-                e => Some(Error::new(e)),
+            match Error::new((*self.as_raw()).reason) {
+                Error::NO_ERROR => None,
+                e => Some(e),
             }
         }
     }
@@ -627,11 +628,9 @@ impl<'a> Signature<'a> {
     #[inline]
     pub fn nonvalidity_reason(&self) -> Option<Error> {
         unsafe {
-            let reason = (*self.as_raw()).validity_reason;
-            if reason != error::GPG_ERR_NO_ERROR {
-                Some(Error::new(reason))
-            } else {
-                None
+            match Error::new((*self.as_raw()).validity_reason) {
+                Error::NO_ERROR => None,
+                e => Some(e),
             }
         }
     }

@@ -3,8 +3,8 @@ use std::ffi::CStr;
 use std::fmt;
 use std::str::Utf8Error;
 
-use libc;
 use ffi;
+use libc;
 
 bitflags! {
     pub struct KeyListMode: ffi::gpgme_keylist_mode_t {

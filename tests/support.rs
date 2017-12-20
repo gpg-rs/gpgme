@@ -50,7 +50,7 @@ macro_rules! test_case {
 }
 
 pub fn passphrase_cb(_req: PassphraseRequest, out: &mut Write) -> gpgme::Result<()> {
-    try!(out.write_all(b"abc"));
+    out.write_all(b"abc")?;
     Ok(())
 }
 

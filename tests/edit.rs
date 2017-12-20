@@ -6,7 +6,6 @@ extern crate tempdir;
 use std::io::prelude::*;
 
 use gpgme::{Error, Result};
-use gpgme::error;
 use gpgme::edit::{self, EditInteractionStatus, Editor};
 
 use self::support::passphrase_cb;
@@ -55,14 +54,14 @@ impl Editor for TestEditor {
                 Ok(State::Uid) => Ok(State::Primary),
                 Ok(State::Quit) => state,
                 Ok(State::Primary) | Err(_) => Ok(State::Quit),
-                _ => Err(Error::from_code(error::GPG_ERR_GENERAL)),
+                _ => Err(Error::GENERAL),
             }
         } else if (status.args() == Ok(edit::KEY_VALID)) && (state == Ok(State::Expire)) {
             Ok(State::Valid)
         } else if (status.args() == Ok(edit::CONFIRM_SAVE)) && (state == Ok(State::Quit)) {
             Ok(State::Save)
         } else {
-            state.and(Err(Error::from_code(error::GPG_ERR_GENERAL)))
+            state.and(Err(Error::GENERAL))
         }
     }
 
@@ -70,14 +69,14 @@ impl Editor for TestEditor {
         use self::TestEditorState as State;
 
         match state {
-            State::Fingerprint => try!(out.write_all(b"fpr")),
-            State::Expire => try!(out.write_all(b"expire")),
-            State::Valid => try!(out.write_all(b"0")),
-            State::Uid => try!(out.write_all(b"1")),
-            State::Primary => try!(out.write_all(b"primary")),
-            State::Quit => try!(write!(out, "{}", edit::QUIT)),
-            State::Save => try!(write!(out, "{}", edit::YES)),
-            _ => return Err(Error::from_code(error::GPG_ERR_GENERAL)),
+            State::Fingerprint => out.write_all(b"fpr")?,
+            State::Expire => out.write_all(b"expire")?,
+            State::Valid => out.write_all(b"0")?,
+            State::Uid => out.write_all(b"1")?,
+            State::Primary => out.write_all(b"primary")?,
+            State::Quit => write!(out, "{}", edit::QUIT)?,
+            State::Save => write!(out, "{}", edit::YES)?,
+            _ => return Err(Error::GENERAL),
         }
         Ok(())
     }
@@ -85,7 +84,7 @@ impl Editor for TestEditor {
 
 test_case! {
     test_edit(test) {
-        test.create_context().with_passphrase_provider(passphrase_cb, |mut ctx| {
+        test.create_context().with_passphrase_provider(passphrase_cb, |ctx| {
             let key = fail_if_err!(ctx.find_keys(Some("Alpha"))).next().unwrap().unwrap();
             fail_if_err!(ctx.edit_key_with(&key, TestEditor, &mut Vec::new()));
         });

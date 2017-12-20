@@ -1,20 +1,21 @@
+use std::{mem, ptr, result};
 use std::borrow::BorrowMut;
 use std::ffi::CStr;
 use std::fmt;
-use std::{mem, ptr, result};
 use std::str::Utf8Error;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use libc;
 use conv::{UnwrapOrSaturate, ValueInto};
 use ffi;
+use libc;
 
-use {Data, EditInteractor, Error, ExportMode, IntoData, Key, KeyListMode, NonZero, PassphraseProvider,
-     ProgressHandler, Protocol, Result, SignMode, TrustItem};
-use {callbacks, edit, error};
+use {
+    Data, EditInteractor, Error, ExportMode, IntoData, Key, KeyListMode, NonZero,
+    PassphraseProvider, ProgressHandler, Protocol, Result, SignMode, TrustItem,
+};
+use {callbacks, edit, results};
 use engine::EngineInfo;
 use notation::SignatureNotations;
-use results;
 use utils::CStrArgument;
 
 /// A context for cryptographic operations
@@ -43,7 +44,7 @@ impl Context {
 
     #[inline]
     pub fn from_protocol(proto: Protocol) -> Result<Self> {
-        let ctx = try!(Context::new());
+        let ctx = Context::new()?;
         unsafe {
             return_err!(ffi::gpgme_set_protocol(ctx.as_raw(), proto.raw()));
         }
@@ -93,8 +94,7 @@ impl Context {
 
     #[inline]
     pub fn get_flag<S>(&self, name: S) -> result::Result<&str, Option<Utf8Error>>
-    where
-        S: CStrArgument {
+    where S: CStrArgument {
         self.get_flag_raw(name)
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -303,7 +303,9 @@ impl Context {
 
     #[inline]
     pub fn key_list_mode(&self) -> KeyListMode {
-        unsafe { ::KeyListMode::from_bits_truncate(ffi::gpgme_get_keylist_mode(self.as_raw())) }
+        unsafe {
+            ::KeyListMode::from_bits_truncate(ffi::gpgme_get_keylist_mode(self.as_raw()))
+        }
     }
 
     #[inline]
@@ -338,19 +340,17 @@ impl Context {
 
     #[inline]
     pub fn get_key(&mut self, key: &Key) -> Result<Key> {
-        if let Some(fpr) = key.fingerprint_raw() {
-            self.find_key(fpr)
-        } else {
-            Err(Error::new(error::GPG_ERR_AMBIGUOUS_NAME))
+        match key.fingerprint_raw() {
+            Some(fpr) => self.find_key(fpr),
+            None => Err(Error::AMBIGUOUS_NAME),
         }
     }
 
     #[inline]
     pub fn get_secret_key(&mut self, key: &Key) -> Result<Key> {
-        if let Some(fpr) = key.fingerprint_raw() {
-            self.find_secret_key(fpr)
-        } else {
-            Err(Error::new(error::GPG_ERR_AMBIGUOUS_NAME))
+        match key.fingerprint_raw() {
+            Some(fpr) => self.find_secret_key(fpr),
+            None => Err(Error::AMBIGUOUS_NAME),
         }
     }
 
@@ -436,8 +436,8 @@ impl Context {
         D1: IntoData<'d1>,
         D2: IntoData<'d2>, {
         let params = params.into_cstr();
-        let mut public = try!(public.map_or(Ok(None), |d| d.into_data().map(Some)));
-        let mut secret = try!(secret.map_or(Ok(None), |d| d.into_data().map(Some)));
+        let mut public = public.map_or(Ok(None), |d| d.into_data().map(Some))?;
+        let mut secret = secret.map_or(Ok(None), |d| d.into_data().map(Some))?;
         unsafe {
             return_err!(ffi::gpgme_op_genkey(
                 self.as_raw(),
@@ -490,13 +490,11 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
-
     #[inline]
     pub fn create_subkey<S>(
         &mut self, key: &Key, algo: S, expires: Option<SystemTime>
     ) -> Result<results::KeyGenerationResult>
-    where
-        S: CStrArgument, {
+    where S: CStrArgument {
         self.create_subkey_with_flags(key, algo, expires, ::CreateKeyFlags::empty())
     }
 
@@ -504,8 +502,7 @@ impl Context {
     pub fn create_subkey_with_flags<S>(
         &mut self, key: &Key, algo: S, expires: Option<SystemTime>, flags: ::CreateKeyFlags
     ) -> Result<results::KeyGenerationResult>
-    where
-        S: CStrArgument, {
+    where S: CStrArgument {
         let algo = algo.into_cstr();
         let expires = expires
             .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
@@ -523,7 +520,6 @@ impl Context {
         }
         Ok(self.get_result().unwrap())
     }
-
 
     #[inline]
     pub fn add_uid<S>(&mut self, key: &Key, userid: S) -> Result<()>
@@ -578,7 +574,6 @@ impl Context {
         Ok(())
     }
 
-
     #[inline]
     pub fn sign_key<I>(
         &mut self, key: &Key, userids: I, expires: Option<SystemTime>
@@ -629,7 +624,6 @@ impl Context {
         Ok(())
     }
 
-
     #[inline]
     pub fn change_key_tofu_policy(&mut self, key: &Key, policy: ::TofuPolicy) -> Result<()> {
         unsafe {
@@ -641,7 +635,6 @@ impl Context {
         }
         Ok(())
     }
-
 
     // Only works with GPG >= 2.0.15
     #[inline]
@@ -657,7 +650,7 @@ impl Context {
     where
         E: EditInteractor,
         D: IntoData<'a>, {
-        let mut data = try!(data.into_data());
+        let mut data = data.into_data()?;
         let mut wrapper = callbacks::EditInteractorWrapper {
             state: Some(Ok(interactor)),
             response: data.borrow_mut(),
@@ -679,7 +672,7 @@ impl Context {
     where
         E: EditInteractor,
         D: IntoData<'a>, {
-        let mut data = try!(data.into_data());
+        let mut data = data.into_data()?;
         let mut wrapper = callbacks::EditInteractorWrapper {
             state: Some(Ok(interactor)),
             response: data.borrow_mut(),
@@ -717,7 +710,7 @@ impl Context {
     where
         I: ::Interactor,
         D: IntoData<'a>, {
-        let mut data = try!(data.into_data());
+        let mut data = data.into_data()?;
         let mut wrapper = callbacks::InteractorWrapper {
             state: Some(Ok(interactor)),
             response: data.borrow_mut(),
@@ -742,7 +735,7 @@ impl Context {
     where
         I: ::Interactor,
         D: IntoData<'a>, {
-        let mut data = try!(data.into_data());
+        let mut data = data.into_data()?;
         let mut wrapper = callbacks::InteractorWrapper {
             state: Some(Ok(interactor)),
             response: data.borrow_mut(),
@@ -779,7 +772,7 @@ impl Context {
     #[inline]
     pub fn import<'a, D>(&mut self, src: D) -> Result<results::ImportResult>
     where D: IntoData<'a> {
-        let mut src = try!(src.into_data());
+        let mut src = src.into_data()?;
         unsafe {
             return_err!(ffi::gpgme_op_import(
                 self.as_raw(),
@@ -790,8 +783,7 @@ impl Context {
     }
 
     pub fn import_keys<'k, I>(&mut self, keys: I) -> Result<results::ImportResult>
-    where
-        I: IntoIterator<Item = &'k Key> {
+    where I: IntoIterator<Item = &'k Key> {
         let mut ptrs: Vec<_> = keys.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
@@ -824,9 +816,8 @@ impl Context {
 
     #[inline]
     pub fn export_all<'a, D>(&mut self, mode: ExportMode, dst: D) -> Result<()>
-    where
-        D: IntoData<'a> {
-        let mut dst = try!(dst.into_data());
+    where D: IntoData<'a> {
+        let mut dst = dst.into_data()?;
         self.export_(None::<&CStr>, mode, Some(dst.borrow_mut()))
     }
 
@@ -836,14 +827,12 @@ impl Context {
         I: IntoIterator,
         I::Item: CStrArgument,
         D: IntoData<'a>, {
-        let mut dst = try!(dst.into_data());
+        let mut dst = dst.into_data()?;
         let patterns: Vec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
         self.export_(&patterns, mode, Some(dst.borrow_mut()))
     }
 
-    fn export_<I>(
-        &mut self, patterns: I, mode: ExportMode, dst: Option<&mut Data>
-    ) -> Result<()>
+    fn export_<I>(&mut self, patterns: I, mode: ExportMode, dst: Option<&mut Data>) -> Result<()>
     where
         I: IntoIterator,
         I::Item: AsRef<CStr>, {
@@ -868,8 +857,7 @@ impl Context {
 
     #[inline]
     pub fn export_keys_extern<'k, I>(&mut self, keys: I, mode: ExportMode) -> Result<()>
-    where
-        I: IntoIterator<Item = &'k Key> {
+    where I: IntoIterator<Item = &'k Key> {
         self.export_keys_(keys, mode | ExportMode::EXTERN, None)
     }
 
@@ -878,15 +866,14 @@ impl Context {
     where
         I: IntoIterator<Item = &'k Key>,
         D: IntoData<'a>, {
-        let mut dst = try!(dst.into_data());
+        let mut dst = dst.into_data()?;
         self.export_keys_(keys, mode, Some(dst.borrow_mut()))
     }
 
     fn export_keys_<'k, I>(
         &mut self, keys: I, mode: ExportMode, dst: Option<&mut Data>
     ) -> Result<()>
-    where
-        I: IntoIterator<Item = &'k Key>, {
+    where I: IntoIterator<Item = &'k Key> {
         let dst = dst.map_or(ptr::null_mut(), |d| d.as_raw());
         let mut ptrs: Vec<_> = keys.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
@@ -991,8 +978,7 @@ impl Context {
 
     #[inline]
     pub fn add_signature_policy_url<S>(&mut self, url: S, critical: bool) -> Result<()>
-    where
-        S: CStrArgument {
+    where S: CStrArgument {
         let url = url.into_cstr();
         unsafe {
             let critical = if critical {
@@ -1072,8 +1058,8 @@ impl Context {
     where
         P: IntoData<'p>,
         S: IntoData<'s>, {
-        let mut signature = try!(signature.into_data());
-        let mut plain = try!(plaintext.into_data());
+        let mut signature = signature.into_data()?;
+        let mut plain = plaintext.into_data()?;
         unsafe {
             return_err!(ffi::gpgme_op_sign(
                 self.as_raw(),
@@ -1092,8 +1078,8 @@ impl Context {
     where
         S: IntoData<'s>,
         T: IntoData<'t>, {
-        let mut signature = try!(signature.into_data());
-        let mut signed = try!(signedtext.into_data());
+        let mut signature = signature.into_data()?;
+        let mut signed = signedtext.into_data()?;
         self.verify(signature.borrow_mut(), Some(signed.borrow_mut()), None)
     }
 
@@ -1104,15 +1090,16 @@ impl Context {
     where
         S: IntoData<'s>,
         P: IntoData<'p>, {
-        let mut signed = try!(signedtext.into_data());
-        let mut plain = try!(plaintext.into_data());
+        let mut signed = signedtext.into_data()?;
+        let mut plain = plaintext.into_data()?;
         self.verify(signed.borrow_mut(), None, Some(plain.borrow_mut()))
     }
 
     fn verify(
         &mut self, signature: &mut Data, signedtext: Option<&mut Data>,
         plaintext: Option<&mut Data>,
-    ) -> Result<results::VerificationResult> {
+    ) -> Result<results::VerificationResult>
+    {
         unsafe {
             let signed = signedtext.map_or(ptr::null_mut(), |d| d.as_raw());
             let plain = plaintext.map_or(ptr::null_mut(), |d| d.as_raw());
@@ -1156,8 +1143,8 @@ impl Context {
         I: IntoIterator<Item = &'k Key>,
         P: IntoData<'p>,
         C: IntoData<'c>, {
-        let mut plain = try!(plaintext.into_data());
-        let mut cipher = try!(ciphertext.into_data());
+        let mut plain = plaintext.into_data()?;
+        let mut cipher = ciphertext.into_data()?;
         let mut ptrs: Vec<_> = recp.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
@@ -1193,7 +1180,7 @@ impl Context {
     where
         P: IntoData<'p>,
         C: IntoData<'c>, {
-        try!(self.encrypt_with_flags(None, plaintext, ciphertext, flags));
+        self.encrypt_with_flags(None, plaintext, ciphertext, flags)?;
         Ok(())
     }
 
@@ -1227,8 +1214,8 @@ impl Context {
         I: IntoIterator<Item = &'k Key>,
         P: IntoData<'p>,
         C: IntoData<'c>, {
-        let mut plain = try!(plaintext.into_data());
-        let mut cipher = try!(ciphertext.into_data());
+        let mut plain = plaintext.into_data()?;
+        let mut cipher = ciphertext.into_data()?;
         let mut ptrs: Vec<_> = recp.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
@@ -1268,8 +1255,8 @@ impl Context {
     where
         C: IntoData<'c>,
         P: IntoData<'p>, {
-        let mut cipher = try!(ciphertext.into_data());
-        let mut plain = try!(plaintext.into_data());
+        let mut cipher = ciphertext.into_data()?;
+        let mut plain = plaintext.into_data()?;
         unsafe {
             return_err!(ffi::gpgme_op_decrypt(
                 self.as_raw(),
@@ -1287,8 +1274,8 @@ impl Context {
     where
         C: IntoData<'c>,
         P: IntoData<'p>, {
-        let mut cipher = try!(ciphertext.into_data());
-        let mut plain = try!(plaintext.into_data());
+        let mut cipher = ciphertext.into_data()?;
+        let mut plain = plaintext.into_data()?;
         unsafe {
             return_err!(ffi::gpgme_op_decrypt_ext(
                 self.as_raw(),
@@ -1319,8 +1306,8 @@ impl Context {
     where
         C: IntoData<'c>,
         P: IntoData<'p>, {
-        let mut cipher = try!(ciphertext.into_data());
-        let mut plain = try!(plaintext.into_data());
+        let mut cipher = ciphertext.into_data()?;
+        let mut plain = plaintext.into_data()?;
         unsafe {
             return_err!(ffi::gpgme_op_decrypt_verify(
                 self.as_raw(),
@@ -1338,7 +1325,7 @@ impl Context {
     where
         C: IntoData<'c>,
         P: IntoData<'p>, {
-        try!(self.decrypt_with_flags(ciphertext, plaintext, flags));
+        self.decrypt_with_flags(ciphertext, plaintext, flags)?;
         Ok((self.get_result().unwrap(), self.get_result().unwrap()))
     }
 
@@ -1363,9 +1350,8 @@ impl Context {
 
     #[inline]
     pub fn get_audit_log<'a, D>(&mut self, dst: D, flags: ::AuditLogFlags) -> Result<()>
-    where
-        D: IntoData<'a> {
-        let mut dst = try!(dst.into_data());
+    where D: IntoData<'a> {
+        let mut dst = dst.into_data()?;
         unsafe {
             return_err!(ffi::gpgme_op_getauditlog(
                 self.as_raw(),
@@ -1428,9 +1414,8 @@ impl<'a> Keys<'a, ()> {
 
     #[inline]
     pub fn from_data<'d, D>(ctx: &mut Context, src: D) -> Result<Keys<D::Output>>
-    where
-        D: IntoData<'d> {
-        let mut src = try!(src.into_data());
+    where D: IntoData<'d> {
+        let mut src = src.into_data()?;
         unsafe {
             return_err!(ffi::gpgme_op_keylist_from_data_start(
                 ctx.as_raw(),
@@ -1473,15 +1458,10 @@ impl<'a, D> Iterator for Keys<'a, D> {
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
             let mut key = ptr::null_mut();
-            let result = ffi::gpgme_op_keylist_next(self.ctx.as_raw(), &mut key);
-            if ffi::gpgme_err_code(result) != error::GPG_ERR_EOF {
-                if result == 0 {
-                    Some(Ok(Key::from_raw(key)))
-                } else {
-                    Some(Err(Error::new(result)))
-                }
-            } else {
-                None
+            match Error::new(ffi::gpgme_op_keylist_next(self.ctx.as_raw(), &mut key)) {
+                Error::NO_ERROR => Some(Ok(Key::from_raw(key))),
+                e if e.code() == Error::EOF.code() => None,
+                e => Some(Err(e)),
             }
         }
     }
@@ -1520,15 +1500,13 @@ impl<'a> Iterator for TrustItems<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
             let mut trust_item = ptr::null_mut();
-            let result = ffi::gpgme_op_trustlist_next(self.ctx.as_raw(), &mut trust_item);
-            if ffi::gpgme_err_code(result) != error::GPG_ERR_EOF {
-                if result == 0 {
-                    Some(Ok(TrustItem::from_raw(trust_item)))
-                } else {
-                    Some(Err(Error::new(result)))
-                }
-            } else {
-                None
+            match Error::new(ffi::gpgme_op_trustlist_next(
+                self.ctx.as_raw(),
+                &mut trust_item,
+            )) {
+                Error::NO_ERROR => Some(Ok(TrustItem::from_raw(trust_item))),
+                e if e.code() == Error::EOF.code() => None,
+                e => Some(Err(e)),
             }
         }
     }

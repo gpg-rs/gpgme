@@ -396,7 +396,6 @@ impl<'a> Subkey<'a> {
         }
     }
 
-
     require_gpgme_ver! {
         (1, 7) => {
             #[inline]

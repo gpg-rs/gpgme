@@ -9,7 +9,7 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Context, Protocol};
+use gpgme::{Context, KeyListMode, Protocol};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] [USERID]+", program);
@@ -51,24 +51,24 @@ fn main() {
         Protocol::OpenPgp
     };
 
-    let mut mode = gpgme::KeyListMode::empty();
+    let mut mode = KeyListMode::empty();
     if matches.opt_present("local") {
-        mode.insert(gpgme::KEY_LIST_MODE_LOCAL);
+        mode.insert(KeyListMode::LOCAL);
     }
     if matches.opt_present("extern") {
-        mode.insert(gpgme::KEY_LIST_MODE_EXTERN);
+        mode.insert(KeyListMode::EXTERN);
     }
     if matches.opt_present("sigs") {
-        mode.insert(gpgme::KEY_LIST_MODE_SIGS);
+        mode.insert(KeyListMode::SIGS);
     }
     if matches.opt_present("sig-notations") {
-        mode.insert(gpgme::KEY_LIST_MODE_SIG_NOTATIONS);
+        mode.insert(KeyListMode::SIG_NOTATIONS);
     }
     if matches.opt_present("ephemeral") {
-        mode.insert(gpgme::KEY_LIST_MODE_EPHEMERAL);
+        mode.insert(KeyListMode::EPHEMERAL);
     }
     if matches.opt_present("validate") {
-        mode.insert(gpgme::KEY_LIST_MODE_VALIDATE);
+        mode.insert(KeyListMode::VALIDATE);
     }
 
     let mut ctx = Context::from_protocol(proto).unwrap();

@@ -9,7 +9,7 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Context, Data};
+use gpgme::{Context, Data, ImportFlags};
 use gpgme::data;
 
 fn print_import_result(result: gpgme::ImportResult) {
@@ -20,19 +20,19 @@ fn print_import_result(result: gpgme::ImportResult) {
             import.result().err()
         );
         let status = import.status();
-        if status.contains(gpgme::IMPORT_NEW) {
+        if status.contains(ImportFlags::NEW) {
             print!(" new");
         }
-        if status.contains(gpgme::IMPORT_UID) {
+        if status.contains(ImportFlags::UID) {
             print!(" uid");
         }
-        if status.contains(gpgme::IMPORT_SIG) {
+        if status.contains(ImportFlags::SIG) {
             print!(" sig");
         }
-        if status.contains(gpgme::IMPORT_SUBKEY) {
+        if status.contains(ImportFlags::SUBKEY) {
             print!(" subkey");
         }
-        if status.contains(gpgme::IMPORT_SECRET) {
+        if status.contains(ImportFlags::SECRET) {
             print!(" secret");
         }
         println!("");
