@@ -1,7 +1,6 @@
 extern crate libc;
 
-use libc::{c_char, c_int, c_long, c_short, c_uchar, c_uint, c_ulong, c_ushort, c_void, size_t,
-           ssize_t};
+use libc::{c_char, c_int, c_long, c_short, c_uchar, c_uint, c_ulong, c_ushort, c_void, size_t, ssize_t};
 
 use consts::*;
 
@@ -297,8 +296,7 @@ impl _gpgme_key {
 }
 
 pub type gpgme_passphrase_cb_t = Option<
-    extern "C" fn(*mut c_void, *const c_char, *const c_char, c_int, c_int)
-        -> gpgme_error_t,
+    extern "C" fn(*mut c_void, *const c_char, *const c_char, c_int, c_int) -> gpgme_error_t,
 >;
 pub type gpgme_progress_cb_t = Option<
     extern "C" fn(*mut c_void, *const c_char, c_int, c_int, c_int),
@@ -307,12 +305,10 @@ pub type gpgme_status_cb_t = Option<
     extern "C" fn(*mut c_void, *const c_char, *const c_char) -> gpgme_error_t,
 >;
 pub type gpgme_interact_cb_t = Option<
-    extern "C" fn(*mut c_void, *const c_char, *const c_char, c_int)
-        -> gpgme_error_t,
+    extern "C" fn(*mut c_void, *const c_char, *const c_char, c_int) -> gpgme_error_t,
 >;
 pub type gpgme_edit_cb_t = Option<
-    extern "C" fn(*mut c_void, gpgme_status_code_t, *const c_char, c_int)
-        -> gpgme_error_t,
+    extern "C" fn(*mut c_void, gpgme_status_code_t, *const c_char, c_int) -> gpgme_error_t,
 >;
 
 pub type gpgme_io_cb_t = Option<extern "C" fn(*mut c_void, c_int) -> gpgme_error_t>;
@@ -567,8 +563,7 @@ pub type gpgme_assuan_data_cb_t = Option<
     extern "C" fn(*mut c_void, *const c_void, size_t) -> gpgme_error_t,
 >;
 pub type gpgme_assuan_inquire_cb_t = Option<
-    extern "C" fn(*mut c_void, *const c_char, *const c_char, *mut gpgme_data_t)
-        -> gpgme_error_t,
+    extern "C" fn(*mut c_void, *const c_char, *const c_char, *mut gpgme_data_t) -> gpgme_error_t,
 >;
 pub type gpgme_assuan_status_cb_t = Option<
     extern "C" fn(*mut c_void, *const c_char, *const c_char) -> gpgme_error_t,

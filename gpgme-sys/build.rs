@@ -2,16 +2,16 @@ extern crate gcc;
 extern crate semver;
 
 use std::env;
-use std::ffi::{OsStr, OsString};
-use std::fs;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::process::{self, Command, Stdio};
-use std::result;
+use std::process::{self, Command};
 use std::str;
 
 use semver::Version;
 
-type Result<T> = result::Result<T, ()>;
+mod build_helper;
+
+use build_helper::*;
 
 const INCLUDED_VERSION: &str = "1.9.0";
 
@@ -53,16 +53,9 @@ fn configure() -> Result<()> {
     if !Path::new("libassuan/autogen.sh").exists() || !Path::new("gpgme/autogen.sh").exists() {
         let _ = run(Command::new("git").args(&["submodule", "update", "--init"]));
     }
-    let _ = run(
-        Command::new("git")
-            .current_dir("libassuan")
-            .args(&["apply", "../libassuan-remove-doc.patch"]),
-    );
-    let _ = run(
-        Command::new("git")
-            .current_dir("gpgme")
-            .args(&["apply", "../gpgme-remove-doc.patch"]),
-    );
+    let _ = run(Command::new("git")
+        .current_dir("gpgme")
+        .args(&["apply", "../gpgme-remove-doc.patch"]));
 
     try_build().or_else(|_| try_config("gpgme-config"))
 }
@@ -91,13 +84,13 @@ fn try_config<S: Into<OsString>>(path: S) -> Result<()> {
 }
 
 fn parse_config_output(output: &str) {
-    let parts = output
-        .split(|c: char| c.is_whitespace())
-        .filter_map(|p| if p.len() > 2 {
+    let parts = output.split(|c: char| c.is_whitespace()).filter_map(|p| {
+        if p.len() > 2 {
             Some(p.split_at(2))
         } else {
             None
-        });
+        }
+    });
 
     for (flag, val) in parts {
         match flag {
@@ -116,177 +109,62 @@ fn parse_config_output(output: &str) {
 }
 
 fn try_build() -> Result<()> {
-    let target = env::var("TARGET").unwrap();
-    let host = env::var("HOST").unwrap();
-    let src = PathBuf::from(env::current_dir().unwrap()).join("libassuan");
-    let dst = PathBuf::from(env::var_os("OUT_DIR").unwrap());
-    let build = dst.join("build/assuan");
     let gpgerror_root = PathBuf::from(env::var("DEP_GPG_ERROR_ROOT").unwrap());
-    let compiler = gcc::Build::new().get_compiler();
-    let cflags = compiler.args().iter().fold(OsString::new(), |mut c, a| {
-        c.push(a);
-        c.push(" ");
-        c
-    });
+    let config = Config::new("libassuan")?;
 
-    if target.contains("msvc") {
+    if config.target.contains("msvc") {
         return Err(());
     }
 
-    fs::create_dir_all(&build).map_err(|e| eprintln!("unable to create build directory: {}", e))?;
+    run(Command::new("sh")
+        .current_dir(&config.src)
+        .arg("autogen.sh"))?;
+    let mut cmd = config.configure()?;
+    cmd.arg("--disable-doc");
+    cmd.arg({
+        let mut s = OsString::from("--with-libgpg-error-prefix=");
+        s.push(msys_compatible(&gpgerror_root)?);
+        s
+    });
+    run(cmd)?;
+    run(config.make())?;
+    run(config.make().arg("install"))?;
 
-    run(Command::new("sh").current_dir(&src).arg("autogen.sh"))?;
-    run(
-        Command::new("sh")
-            .current_dir(&build)
-            .env("CC", compiler.path())
-            .env("CFLAGS", &cflags)
-            .arg(msys_compatible(src.join("configure"))?)
-            .args(&[
-                "--build",
-                &gnu_target(&host),
-                "--host",
-                &gnu_target(&target),
-                "--enable-static",
-                "--disable-shared",
-            ])
-            .arg({
-                let mut s = OsString::from("--with-libgpg-error-prefix=");
-                s.push(msys_compatible(&gpgerror_root)?);
-                s
-            })
-            .arg({
-                let mut s = OsString::from("--prefix=");
-                s.push(msys_compatible(&dst)?);
-                s
-            }),
-    )?;
-    run(make().current_dir(&build))?;
-    run(make().current_dir(&build).arg("install"))?;
+    let config = Config::new("gpgme")?;
 
-    let src = src.with_file_name("gpgme");
-    let build = build.with_file_name("gpgme");
-    let _ = fs::create_dir_all(&build);
-
-    run(Command::new("sh").current_dir(&src).arg("autogen.sh"))?;
-
-    let mut configure = Command::new("sh");
-    configure
-        .current_dir(&build)
-        .env("CC", compiler.path())
-        .env("CFLAGS", &cflags)
-        .arg(msys_compatible(src.join("configure"))?)
-        .args(&[
-            "--build",
-            &gnu_target(&host),
-            "--host",
-            &gnu_target(&target),
-            "--enable-static",
-            "--disable-shared",
-            "--disable-languages",
-        ])
-        .arg({
-            let mut s = OsString::from("--with-libgpg-error-prefix=");
-            s.push(msys_compatible(&gpgerror_root)?);
-            s
-        })
-        .arg({
-            let mut s = OsString::from("--with-libassuan-prefix=");
-            s.push(msys_compatible(&dst)?);
-            s
-        })
-        .arg({
-            let mut s = OsString::from("--prefix=");
-            s.push(msys_compatible(&dst)?);
-            s
-        });
-    if target.contains("windows") {
-        configure.args(&[
+    run(Command::new("sh")
+        .current_dir(&config.src)
+        .arg("autogen.sh"))?;
+    let mut cmd = config.configure()?;
+    cmd.arg("--disable-languages");
+    cmd.arg({
+        let mut s = OsString::from("--with-libgpg-error-prefix=");
+        s.push(msys_compatible(&gpgerror_root)?);
+        s
+    });
+    cmd.arg({
+        let mut s = OsString::from("--with-libassuan-prefix=");
+        s.push(msys_compatible(&config.dst)?);
+        s
+    });
+    if config.target.contains("windows") {
+        cmd.args(&[
             "--disable-gpgsm-test",
             "--disable-gpgconf-test",
             "--disable-g13-test",
         ]);
     }
-    run(&mut configure)?;
-    run(make().current_dir(&build))?;
-    run(make().current_dir(&build).arg("install"))?;
+    run(cmd)?;
+    run(config.make())?;
+    run(config.make().arg("install"))?;
 
     println!(
         "cargo:rustc-link-search=native={}",
-        dst.join("lib").display()
+        config.dst.join("lib").display()
     );
     println!("cargo:rustc-link-lib=static=assuan");
     println!("cargo:rustc-link-lib=static=gpgme");
-    println!("cargo:root={}", dst.display());
+    println!("cargo:root={}", config.dst.display());
     print_version(Version::parse(INCLUDED_VERSION).unwrap());
     Ok(())
-}
-
-fn make() -> Command {
-    let name = if cfg!(any(target_os = "freebsd", target_os = "dragonfly")) {
-        "gmake"
-    } else {
-        "make"
-    };
-    let mut cmd = Command::new(name);
-    cmd.env_remove("DESTDIR");
-    if cfg!(windows) {
-        cmd.env_remove("MAKEFLAGS").env_remove("MFLAGS");
-    }
-    cmd
-}
-
-fn msys_compatible<P: AsRef<OsStr>>(path: P) -> Result<OsString> {
-    use std::ascii::AsciiExt;
-
-    if !cfg!(windows) {
-        return Ok(path.as_ref().to_owned());
-    }
-
-    let mut path = path.as_ref()
-        .to_str()
-        .ok_or_else(|| eprintln!("path is not valid utf-8"))?
-        .to_owned();
-    if let Some(b'a'...b'z') = path.as_bytes().first().map(u8::to_ascii_lowercase) {
-        if path.split_at(1).1.starts_with(":\\") {
-            (&mut path[..1]).make_ascii_lowercase();
-            path.remove(1);
-            path.insert(0, '/');
-        }
-    }
-    Ok(path.replace("\\", "/").into())
-}
-
-fn gnu_target(target: &str) -> String {
-    match target {
-        "i686-pc-windows-gnu" => "i686-w64-mingw32".to_string(),
-        "x86_64-pc-windows-gnu" => "x86_64-w64-mingw32".to_string(),
-        s => s.to_string(),
-    }
-}
-
-fn run(cmd: &mut Command) -> Result<String> {
-    eprintln!("running: {:?}", cmd);
-    match cmd.stdin(Stdio::null())
-        .spawn()
-        .and_then(|c| c.wait_with_output())
-    {
-        Ok(output) => if output.status.success() {
-            String::from_utf8(output.stdout).or(Err(()))
-        } else {
-            eprintln!(
-                "command did not execute successfully, got: {}",
-                output.status
-            );
-            Err(())
-        },
-        Err(e) => {
-            eprintln!("failed to execute command: {}", e);
-            Err(())
-        }
-    }
-}
-
-fn output(cmd: &mut Command) -> Result<String> {
-    run(cmd.stdout(Stdio::piped()))
 }

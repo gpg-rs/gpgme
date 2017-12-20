@@ -3,8 +3,8 @@ extern crate libc;
 extern crate libgpg_error_sys;
 
 pub use self::consts::*;
-pub use self::types::*;
 pub use self::funcs::*;
+pub use self::types::*;
 
 mod consts;
 mod types;

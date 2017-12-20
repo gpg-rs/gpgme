@@ -12,7 +12,7 @@ fn main() {
         let sys_version = Version::parse(&v).unwrap();
         (sys_version.major, sys_version.minor)
     } else {
-        (0, 0)
+        (1, 2) // Minimum supported version
     };
 
     let path = PathBuf::from(env::var_os("OUT_DIR").unwrap());
@@ -26,8 +26,7 @@ fn main() {
         writeln!(
             output,
             "(({0},{1}) => {{ $($t:tt)* }} else {{ $($u:tt)* }}) => ($($t)*);",
-            major,
-            minor
+            major, minor
         ).unwrap();
 
         if minor == 0 {
