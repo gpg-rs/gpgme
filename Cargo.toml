@@ -9,6 +9,7 @@ documentation = "https://docs.rs/gpgme"
 categories = ["api-bindings"]
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 description = "GPGme bindings for Rust"
+build = "build.rs"
 
 [badges]
 travis-ci = { repository = "johnschug/rust-gpgme" }
@@ -18,7 +19,7 @@ maintenance = { status = "experimental" }
 nightly = ["lazy_static/nightly"]
 
 [build-dependencies]
-semver = "0.8"
+semver = "0.9"
 
 [dev-dependencies]
 getopts = "0.2"
@@ -28,10 +29,10 @@ tempdir = "0.3"
 libc = "0.2"
 cfg-if = "0.1"
 bitflags = "1"
-lazy_static = "0.2"
+lazy_static = "1"
 conv = "0.3"
 cstr-argument = "0.0.2"
-gpg-error = "0.2"
+gpg-error = "0.3"
 
 [dependencies.gpgme-sys]
 path = "gpgme-sys"
