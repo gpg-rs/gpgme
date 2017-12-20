@@ -1,63 +1,12 @@
 language: rust
 cache: cargo
-sudo: false
-matrix:
-  include:
-    - os: linux
-      rust: stable
-      addons:
-        apt:
-          packages:
-            - libgpgme11-dev
-      script:
-        - cargo build --no-default-features
-        - cargo test --no-default-features --color always --no-fail-fast | tee
-    - os: linux
-      rust: stable
-      before_install:
-        - curl -sL https://ftp.gnu.org/gnu/automake/automake-${AUTOMAKE_VERSION}.tar.gz -o automake-${AUTOMAKE_VERSION}.tar.gz
-        - tar -xf automake-${AUTOMAKE_VERSION}.tar.gz
-        - pushd automake-${AUTOMAKE_VERSION}
-        - ./configure --prefix=${HOME}/.local >/dev/null
-        - make -j2 >/dev/null
-        - make install >/dev/null
-        - popd
-        - curl -sL https://ftp.gnu.org/gnu/gettext/gettext-${GETTEXT_VERSION}.tar.gz -o gettext-${GETTEXT_VERSION}.tar.gz
-        - tar -xf gettext-${GETTEXT_VERSION}.tar.gz
-        - pushd gettext-${GETTEXT_VERSION}
-        - ./configure --without-emacs --disable-java --disable-c++ --enable-fast-install --prefix=${HOME}/.local >/dev/null
-        - make -j2 >/dev/null
-        - make install >/dev/null
-        - popd
-        - export PATH=${HOME}/.local/bin:$PATH
-        - export LD_LIBRARY_PATH=${HOME}/.local/lib:$LD_LIBRARY_PATH
-      script:
-        - cargo build --verbose --verbose
-        - cargo test --no-fail-fast
-        - cargo doc
-    - os: linux
-      rust: nightly
-      before_install:
-        - curl -sL https://ftp.gnu.org/gnu/automake/automake-${AUTOMAKE_VERSION}.tar.gz -o automake-${AUTOMAKE_VERSION}.tar.gz
-        - tar -xf automake-${AUTOMAKE_VERSION}.tar.gz
-        - pushd automake-${AUTOMAKE_VERSION}
-        - ./configure --prefix=${HOME}/.local >/dev/null
-        - make -j2 >/dev/null
-        - make install >/dev/null
-        - popd
-        - curl -sL https://ftp.gnu.org/gnu/gettext/gettext-${GETTEXT_VERSION}.tar.gz -o gettext-${GETTEXT_VERSION}.tar.gz
-        - tar -xf gettext-${GETTEXT_VERSION}.tar.gz
-        - pushd gettext-${GETTEXT_VERSION}
-        - ./configure --without-emacs --disable-java --disable-c++ --enable-fast-install --prefix=${HOME}/.local >/dev/null
-        - make -j2 >/dev/null
-        - make install >/dev/null
-        - popd
-        - export PATH=${HOME}/.local/bin:$PATH
-        - export LD_LIBRARY_PATH=${HOME}/.local/lib:$LD_LIBRARY_PATH
-      script:
-        - cargo build --features nightly --verbose --verbose
-        - cargo test --features nightly --no-fail-fast
-        - cargo doc --features nightly
+os:
+  - linux
+  - osx
+script:
+  - cargo build --verbose --verbose
+  - cargo test --no-fail-fast
+  - cargo doc
 before_script:
   - gpg --version || true
   - gpg2 --version || true
@@ -65,8 +14,6 @@ before_script:
 env:
   global:
     - GPGME_DEBUG=9
-    - AUTOMAKE_VERSION=1.14.1
-    - GETTEXT_VERSION=0.19.3
 branches:
   except:
     - /^v[0-9]/
