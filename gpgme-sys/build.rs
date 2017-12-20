@@ -53,9 +53,6 @@ fn configure() -> Result<()> {
     if !Path::new("libassuan/autogen.sh").exists() || !Path::new("gpgme/autogen.sh").exists() {
         let _ = run(Command::new("git").args(&["submodule", "update", "--init"]));
     }
-    let _ = run(Command::new("git")
-        .current_dir("gpgme")
-        .args(&["apply", "../gpgme-remove-doc.patch"]));
 
     try_build().or_else(|_| try_config("gpgme-config"))
 }

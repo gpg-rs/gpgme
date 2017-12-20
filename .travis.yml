@@ -3,14 +3,14 @@ cache: cargo
 os:
   - linux
   - osx
-script:
-  - cargo build --verbose --verbose
-  - cargo test --no-fail-fast
-  - cargo doc
 before_script:
   - gpg --version || true
   - gpg2 --version || true
   - gpg-agent --version || true
+script:
+  - cargo build --verbose --verbose
+  - cargo test --no-fail-fast
+  - cargo doc
 env:
   global:
     - GPGME_DEBUG=9
