@@ -183,16 +183,16 @@ impl Key {
         })
     }
 
-    require_gpgme_ver! {
-        (1, 7) => {
-            #[inline]
-            pub fn fingerprint(&self) -> Result<&str, Option<Utf8Error>> {
-                self.fingerprint_raw()
-                    .map_or(Err(None), |s| s.to_str().map_err(Some))
-            }
+    #[inline]
+    pub fn fingerprint(&self) -> Result<&str, Option<Utf8Error>> {
+        self.fingerprint_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
 
-            #[inline]
-            pub fn fingerprint_raw(&self) -> Option<&CStr> {
+    #[inline]
+    pub fn fingerprint_raw(&self) -> Option<&CStr> {
+        require_gpgme_ver! {
+            (1, 7) => {
                 unsafe {
                     (*self.as_raw())
                         .fpr
@@ -200,6 +200,8 @@ impl Key {
                         .map(|s| CStr::from_ptr(s))
                         .or_else(|| self.primary_key().and_then(|k| k.fingerprint_raw()))
                 }
+            } else {
+                self.primary_key().and_then(|k| k.fingerprint_raw())
             }
         }
     }
@@ -396,17 +398,19 @@ impl<'a> Subkey<'a> {
         }
     }
 
-    require_gpgme_ver! {
-        (1, 7) => {
-            #[inline]
-            pub fn keygrip(&self) -> Result<&'a str, Option<Utf8Error>> {
-                self.keygrip_raw()
-                    .map_or(Err(None), |s| s.to_str().map_err(Some))
-            }
+    #[inline]
+    pub fn keygrip(&self) -> Result<&'a str, Option<Utf8Error>> {
+        self.keygrip_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
 
-            #[inline]
-            pub fn keygrip_raw(&self) -> Option<&'a CStr> {
+    #[inline]
+    pub fn keygrip_raw(&self) -> Option<&'a CStr> {
+        require_gpgme_ver! {
+            (1, 7) => {
                 unsafe { (*self.as_raw()).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
+            } else {
+                None
             }
         }
     }
@@ -438,11 +442,13 @@ impl<'a> Subkey<'a> {
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
-    require_gpgme_ver! {
-        (1,5) => {
-            #[inline]
-            pub fn curve_raw(&self) -> Option<&'a CStr> {
+    #[inline]
+    pub fn curve_raw(&self) -> Option<&'a CStr> {
+        require_gpgme_ver! {
+            (1,5) => {
                 unsafe { (*self.as_raw()).curve.as_ref().map(|s| CStr::from_ptr(s)) }
+            } else {
+                None
             }
         }
     }
@@ -559,16 +565,18 @@ impl<'a> UserId<'a> {
         unsafe { UserIdSignatures::from_list((*self.as_raw()).signatures) }
     }
 
-    require_gpgme_ver! {
-        (1,7) => {
-            #[inline]
-            pub fn tofu_info(&self) -> Option<::TofuInfo> {
+    #[inline]
+    pub fn tofu_info(&self) -> Option<::TofuInfo> {
+        require_gpgme_ver! {
+            (1,7) => {
                 unsafe {
                     (*self.as_raw())
                         .tofu
                         .as_mut()
                         .map(|t| ::TofuInfo::from_raw(t))
                 }
+            } else {
+                None
             }
         }
     }

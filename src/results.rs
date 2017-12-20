@@ -670,16 +670,18 @@ impl<'a> Signature<'a> {
         unsafe { SignatureNotations::from_list((*self.as_raw()).notations) }
     }
 
-    require_gpgme_ver! {
-        (1, 7) => {
-            #[inline]
-            pub fn key(&self) -> Option<::Key> {
+    #[inline]
+    pub fn key(&self) -> Option<::Key> {
+        require_gpgme_ver! {
+            (1, 7) => {
                 unsafe {
                     (*self.as_raw()).key.as_mut().map(|k| {
                         ffi::gpgme_key_ref(k);
                         ::Key::from_raw(k)
                     })
                 }
+            } else {
+                None
             }
         }
     }

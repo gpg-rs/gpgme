@@ -179,7 +179,7 @@ impl<'a> Data<'a> {
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf, len, 0));
             Data::from_raw(data)
         };
-        require_gpgme_ver!((1,7) => {
+        require_gpgme_ver!((1, 7) => {
             let _ = data.set_flag("size-hint", buf.len().to_string());
         });
         Ok(data)
