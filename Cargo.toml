@@ -1,6 +1,6 @@
 [package]
 name = "gpgme"
-version = "0.6.1"
+version = "0.7.0"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
 readme = "README.md"
@@ -36,7 +36,7 @@ gpg-error = "0.3.1"
 
 [dependencies.gpgme-sys]
 path = "gpgme-sys"
-version = "0.6.1"
+version = "0.7.0"
 
 [[bin]]
 name = "pinentry"
