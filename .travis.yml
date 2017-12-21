@@ -18,7 +18,7 @@ matrix:
         - curl -sL https://ftp.gnu.org/gnu/gettext/gettext-${GETTEXT_VERSION}.tar.gz -o gettext-${GETTEXT_VERSION}.tar.gz
         - tar -xf gettext-${GETTEXT_VERSION}.tar.gz
         - pushd gettext-${GETTEXT_VERSION}
-        - ./configure --without-emacs --disable-java --disable-csharp --disable-c++ --enable-fast-install --with-included-gettext --prefix=${HOME}/.local >/dev/null
+        - ./configure --without-emacs --disable-java --disable-csharp --disable-c++ --enable-fast-install --prefix=${HOME}/.local >/dev/null
         - make -j2 install >/dev/null
         - popd
         - export PATH=${HOME}/.local/bin:$PATH
@@ -29,12 +29,12 @@ matrix:
       addons:
         apt:
           packages:
-            - musl-dev
+            - musl-tools
       before_install:
         - curl -sL https://ftp.gnu.org/gnu/gettext/gettext-${GETTEXT_VERSION}.tar.gz -o gettext-${GETTEXT_VERSION}.tar.gz
         - tar -xf gettext-${GETTEXT_VERSION}.tar.gz
         - pushd gettext-${GETTEXT_VERSION}
-        - ./configure --without-emacs --disable-java --disable-csharp --disable-c++ --enable-fast-install --with-included-gettext --prefix=${HOME}/.local >/dev/null
+        - ./configure --without-emacs --disable-java --disable-csharp --disable-c++ --enable-fast-install --prefix=${HOME}/.local >/dev/null
         - make -j2 install >/dev/null
         - popd
         - export PATH=${HOME}/.local/bin:$PATH
