@@ -39,6 +39,7 @@ matrix:
         - popd
         - export PATH=${HOME}/.local/bin:$PATH
         - export LD_LIBRARY_PATH=${HOME}/.local/lib:$LD_LIBRARY_PATH
+        - rustup target add x86_64-unknown-linux-musl
       script:
         - cargo build --target=x86_64-unknown-linux-musl --verbose --verbose
         - cargo test --target=x86_64-unknown-linux-musl --verbose --verbose
