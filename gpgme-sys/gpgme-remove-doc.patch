@@ -1,0 +1,34 @@
+diff --git c/Makefile.am w/Makefile.am
+index e47ace5..057f262 100644
+--- c/Makefile.am
++++ w/Makefile.am
+@@ -33,7 +33,7 @@ else
+ tests =
+ endif
+ 
+-SUBDIRS = src ${tests} doc lang
++SUBDIRS = src ${tests} lang
+ 
+ # Fix the version of the spec file and create a file named VERSION
+ # to be used for patch's Prereq: feature.
+diff --git c/configure.ac w/configure.ac
+index 0dac6ce..8ff0aca 100644
+--- c/configure.ac
++++ w/configure.ac
+@@ -862,7 +862,6 @@ AC_CONFIG_FILES(Makefile src/Makefile
+                 tests/gpg/Makefile
+                 tests/gpgsm/Makefile
+                 tests/opassuan/Makefile
+-		doc/Makefile
+                 src/versioninfo.rc
+                 src/gpgme.h)
+ AC_CONFIG_FILES(src/gpgme-config, chmod +x src/gpgme-config)
+@@ -878,8 +877,6 @@ AC_CONFIG_FILES(lang/qt/src/QGpgmeConfigVersion.cmake)
+ AC_CONFIG_FILES(lang/qt/tests/Makefile)
+ AC_CONFIG_FILES(lang/qt/src/qgpgme_version.h)
+ AC_CONFIG_FILES([lang/Makefile lang/cl/Makefile lang/cl/gpgme.asd])
+-AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([lang/qt/doc/Doxyfile])])
+-AC_CONFIG_FILES(lang/qt/doc/Makefile)
+ AC_CONFIG_FILES([lang/python/Makefile
+ 		 lang/python/gpg/version.py
+ 		 lang/python/tests/Makefile])

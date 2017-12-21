@@ -53,6 +53,9 @@ fn configure() -> Result<()> {
     if !Path::new("libassuan/autogen.sh").exists() || !Path::new("gpgme/autogen.sh").exists() {
         let _ = run(Command::new("git").args(&["submodule", "update", "--init"]));
     }
+    let _ = run(Command::new("git")
+        .current_dir("gpgme")
+        .args(&["apply", "../gpgme-remove-doc.patch"]));
 
     try_build().or_else(|_| try_config("gpgme-config"))
 }
@@ -134,6 +137,13 @@ fn try_build() -> Result<()> {
         .arg("autogen.sh"))?;
     let mut cmd = config.configure()?;
     cmd.arg("--disable-languages");
+    if config.target.contains("windows") {
+        cmd.args(&[
+            "--disable-gpgsm-test",
+            "--disable-gpgconf-test",
+            "--disable-g13-test",
+        ]);
+    }
     cmd.arg({
         let mut s = OsString::from("--with-libgpg-error-prefix=");
         s.push(msys_compatible(&gpgerror_root)?);
@@ -144,13 +154,6 @@ fn try_build() -> Result<()> {
         s.push(msys_compatible(&config.dst)?);
         s
     });
-    if config.target.contains("windows") {
-        cmd.args(&[
-            "--disable-gpgsm-test",
-            "--disable-gpgconf-test",
-            "--disable-g13-test",
-        ]);
-    }
     run(cmd)?;
     run(config.make())?;
     run(config.make().arg("install"))?;

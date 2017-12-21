@@ -1,4 +1,5 @@
 extern crate getopts;
+#[macro_use]
 extern crate gpgme;
 
 use std::env;
@@ -16,28 +17,34 @@ fn print_usage(program: &str, opts: &Options) {
 }
 
 fn main() {
-    let args: Vec<_> = env::args().collect();
-    let program = &args[0];
+    require_gpgme_ver! {
+        (1, 8) => {
+            let args: Vec<_> = env::args().collect();
+            let program = &args[0];
 
-    let mut opts = Options::new();
-    opts.optflag("h", "help", "display this help message");
+            let mut opts = Options::new();
+            opts.optflag("h", "help", "display this help message");
 
-    let matches = match opts.parse(&args[1..]) {
-        Ok(matches) => matches,
-        Err(fail) => {
-            print_usage(program, &opts);
-            let _ = writeln!(io::stderr(), "{}", fail);
-            exit(1);
+            let matches = match opts.parse(&args[1..]) {
+                Ok(matches) => matches,
+                Err(fail) => {
+                    print_usage(program, &opts);
+                    let _ = writeln!(io::stderr(), "{}", fail);
+                    exit(1);
+                }
+            };
+
+            if matches.opt_present("h") {
+                print_usage(program, &opts);
+                return;
+            }
+
+            let mut ctx = Context::from_protocol(Protocol::GpgConf).unwrap();
+            let result = ctx.query_swdb(matches.free.get(0), matches.free.get(1))
+                .expect("query failed");
+            println!("{:#?}", result);
+        } else {
+            eprintln!("This example requires GPGme version 1.8");
         }
-    };
-
-    if matches.opt_present("h") {
-        print_usage(program, &opts);
-        return;
     }
-
-    let mut ctx = Context::from_protocol(Protocol::GpgConf).unwrap();
-    let result = ctx.query_swdb(matches.free.get(0), matches.free.get(1))
-        .expect("query failed");
-    println!("{:#?}", result);
 }

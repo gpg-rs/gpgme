@@ -3,6 +3,9 @@ cache: cargo
 matrix:
   include:
     - os: osx
+      before_install:
+        - brew install gettext
+        - brew link gettext --force
     - os: linux
       addons:
         apt:
@@ -20,6 +23,25 @@ matrix:
         - popd
         - export PATH=${HOME}/.local/bin:$PATH
         - export LD_LIBRARY_PATH=${HOME}/.local/lib:$LD_LIBRARY_PATH
+    - os: linux
+      env:
+        - GETTEXT_VERSION=0.19.8.1
+      addons:
+        apt:
+          packages:
+            - musl-dev
+      before_install:
+        - curl -sL https://ftp.gnu.org/gnu/gettext/gettext-${GETTEXT_VERSION}.tar.gz -o gettext-${GETTEXT_VERSION}.tar.gz
+        - tar -xf gettext-${GETTEXT_VERSION}.tar.gz
+        - pushd gettext-${GETTEXT_VERSION}
+        - ./configure --without-emacs --disable-java --disable-csharp --disable-c++ --enable-fast-install --with-included-gettext --prefix=${HOME}/.local >/dev/null
+        - make -j2 install >/dev/null
+        - popd
+        - export PATH=${HOME}/.local/bin:$PATH
+        - export LD_LIBRARY_PATH=${HOME}/.local/lib:$LD_LIBRARY_PATH
+      script:
+        - cargo build --target=x86_64-unknown-linux-musl --verbose --verbose
+        - cargo test --target=x86_64-unknown-linux-musl --verbose --verbose
 before_script:
   - gpg --version || true
   - gpg2 --version || true
