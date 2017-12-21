@@ -336,6 +336,17 @@ impl DecryptionResult {
     }
 
     #[inline]
+    pub fn is_de_vs(&self) -> bool {
+        require_gpgme_ver! {
+            (1, 10) => {
+                unsafe { (*self.as_raw()).is_de_vs() }
+            } else {
+                false
+            }
+        }
+    }
+
+    #[inline]
     pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.filename_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
@@ -597,6 +608,17 @@ impl<'a> Signature<'a> {
     #[inline]
     pub fn verified_by_chain(&self) -> bool {
         unsafe { (*self.as_raw()).chain_model() }
+    }
+
+    #[inline]
+    pub fn is_de_vs(&self) -> bool {
+        require_gpgme_ver! {
+            (1, 10) => {
+                unsafe { (*self.as_raw()).is_de_vs() }
+            } else {
+                false
+            }
+        }
     }
 
     #[inline]

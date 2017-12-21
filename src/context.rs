@@ -778,6 +778,18 @@ impl Context {
     }
 
     #[inline]
+    pub fn delete_key_with_flags(&mut self, key: &Key, flags: ::DeleteKeyFlags) -> Result<()> {
+        unsafe {
+            return_err!(ffi::gpgme_op_delete_ext(
+                self.as_raw(),
+                key.as_raw(),
+                flags.bits()
+            ));
+        }
+        Ok(())
+    }
+
+    #[inline]
     pub fn import<'a, D>(&mut self, src: D) -> Result<results::ImportResult>
     where D: IntoData<'a> {
         let mut src = src.into_data()?;

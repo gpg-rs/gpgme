@@ -130,6 +130,7 @@ impl<'a> Data<'a> {
     /// Constructs an empty data object.
     #[inline]
     pub fn new() -> Result<Data<'static>> {
+        ::init();
         unsafe {
             let mut data = ptr::null_mut();
             return_err!(ffi::gpgme_data_new(&mut data));
@@ -141,6 +142,7 @@ impl<'a> Data<'a> {
     /// referenced by `path`.
     #[inline]
     pub fn load<P: CStrArgument>(path: P) -> Result<Data<'static>> {
+        ::init();
         let path = path.into_cstr();
         unsafe {
             let mut data = ptr::null_mut();
@@ -156,6 +158,7 @@ impl<'a> Data<'a> {
     /// Constructs a data object and fills it with a copy of `bytes`.
     #[inline]
     pub fn from_bytes<B: AsRef<[u8]>>(bytes: B) -> Result<Data<'static>> {
+        ::init();
         let bytes = bytes.as_ref();
         let mut data = unsafe {
             let (buf, len) = (bytes.as_ptr() as *const _, bytes.len().into());
@@ -172,6 +175,7 @@ impl<'a> Data<'a> {
     /// Constructs a data object which copies from `buf` as needed.
     #[inline]
     pub fn from_buffer<B: AsRef<[u8]> + ?Sized>(buf: &B) -> Result<Data> {
+        ::init();
         let buf = buf.as_ref();
         let mut data = unsafe {
             let (buf, len) = (buf.as_ptr() as *const _, buf.len().into());
@@ -188,6 +192,7 @@ impl<'a> Data<'a> {
     #[inline]
     #[cfg(unix)]
     pub fn from_fd<T: AsRawFd + ?Sized>(file: &T) -> Result<Data> {
+        ::init();
         unsafe {
             let mut data = ptr::null_mut();
             return_err!(ffi::gpgme_data_new_from_fd(&mut data, file.as_raw_fd()));
@@ -197,6 +202,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub unsafe fn from_raw_file(file: *mut libc::FILE) -> Result<Self> {
+        ::init();
         let mut data = ptr::null_mut();
         return_err!(ffi::gpgme_data_new_from_stream(&mut data, file));
         Ok(Data::from_raw(data))
@@ -206,6 +212,7 @@ impl<'a> Data<'a> {
         cbs: ffi::gpgme_data_cbs, src: S
     ) -> result::Result<Self, WrappedError<S>>
     where S: Send + 'a {
+        ::init();
         let src = Box::into_raw(Box::new(CallbackWrapper {
             cbs: cbs,
             inner: src,

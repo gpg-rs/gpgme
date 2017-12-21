@@ -13,7 +13,7 @@ mod build_helper;
 
 use build_helper::*;
 
-const INCLUDED_VERSION: &str = "1.9.0";
+const INCLUDED_VERSION: &str = "1.10.0";
 
 fn main() {
     if let Err(_) = configure() {

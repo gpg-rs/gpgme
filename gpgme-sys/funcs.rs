@@ -321,6 +321,10 @@ extern "C" {
     pub fn gpgme_op_delete(
         ctx: gpgme_ctx_t, key: gpgme_key_t, allow_secret: c_int
     ) -> gpgme_error_t;
+    pub fn gpgme_op_delete_ext_start(
+        ctx: gpgme_ctx_t, key: gpgme_key_t, flags: c_uint
+    ) -> gpgme_error_t;
+    pub fn gpgme_op_delete_ext(ctx: gpgme_ctx_t, key: gpgme_key_t, flags: c_uint) -> gpgme_error_t;
 
     pub fn gpgme_op_keysign_start(
         ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char, expires: c_ulong, flags: c_uint

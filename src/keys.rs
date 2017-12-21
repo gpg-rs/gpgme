@@ -87,6 +87,11 @@ impl Key {
     }
 
     #[inline]
+    pub fn origin(&self) -> ::KeyOrigin {
+        unsafe { ::KeyOrigin::from_raw((*self.as_raw()).origin()) }
+    }
+
+    #[inline]
     pub fn is_root(&self) -> bool {
         use std::ascii::AsciiExt;
         if let (Some(fpr), Some(chain_id)) = (self.fingerprint_raw(), self.chain_id_raw()) {
@@ -251,6 +256,7 @@ impl fmt::Debug for Key {
             .field("fingerprint", &self.fingerprint_raw())
             .field("list_mode", &self.key_list_mode())
             .field("has_secret", &self.has_secret())
+            .field("origin", &self.origin())
             .field("expired", &self.is_expired())
             .field("revoked", &self.is_revoked())
             .field("invalid", &self.is_invalid())
@@ -561,6 +567,11 @@ impl<'a> UserId<'a> {
     }
 
     #[inline]
+    pub fn origin(&self) -> ::KeyOrigin {
+        unsafe { ::KeyOrigin::from_raw((*self.as_raw()).origin()) }
+    }
+
+    #[inline]
     pub fn signatures(&self) -> UserIdSignatures {
         unsafe { UserIdSignatures::from_list((*self.as_raw()).signatures) }
     }
@@ -592,6 +603,7 @@ impl<'a> fmt::Debug for UserId<'a> {
             .field("validity", &self.validity())
             .field("revoked", &self.is_revoked())
             .field("invalid", &self.is_invalid())
+            .field("origin", &self.origin())
             .field("tofu_info", &self.tofu_info())
             .field("signatures", &self.signatures())
             .finish()

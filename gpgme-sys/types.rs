@@ -399,7 +399,12 @@ pub type gpgme_decrypt_result_t = *mut _gpgme_op_decrypt_result;
 impl _gpgme_op_decrypt_result {
     #[inline]
     pub fn wrong_key_usage(&self) -> bool {
-        (self.bitfield & 0b1) == 0b1
+        (self.bitfield & 0b01) == 0b01
+    }
+
+    #[inline]
+    pub fn is_de_vs(&self) -> bool {
+        (self.bitfield & 0b10) == 0b10
     }
 }
 
@@ -460,6 +465,11 @@ impl _gpgme_signature {
     #[inline]
     pub fn chain_model(&self) -> bool {
         (self.bitfield & 0b1000) == 0b1000
+    }
+
+    #[inline]
+    pub fn is_de_vs(&self) -> bool {
+        (self.bitfield & 0b1_0000) == 0b1_0000
     }
 }
 

@@ -36,6 +36,13 @@ bitflags! {
 }
 
 bitflags! {
+    pub struct DeleteKeyFlags: libc::c_uint {
+        const ALLOW_SECRET = ffi::GPGME_DELETE_ALLOW_SECRET;
+        const FORCE = ffi::GPGME_DELETE_FORCE;
+    }
+}
+
+bitflags! {
     pub struct KeySigningFlags: libc::c_uint {
         const LOCAL = ffi::GPGME_KEYSIGN_LOCAL;
         const LFSEP = ffi::GPGME_KEYSIGN_LFSEP;
@@ -111,6 +118,18 @@ bitflags! {
     pub struct AuditLogFlags: libc::c_uint {
         const HTML = ffi::GPGME_AUDITLOG_HTML;
         const WITH_HELP = ffi::GPGME_AUDITLOG_WITH_HELP;
+    }
+}
+
+ffi_enum_wrapper! {
+    pub enum KeyOrigin: ffi::gpgme_keyorg_t {
+        Unknown = ffi::GPGME_KEYORG_UNKNOWN,
+        KeyServer = ffi::GPGME_KEYORG_KS,
+        Dane = ffi::GPGME_KEYORG_DANE,
+        Wkd = ffi::GPGME_KEYORG_WKD,
+        Url = ffi::GPGME_KEYORG_URL,
+        File = ffi::GPGME_KEYORG_FILE,
+        Self_ = ffi::GPGME_KEYORG_SELF,
     }
 }
 

@@ -83,6 +83,16 @@ pub const GPGME_TOFU_POLICY_UNKNOWN: gpgme_tofu_policy_t = 3;
 pub const GPGME_TOFU_POLICY_BAD: gpgme_tofu_policy_t = 4;
 pub const GPGME_TOFU_POLICY_ASK: gpgme_tofu_policy_t = 5;
 
+pub type gpgme_keyorg_t = libc::c_uint;
+pub const GPGME_KEYORG_UNKNOWN: gpgme_keyorg_t = 0;
+pub const GPGME_KEYORG_KS: gpgme_keyorg_t = 1;
+pub const GPGME_KEYORG_DANE: gpgme_keyorg_t = 3;
+pub const GPGME_KEYORG_WKD: gpgme_keyorg_t = 4;
+pub const GPGME_KEYORG_URL: gpgme_keyorg_t = 5;
+pub const GPGME_KEYORG_FILE: gpgme_keyorg_t = 6;
+pub const GPGME_KEYORG_SELF: gpgme_keyorg_t = 7;
+pub const GPGME_KEYORG_OTHER: gpgme_keyorg_t = 31;
+
 pub type gpgme_protocol_t = libc::c_uint;
 pub const GPGME_PROTOCOL_OpenPGP: gpgme_protocol_t = 0;
 pub const GPGME_PROTOCOL_CMS: gpgme_protocol_t = 1;
@@ -297,6 +307,9 @@ pub const GPGME_INTERACT_CARD: libc::c_uint = 1 << 0;
 
 pub const GPGME_SPAWN_DETACHED: libc::c_uint = 1;
 pub const GPGME_SPAWN_ALLOW_SET_FG: libc::c_uint = 2;
+
+pub const GPGME_DELETE_ALLOW_SECRET: libc::c_uint = 1 << 0;
+pub const GPGME_DELETE_FORCE: libc::c_uint = 1 << 1;
 
 pub type gpgme_conf_level_t = libc::c_uint;
 pub const GPGME_CONF_BASIC: gpgme_conf_level_t = 0;
