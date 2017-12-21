@@ -105,13 +105,7 @@ fn try_build() -> Result<()> {
         .arg("autogen.sh"))?;
     let mut cmd = config.configure()?;
     cmd.arg("--disable-languages");
-    if target().contains("windows") {
-        cmd.args(&[
-            "--disable-gpgsm-test",
-            "--disable-gpgconf-test",
-            "--disable-g13-test",
-        ]);
-    }
+    cmd.arg("--disable-gpg-test");
     cmd.arg({
         let mut s = OsString::from("--with-libgpg-error-prefix=");
         s.push(msys_compatible(&gpgerror_root)?);
