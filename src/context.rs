@@ -203,7 +203,7 @@ impl Context {
             (1, 7) => {} else {
                 if (self.protocol() == Protocol::OpenPgp) &&
                     !self.engine_info().check_version("2.1.0") {
-                    return;
+                    return Ok(());
                 }
             }
         }

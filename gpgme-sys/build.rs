@@ -1,4 +1,4 @@
-extern crate gcc;
+extern crate cc;
 extern crate semver;
 
 use std::env;
