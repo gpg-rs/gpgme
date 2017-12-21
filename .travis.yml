@@ -7,7 +7,7 @@ matrix:
         - brew install gettext
         - brew link gettext --force
       after_script:
-        - otool -L target/debug/target/debug/examples/encrypt
+        - otool -L target/debug/examples/encrypt
     - os: linux
       addons:
         apt:
@@ -46,7 +46,7 @@ matrix:
         - cargo build --target=x86_64-unknown-linux-musl --verbose --verbose
         - cargo test --target=x86_64-unknown-linux-musl --verbose --verbose
       after_script:
-        - objdump -T target/x86_64-unknown-linux-musl/examples/encrypt
+        - objdump -T target/x86_64-unknown-linux-musl/debug/examples/encrypt
 before_script:
   - gpg --version || true
   - gpg2 --version || true
