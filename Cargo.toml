@@ -38,6 +38,10 @@ gpg-error = "0.3"
 path = "gpgme-sys"
 version = "0.6.1"
 
+[patch.crates-io]
+libgpg-error-sys = { git = "https://github.com/johnschug/rust-gpg-error" }
+gpg-error = { git = "https://github.com/johnschug/rust-gpg-error" }
+
 [[bin]]
 name = "pinentry"
 test = false

@@ -22,31 +22,26 @@ fn main() {
 }
 
 fn configure() -> Result<()> {
-    println!("cargo:rerun-if-env-changed=GPGME_LIB_DIR");
-    let path = env::var_os("GPGME_LIB_DIR");
-    println!("cargo:rerun-if-env-changed=GPGME_LIBS");
-    let libs = env::var_os("GPGME_LIBS");
+    let path = get_env("GPGME_LIB_DIR");
+    let libs = get_env("GPGME_LIBS");
     if path.is_some() || libs.is_some() {
-        println!("cargo:rerun-if-env-changed=GPGME_STATIC");
-        let mode = match env::var_os("GPGME_STATIC") {
-            Some(_) => "static",
-            _ => "dylib",
+        let mode = match get_env("GPGME_STATIC") {
+            Some(_) => "static=",
+            _ => "",
         };
-        println!("cargo:rerun-if-env-changed=GPGME_VERSION");
-        if let Ok(v) = env::var("GPGME_VERSION") {
+        if let Some(v) = get_env("GPGME_VERSION").as_ref().and_then(|s| s.to_str()) {
             print_version(Version::parse(&v).or(Err(()))?);
         }
         for path in path.iter().flat_map(env::split_paths) {
             println!("cargo:rustc-link-search=native={}", path.display());
         }
         for lib in env::split_paths(libs.as_ref().map(|s| &**s).unwrap_or("gpgme".as_ref())) {
-            println!("cargo:rustc-link-lib={0}={1}", mode, lib.display());
+            println!("cargo:rustc-link-lib={}{}", mode, lib.display());
         }
         return Ok(());
     }
 
-    println!("cargo:rerun-if-env-changed=GPGME_CONFIG");
-    if let Some(path) = env::var_os("GPGME_CONFIG") {
+    if let Some(path) = get_env("GPGME_CONFIG") {
         return try_config(path);
     }
 
@@ -78,44 +73,18 @@ fn try_config<S: Into<OsString>>(path: S) -> Result<()> {
         cmd.push(" --thread=pthread");
     }
     cmd.push(" --libs");
-    parse_config_output(&output(Command::new("sh").arg("-c").arg(cmd))?);
+    parse_linker_flags(&output(Command::new("sh").arg("-c").arg(cmd))?);
     print_version(version);
     Ok(())
 }
 
-fn parse_config_output(output: &str) {
-    let parts = output.split(|c: char| c.is_whitespace()).filter_map(|p| {
-        if p.len() > 2 {
-            Some(p.split_at(2))
-        } else {
-            None
-        }
-    });
-
-    for (flag, val) in parts {
-        match flag {
-            "-L" => {
-                println!("cargo:rustc-link-search=native={}", val);
-            }
-            "-F" => {
-                println!("cargo:rustc-link-search=framework={}", val);
-            }
-            "-l" => {
-                println!("cargo:rustc-link-lib={}", val);
-            }
-            _ => {}
-        }
-    }
-}
-
 fn try_build() -> Result<()> {
-    let gpgerror_root = PathBuf::from(env::var("DEP_GPG_ERROR_ROOT").unwrap());
-    let config = Config::new("libassuan")?;
-
-    if config.target.contains("msvc") {
+    if target().contains("msvc") {
         return Err(());
     }
 
+    let gpgerror_root = PathBuf::from(env::var_os("DEP_GPG_ERROR_ROOT").ok_or(())?);
+    let config = Config::new("libassuan")?;
     run(Command::new("sh")
         .current_dir(&config.src)
         .arg("autogen.sh"))?;
@@ -131,13 +100,12 @@ fn try_build() -> Result<()> {
     run(config.make().arg("install"))?;
 
     let config = Config::new("gpgme")?;
-
     run(Command::new("sh")
         .current_dir(&config.src)
         .arg("autogen.sh"))?;
     let mut cmd = config.configure()?;
     cmd.arg("--disable-languages");
-    if config.target.contains("windows") {
+    if target().contains("windows") {
         cmd.args(&[
             "--disable-gpgsm-test",
             "--disable-gpgconf-test",
@@ -159,11 +127,10 @@ fn try_build() -> Result<()> {
     run(config.make().arg("install"))?;
 
     println!(
-        "cargo:rustc-link-search=native={}",
+        "cargo:rustc-link-search={}",
         config.dst.join("lib").display()
     );
-    println!("cargo:rustc-link-lib=static=assuan");
-    println!("cargo:rustc-link-lib=static=gpgme");
+    parse_libtool_file(config.dst.join("lib/libgpgme.la"))?;
     println!("cargo:root={}", config.dst.display());
     print_version(Version::parse(INCLUDED_VERSION).unwrap());
     Ok(())
