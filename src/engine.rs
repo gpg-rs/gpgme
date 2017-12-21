@@ -4,11 +4,11 @@ use std::marker::PhantomData;
 use std::ptr;
 use std::result;
 use std::str::Utf8Error;
-use std::sync::RwLockReadGuard;
+use std::sync::{RwLock, RwLockReadGuard};
 
 use ffi;
 
-use {NonZero, Protocol, Token, TOKEN};
+use {NonZero, Protocol};
 use error::Result;
 
 #[derive(Copy, Clone)]
@@ -59,6 +59,23 @@ impl<'a> EngineInfo<'a> {
     }
 
     #[inline]
+    pub fn check_version(&self, v: &str) -> bool {
+        self.version()
+            .map(|s| {
+                let mut it1 = s.split('.').map(|x| x.parse::<u8>());
+                let mut it2 = v.split('.').map(|x| x.parse::<u8>());
+                loop {
+                    match (it1.next(), it2.next()) {
+                        (Some(Ok(x)), Some(Ok(y))) if x >= y => continue,
+                        (Some(Ok(_)), None) | (None, None) => return true,
+                        _ => return false,
+                    }
+                }
+            })
+            .unwrap_or(false)
+    }
+
+    #[inline]
     pub fn version(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.version_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
@@ -104,12 +121,8 @@ impl_list_iterator!(EngineInfos, EngineInfo, ffi::gpgme_engine_info_t);
 pub struct EngineInfoGuard(RwLockReadGuard<'static, ()>);
 
 impl EngineInfoGuard {
-    pub fn new(_token: &Token) -> Result<EngineInfoGuard> {
-        let lock = TOKEN
-            .0
-            .engine_info
-            .read()
-            .expect("Engine info lock could not be acquired");
+    pub fn new(lock: &'static RwLock<()>) -> Result<EngineInfoGuard> {
+        let lock = lock.read().expect("Engine info lock could not be acquired");
         unsafe {
             let mut info = ptr::null_mut();
             return_err!(ffi::gpgme_get_engine_info(&mut info));

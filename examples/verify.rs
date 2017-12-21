@@ -7,45 +7,45 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Context, Protocol};
+use gpgme::{Context, Protocol, SignatureSummary};
 
 fn print_usage(program: &str, opts: &Options) {
     let brief = format!("Usage: {} [options] [SIGFILE] FILE", program);
     eprintln!("{}", opts.usage(&brief));
 }
 
-fn print_summary(summary: gpgme::SignatureSummary) {
-    if summary.contains(gpgme::SIGNATURE_VALID) {
+fn print_summary(summary: SignatureSummary) {
+    if summary.contains(SignatureSummary::VALID) {
         print!(" valid");
     }
-    if summary.contains(gpgme::SIGNATURE_GREEN) {
+    if summary.contains(SignatureSummary::GREEN) {
         print!(" green");
     }
-    if summary.contains(gpgme::SIGNATURE_RED) {
+    if summary.contains(SignatureSummary::RED) {
         print!(" red");
     }
-    if summary.contains(gpgme::SIGNATURE_KEY_REVOKED) {
+    if summary.contains(SignatureSummary::KEY_REVOKED) {
         print!(" revoked");
     }
-    if summary.contains(gpgme::SIGNATURE_KEY_EXPIRED) {
+    if summary.contains(SignatureSummary::KEY_EXPIRED) {
         print!(" key-expired");
     }
-    if summary.contains(gpgme::SIGNATURE_SIG_EXPIRED) {
+    if summary.contains(SignatureSummary::SIG_EXPIRED) {
         print!(" sig-expired");
     }
-    if summary.contains(gpgme::SIGNATURE_KEY_MISSING) {
+    if summary.contains(SignatureSummary::KEY_MISSING) {
         print!(" key-missing");
     }
-    if summary.contains(gpgme::SIGNATURE_CRL_MISSING) {
+    if summary.contains(SignatureSummary::CRL_MISSING) {
         print!(" crl-missing");
     }
-    if summary.contains(gpgme::SIGNATURE_CRL_TOO_OLD) {
+    if summary.contains(SignatureSummary::CRL_TOO_OLD) {
         print!(" crl-too-old");
     }
-    if summary.contains(gpgme::SIGNATURE_BAD_POLICY) {
+    if summary.contains(SignatureSummary::BAD_POLICY) {
         print!(" bad-policy");
     }
-    if summary.contains(gpgme::SIGNATURE_SYS_ERROR) {
+    if summary.contains(SignatureSummary::SYS_ERROR) {
         print!(" sys-error");
     }
 }

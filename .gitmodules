@@ -4,3 +4,6 @@
 [submodule "gpgme-sys/libassuan"]
 	path = gpgme-sys/libassuan
 	url = git://git.gnupg.org/libassuan.git
+[submodule "gpgme-sys/build_helper"]
+	path = gpgme-sys/build_helper
+	url = https://github.com/johnschug/build_helper.git

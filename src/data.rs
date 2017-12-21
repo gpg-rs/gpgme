@@ -13,12 +13,12 @@ use std::result;
 use std::slice;
 use std::str::Utf8Error;
 
-use libc;
 use conv::{UnwrapOrSaturate, ValueInto};
 use ffi;
+use libc;
 
-use {IntoNativeString, NonZero};
-use error::{self, Error, Result};
+use {Error, NonZero, Result};
+use utils::CStrArgument;
 
 ffi_enum_wrapper! {
     pub enum Encoding: ffi::gpgme_data_encoding_t {
@@ -140,8 +140,8 @@ impl<'a> Data<'a> {
     /// Constructs a data object and fills it with the contents of the file
     /// referenced by `path`.
     #[inline]
-    pub fn load<P: IntoNativeString>(path: P) -> Result<Data<'static>> {
-        let path = path.into_native();
+    pub fn load<P: CStrArgument>(path: P) -> Result<Data<'static>> {
+        let path = path.into_cstr();
         unsafe {
             let mut data = ptr::null_mut();
             return_err!(ffi::gpgme_data_new_from_file(
@@ -163,7 +163,9 @@ impl<'a> Data<'a> {
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf, len, 1));
             Data::from_raw(data)
         };
-        let _ = data.set_flag("size-hint", bytes.len().to_string());
+        require_gpgme_ver!((1, 7) => {
+            let _ = data.set_flag("size-hint", bytes.len().to_string());
+        });
         Ok(data)
     }
 
@@ -177,7 +179,9 @@ impl<'a> Data<'a> {
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf, len, 0));
             Data::from_raw(data)
         };
-        let _ = data.set_flag("size-hint", buf.len().to_string());
+        require_gpgme_ver!((1, 7) => {
+            let _ = data.set_flag("size-hint", buf.len().to_string());
+        });
         Ok(data)
     }
 
@@ -201,8 +205,7 @@ impl<'a> Data<'a> {
     unsafe fn from_callbacks<S>(
         cbs: ffi::gpgme_data_cbs, src: S
     ) -> result::Result<Self, WrappedError<S>>
-    where
-        S: Send + 'a, {
+    where S: Send + 'a {
         let src = Box::into_raw(Box::new(CallbackWrapper {
             cbs: cbs,
             inner: src,
@@ -231,8 +234,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_seekable_reader<R>(r: R) -> result::Result<Self, WrappedError<R>>
-    where
-        R: Read + Seek + Send + 'a {
+    where R: Read + Seek + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -256,8 +258,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_seekable_writer<W>(w: W) -> result::Result<Self, WrappedError<W>>
-    where
-        W: Write + Seek + Send + 'a {
+    where W: Write + Seek + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -269,8 +270,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_stream<S: Send>(s: S) -> result::Result<Self, WrappedError<S>>
-    where
-        S: Read + Write + Send + 'a {
+    where S: Read + Write + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -282,8 +282,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_seekable_stream<S>(s: S) -> result::Result<Self, WrappedError<S>>
-    where
-        S: Read + Write + Seek + Send + 'a {
+    where S: Read + Write + Seek + Send + 'a {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -317,8 +316,8 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    pub fn set_filename<S: IntoNativeString>(&mut self, name: S) -> Result<()> {
-        let name = name.into_native();
+    pub fn set_filename<S: CStrArgument>(&mut self, name: S) -> Result<()> {
+        let name = name.into_cstr();
         unsafe {
             return_err!(ffi::gpgme_data_set_file_name(
                 self.as_raw(),
@@ -340,13 +339,12 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
     where
-        S1: IntoNativeString,
-        S2: IntoNativeString, {
-        let name = name.into_native();
-        let value = value.into_native();
+        S1: CStrArgument,
+        S2: CStrArgument, {
+        let name = name.into_cstr();
+        let value = value.into_cstr();
         unsafe {
             return_err!(ffi::gpgme_data_set_flag(
                 self.as_raw(),
@@ -358,24 +356,8 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn set_flag<S1, S2>(&mut self, _name: S1, _value: S2) -> Result<()>
-    where
-        S1: IntoNativeString,
-        S2: IntoNativeString, {
-        Err(Error::new(error::GPG_ERR_NOT_SUPPORTED))
-    }
-
-    #[inline]
-    #[cfg(feature = "v1_4_3")]
     pub fn identify(&mut self) -> Type {
         unsafe { Type::from_raw(ffi::gpgme_data_identify(self.as_raw(), 0)) }
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_4_3"))]
-    pub fn identify(&mut self) -> Type {
-        Type::Unknown
     }
 
     #[inline]
@@ -384,9 +366,7 @@ impl<'a> Data<'a> {
             let mut len = 0;
             ffi::gpgme_data_release_and_get_mem(self.into_raw(), &mut len)
                 .as_ref()
-                .map(|b| {
-                    slice::from_raw_parts(b as *const _ as *const _, len).to_vec()
-                })
+                .map(|b| slice::from_raw_parts(b as *const _ as *const _, len).to_vec())
         }
     }
 }
@@ -486,7 +466,7 @@ extern "C" fn seek_callback<S: Seek>(
         libc::SEEK_END => io::SeekFrom::End(offset.value_into().unwrap_or_saturate()),
         libc::SEEK_CUR => io::SeekFrom::Current(offset.value_into().unwrap_or_saturate()),
         _ => unsafe {
-            ffi::gpgme_err_set_errno(ffi::gpgme_err_code_to_errno(error::GPG_ERR_EINVAL));
+            ffi::gpgme_err_set_errno(Error::EINVAL.to_errno());
             return -1;
         },
     };

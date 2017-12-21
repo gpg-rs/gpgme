@@ -11,7 +11,7 @@ test_case! {
         let mut ctx = test.create_context();
         let keys: Vec<_> = fail_if_err!(fail_if_err!(ctx.find_keys(Some("alfa@example.net")))
                                         .collect());
-        assert_eq!(keys.len(), 1);
+        assert_eq!(keys.len(), 1, "incorrect number of keys");
 
         let key = &keys[0];
         assert_eq!(key.id(), Ok("2D727CC768697734"));

@@ -3,11 +3,11 @@ name = "gpgme-sys"
 version = "0.6.1"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
-description = "Raw bindings for gpgme"
 repository = "https://github.com/johnschug/rust-gpgme"
 documentation = "https://docs.rs/gpgme-sys"
 categories = ["external-ffi-bindings"]
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
+description = "Raw bindings for gpgme"
 links = "gpgme"
 build = "build.rs"
 
@@ -19,25 +19,10 @@ maintenance = { status = "experimental" }
 name = "gpgme_sys"
 path = "lib.rs"
 
-[features]
-default = ["v1_9_0"]
-v1_3_0 = []
-v1_3_1 = ["v1_3_0"]
-v1_4_0 = ["v1_3_1"]
-v1_4_2 = ["v1_4_0"]
-v1_4_3 = ["v1_4_2"]
-v1_5_0 = ["v1_4_3"]
-v1_5_1 = ["v1_5_0"]
-v1_6_0 = ["v1_5_1"]
-v1_7_0 = ["v1_6_0"]
-v1_7_1 = ["v1_7_0"]
-v1_8_0 = ["v1_7_1"]
-v1_9_0 = ["v1_8_0"]
-
 [build-dependencies]
-cfg-if = "0.1"
-gcc = "0.3"
+cc = "1.0.2"
+semver = "0.9"
 
 [dependencies]
 libc = "0.2"
-libgpg-error-sys = "0.2"
+libgpg-error-sys = "0.3"

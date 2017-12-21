@@ -5,8 +5,8 @@ use std::panic::{self, UnwindSafe};
 use std::str::Utf8Error;
 use std::thread;
 
-use libc;
 use ffi;
+use libc;
 
 use {Data, Error};
 use edit;
@@ -45,8 +45,7 @@ pub trait PassphraseProvider: UnwindSafe + Send {
 }
 
 impl<T: UnwindSafe + Send> PassphraseProvider for T
-where
-    T: FnMut(PassphraseRequest, &mut io::Write) -> Result<(), Error>, {
+where T: FnMut(PassphraseRequest, &mut io::Write) -> Result<(), Error> {
     fn get_passphrase<W: io::Write>(
         &mut self, request: PassphraseRequest, mut out: W
     ) -> Result<(), Error> {
@@ -75,7 +74,8 @@ impl<P> Drop for PassphraseProviderWrapper<P> {
 pub extern "C" fn passphrase_cb<P: PassphraseProvider>(
     hook: *mut libc::c_void, uid_hint: *const libc::c_char, info: *const libc::c_char,
     was_bad: libc::c_int, fd: libc::c_int,
-) -> ffi::gpgme_error_t {
+) -> ffi::gpgme_error_t
+{
     let wrapper = unsafe { &mut *(hook as *mut PassphraseProviderWrapper<P>) };
     let mut provider = match wrapper.state.take() {
         Some(Ok(p)) => p,
@@ -133,8 +133,7 @@ pub trait ProgressHandler: UnwindSafe + Send {
 }
 
 impl<T: UnwindSafe + Send> ProgressHandler for T
-where
-    T: FnMut(ProgressInfo), {
+where T: FnMut(ProgressInfo) {
     fn handle(&mut self, info: ProgressInfo) {
         (*self)(info);
     }
@@ -161,7 +160,8 @@ impl<H> Drop for ProgressHandlerWrapper<H> {
 pub extern "C" fn progress_cb<H: ProgressHandler>(
     hook: *mut libc::c_void, what: *const libc::c_char, typ: libc::c_int, current: libc::c_int,
     total: libc::c_int,
-) {
+)
+{
     let wrapper = unsafe { &mut *(hook as *mut ProgressHandlerWrapper<H>) };
     let mut handler = match wrapper.state.take() {
         Some(Ok(handler)) => handler,
@@ -191,21 +191,18 @@ pub trait StatusHandler: UnwindSafe + Send {
 }
 
 impl<T: UnwindSafe + Send> StatusHandler for T
-where
-    T: FnMut(Option<&CStr>, Option<&CStr>) -> Result<(), Error>, {
+where T: FnMut(Option<&CStr>, Option<&CStr>) -> Result<(), Error> {
     fn handle(&mut self, keyword: Option<&CStr>, args: Option<&CStr>) -> Result<(), Error> {
         (*self)(keyword, args)
     }
 }
 
-#[cfg(feature = "v1_6_0")]
 pub struct StatusHandlerWrapper<H> {
     pub ctx: ffi::gpgme_ctx_t,
     pub old: (ffi::gpgme_status_cb_t, *mut libc::c_void),
     pub state: Option<thread::Result<H>>,
 }
 
-#[cfg(feature = "v1_6_0")]
 impl<H> Drop for StatusHandlerWrapper<H> {
     fn drop(&mut self) {
         unsafe {
@@ -218,7 +215,6 @@ impl<H> Drop for StatusHandlerWrapper<H> {
     }
 }
 
-#[cfg(feature = "v1_6_0")]
 pub extern "C" fn status_cb<H: StatusHandler>(
     hook: *mut libc::c_void, keyword: *const libc::c_char, args: *const libc::c_char
 ) -> ffi::gpgme_error_t {
@@ -294,7 +290,8 @@ impl<'a, E> Drop for EditInteractorWrapper<'a, E> {
 pub extern "C" fn edit_cb<E: EditInteractor>(
     hook: *mut libc::c_void, status: ffi::gpgme_status_code_t, args: *const libc::c_char,
     fd: libc::c_int,
-) -> ffi::gpgme_error_t {
+) -> ffi::gpgme_error_t
+{
     let wrapper = unsafe { &mut *(hook as *mut EditInteractorWrapper<E>) };
     let response = wrapper.response;
     let mut interactor = match wrapper.state.take() {
@@ -362,13 +359,11 @@ pub trait Interactor: UnwindSafe + Send + 'static {
     ) -> Result<(), Error>;
 }
 
-#[cfg(feature = "v1_7_0")]
 pub struct InteractorWrapper<'a, I> {
     pub state: Option<thread::Result<I>>,
     pub response: *mut Data<'a>,
 }
 
-#[cfg(feature = "v1_7_0")]
 impl<'a, I> Drop for InteractorWrapper<'a, I> {
     fn drop(&mut self) {
         if let Some(Err(err)) = self.state.take() {
@@ -377,11 +372,11 @@ impl<'a, I> Drop for InteractorWrapper<'a, I> {
     }
 }
 
-#[cfg(feature = "v1_7_0")]
 pub extern "C" fn interact_cb<I: Interactor>(
     hook: *mut libc::c_void, keyword: *const libc::c_char, args: *const libc::c_char,
     fd: libc::c_int,
-) -> ffi::gpgme_error_t {
+) -> ffi::gpgme_error_t
+{
     let wrapper = unsafe { &mut *(hook as *mut InteractorWrapper<I>) };
     let response = wrapper.response;
     let mut interactor = match wrapper.state.take() {

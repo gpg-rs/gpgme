@@ -1,8 +1,7 @@
-closure_block_indent_threshold = 2
+array_horizontal_layout_threshold = 10
+brace_style = "PreferSameLine"
 fn_args_density = "Compressed"
-fn_brace_style = "PreferSameLine"
-fn_return_indent = "WithWhereClause"
-item_brace_style = "PreferSameLine"
+imports_indent = "Block"
+reorder_imports = true
 reorder_imports_in_group = true
-where_density = "Compressed"
-where_layout = "Mixed"
+where_single_line = true

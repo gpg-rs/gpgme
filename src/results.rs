@@ -6,12 +6,13 @@ use std::result;
 use std::str::Utf8Error;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use libc;
 use ffi;
+use libc;
 
-use {Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm, NonZero, OpResult, Result,
-     SignMode, SignatureSummary, Validity};
-use error;
+use {
+    Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm, NonZero, OpResult, Result, SignMode,
+    SignatureSummary, Validity,
+};
 use notation::SignatureNotations;
 
 macro_rules! impl_result {
@@ -90,9 +91,9 @@ impl<'a> InvalidKey<'a> {
     #[inline]
     pub fn reason(&self) -> Option<Error> {
         unsafe {
-            match (*self.as_raw()).reason {
-                error::GPG_ERR_NO_ERROR => None,
-                e => Some(Error::new(e)),
+            match Error::new((*self.as_raw()).reason) {
+                Error::NO_ERROR => None,
+                e => Some(e),
             }
         }
     }
@@ -627,11 +628,9 @@ impl<'a> Signature<'a> {
     #[inline]
     pub fn nonvalidity_reason(&self) -> Option<Error> {
         unsafe {
-            let reason = (*self.as_raw()).validity_reason;
-            if reason != error::GPG_ERR_NO_ERROR {
-                Some(Error::new(reason))
-            } else {
-                None
+            match Error::new((*self.as_raw()).validity_reason) {
+                Error::NO_ERROR => None,
+                e => Some(e),
             }
         }
     }
@@ -672,20 +671,19 @@ impl<'a> Signature<'a> {
     }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn key(&self) -> Option<::Key> {
-        unsafe {
-            (*self.as_raw()).key.as_mut().map(|k| {
-                ffi::gpgme_key_ref(k);
-                ::Key::from_raw(k)
-            })
+        require_gpgme_ver! {
+            (1, 7) => {
+                unsafe {
+                    (*self.as_raw()).key.as_mut().map(|k| {
+                        ffi::gpgme_key_ref(k);
+                        ::Key::from_raw(k)
+                    })
+                }
+            } else {
+                None
+            }
         }
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn key(&self) -> Option<::Key> {
-        None
     }
 }
 
@@ -707,12 +705,7 @@ impl<'a> fmt::Debug for Signature<'a> {
     }
 }
 
-#[cfg(feature = "v1_8_0")]
 impl_result!(QuerySwdbResult: ffi::gpgme_query_swdb_result_t = ffi::gpgme_op_query_swdb_result);
-#[cfg(not(feature = "v1_8_0"))]
-impl_result!(
-    QuerySwdbResult: ffi::gpgme_query_swdb_result_t = |_| -> ffi::gpgme_query_swdb_result_t { unreachable!() }
-);
 impl QuerySwdbResult {
     #[inline]
     pub fn name(&self) -> result::Result<&str, Option<Utf8Error>> {

@@ -1,27 +1,25 @@
 extern crate libc;
 
-use libc::{c_char, c_int, c_long, c_short, c_uchar, c_uint, c_ulong, c_ushort, c_void, size_t,
-           ssize_t};
+use libc::{c_char, c_int, c_long, c_short, c_uchar, c_uint, c_ulong, c_ushort, c_void, size_t, ssize_t};
 
-pub use libgpg_error_sys::gpg_err_make as gpgme_err_make;
 pub use libgpg_error_sys::gpg_err_code as gpgme_err_code;
+pub use libgpg_error_sys::gpg_err_code_from_errno as gpgme_err_code_from_errno;
+pub use libgpg_error_sys::gpg_err_code_from_syserror as gpgme_err_code_from_syserror;
+pub use libgpg_error_sys::gpg_err_code_to_errno as gpgme_err_code_to_errno;
+pub use libgpg_error_sys::gpg_err_make as gpgme_err_make;
+pub use libgpg_error_sys::gpg_err_make_from_errno as gpgme_err_make_from_errno;
+pub use libgpg_error_sys::gpg_err_set_errno as gpgme_err_set_errno;
 pub use libgpg_error_sys::gpg_err_source as gpgme_err_source;
+pub use libgpg_error_sys::gpg_error_from_errno as gpgme_error_from_errno;
+pub use libgpg_error_sys::gpg_error_from_syserror as gpgme_error_from_syserror;
 pub use libgpg_error_sys::gpg_strerror as gpgme_strerror;
 pub use libgpg_error_sys::gpg_strerror_r as gpgme_strerror_r;
 pub use libgpg_error_sys::gpg_strsource as gpgme_strsource;
-pub use libgpg_error_sys::gpg_err_code_from_errno as gpgme_err_code_from_errno;
-pub use libgpg_error_sys::gpg_err_code_to_errno as gpgme_err_code_to_errno;
-pub use libgpg_error_sys::gpg_err_code_from_syserror as gpgme_err_code_from_syserror;
-pub use libgpg_error_sys::gpg_err_set_errno as gpgme_err_set_errno;
-pub use libgpg_error_sys::gpg_err_make_from_errno as gpgme_err_make_from_errno;
-pub use libgpg_error_sys::gpg_error_from_errno as gpgme_error_from_errno;
-pub use libgpg_error_sys::gpg_error_from_syserror as gpgme_error_from_syserror;
 
 use consts::*;
 use types::*;
 
 extern "C" {
-    #[cfg(feature = "v1_4_0")]
     pub fn gpgme_set_global_flag(name: *const c_char, value: *const c_char) -> c_int;
 
     pub fn gpgme_check_version(req_version: *const c_char) -> *const c_char;
@@ -29,7 +27,6 @@ extern "C" {
         req_version: *const c_char, offset_sig_validity: size_t
     ) -> *const c_char;
 
-    #[cfg(feature = "v1_5_0")]
     pub fn gpgme_get_dirinfo(what: *const c_char) -> *const c_char;
 
     pub fn gpgme_get_engine_info(engine_info: *mut gpgme_engine_info_t) -> gpgme_error_t;
@@ -45,11 +42,9 @@ extern "C" {
     pub fn gpgme_new(ctx: *mut gpgme_ctx_t) -> gpgme_error_t;
     pub fn gpgme_release(ctx: gpgme_ctx_t);
 
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_set_ctx_flag(
         ctx: gpgme_ctx_t, name: *const c_char, value: *const c_char
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_8_0")]
     pub fn gpgme_get_ctx_flag(ctx: gpgme_ctx_t, name: *const c_char) -> *const c_char;
 
     pub fn gpgme_set_protocol(ctx: gpgme_ctx_t, proto: gpgme_protocol_t) -> gpgme_error_t;
@@ -69,17 +64,13 @@ extern "C" {
     pub fn gpgme_set_include_certs(ctx: gpgme_ctx_t, nr_of_certs: c_int);
     pub fn gpgme_get_include_certs(ctx: gpgme_ctx_t) -> c_int;
 
-    #[cfg(feature = "v1_6_0")]
     pub fn gpgme_set_offline(ctx: gpgme_ctx_t, yes: c_int);
-    #[cfg(feature = "v1_6_0")]
     pub fn gpgme_get_offline(ctx: gpgme_ctx_t) -> c_int;
 
     pub fn gpgme_set_keylist_mode(ctx: gpgme_ctx_t, mode: gpgme_keylist_mode_t) -> gpgme_error_t;
     pub fn gpgme_get_keylist_mode(ctx: gpgme_ctx_t) -> gpgme_keylist_mode_t;
 
-    #[cfg(feature = "v1_4_0")]
     pub fn gpgme_set_pinentry_mode(ctx: gpgme_ctx_t, mode: gpgme_pinentry_mode_t) -> gpgme_error_t;
-    #[cfg(feature = "v1_4_0")]
     pub fn gpgme_get_pinentry_mode(ctx: gpgme_ctx_t) -> gpgme_pinentry_mode_t;
 
     pub fn gpgme_set_passphrase_cb(
@@ -96,9 +87,7 @@ extern "C" {
         ctx: gpgme_ctx_t, cb: *mut gpgme_progress_cb_t, hook_value: *mut *mut c_void
     );
 
-    #[cfg(feature = "v1_6_0")]
     pub fn gpgme_set_status_cb(ctx: gpgme_ctx_t, cb: gpgme_status_cb_t, hook_value: *mut c_void);
-    #[cfg(feature = "v1_6_0")]
     pub fn gpgme_get_status_cb(
         ctx: gpgme_ctx_t, cb: *mut gpgme_status_cb_t, hook_value: *mut *mut c_void
     );
@@ -113,17 +102,14 @@ extern "C" {
         home_dir: *const c_char,
     ) -> gpgme_error_t;
 
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_pubkey_algo_string(subkey: gpgme_subkey_t) -> *mut c_char;
     pub fn gpgme_pubkey_algo_name(algo: gpgme_pubkey_algo_t) -> *const c_char;
     pub fn gpgme_hash_algo_name(algo: gpgme_hash_algo_t) -> *const c_char;
 
-    #[cfg(feature = "v1_7_1")]
     pub fn gpgme_addrspec_from_uid(uid: *const c_char) -> *mut c_char;
 
     pub fn gpgme_signers_clear(ctx: gpgme_ctx_t);
     pub fn gpgme_signers_add(ctx: gpgme_ctx_t, key: gpgme_key_t) -> gpgme_error_t;
-    #[cfg(feature = "v1_4_3")]
     pub fn gpgme_signers_count(ctx: gpgme_ctx_t) -> c_uint;
     pub fn gpgme_signers_enum(ctx: gpgme_ctx_t, seq: c_int) -> gpgme_key_t;
 
@@ -134,9 +120,7 @@ extern "C" {
     ) -> gpgme_error_t;
     pub fn gpgme_sig_notation_get(ctx: gpgme_ctx_t) -> gpgme_sig_notation_t;
 
-    #[cfg(feature = "v1_8_0")]
     pub fn gpgme_set_sender(ctx: gpgme_ctx_t, address: *const c_char) -> gpgme_error_t;
-    #[cfg(feature = "v1_8_0")]
     pub fn gpgme_get_sender(ctx: gpgme_ctx_t) -> *const c_char;
 
     pub fn gpgme_set_io_cbs(ctx: gpgme_ctx_t, io_cbs: gpgme_io_cbs_t);
@@ -144,7 +128,6 @@ extern "C" {
 
     pub fn gpgme_io_read(fd: c_int, buffer: *mut c_void, count: size_t) -> ssize_t;
     pub fn gpgme_io_write(fd: c_int, buffer: *const c_void, count: size_t) -> ssize_t;
-    #[cfg(feature = "v1_4_0")]
     pub fn gpgme_io_writen(fd: c_int, buffer: *const c_void, count: size_t) -> c_int;
 
     pub fn gpgme_wait(ctx: gpgme_ctx_t, status: *mut gpgme_error_t, hang: c_int) -> gpgme_ctx_t;
@@ -184,7 +167,6 @@ extern "C" {
         dh: gpgme_data_t, name: *const c_char, value: *const c_char
     ) -> gpgme_error_t;
 
-    #[cfg(feature = "v1_4_3")]
     pub fn gpgme_data_identify(dh: gpgme_data_t, _reserved: c_int) -> gpgme_data_type_t;
 
     pub fn gpgme_data_new_from_file(
@@ -236,11 +218,9 @@ extern "C" {
     pub fn gpgme_op_decrypt_verify(
         ctx: gpgme_ctx_t, cipher: gpgme_data_t, plain: gpgme_data_t
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_9_0")]
     pub fn gpgme_op_decrypt_ext_start(
         ctx: gpgme_ctx_t, flags: gpgme_decrypt_flags_t, cipher: gpgme_data_t, plain: gpgme_data_t
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_9_0")]
     pub fn gpgme_op_decrypt_ext(
         ctx: gpgme_ctx_t, flags: gpgme_decrypt_flags_t, cipher: gpgme_data_t, plain: gpgme_data_t
     ) -> gpgme_error_t;
@@ -298,48 +278,38 @@ extern "C" {
     pub fn gpgme_op_genkey(
         ctx: gpgme_ctx_t, parms: *const c_char, pubkey: gpgme_data_t, seckey: gpgme_data_t
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_op_createkey_start(
         ctx: gpgme_ctx_t, userid: *const c_char, algo: *const c_char, reserved: c_ulong,
         expires: c_ulong, certkey: gpgme_key_t, flags: c_uint,
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_op_createkey(
         ctx: gpgme_ctx_t, userid: *const c_char, algo: *const c_char, reserved: c_ulong,
         expires: c_ulong, certkey: gpgme_key_t, flags: c_uint,
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_op_createsubkey_start(
         ctx: gpgme_ctx_t, key: gpgme_key_t, algo: *const c_char, reserved: c_ulong,
         expires: c_ulong, flags: c_uint,
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_op_createsubkey(
         ctx: gpgme_ctx_t, key: gpgme_key_t, algo: *const c_char, reserved: c_ulong,
         expires: c_ulong, flags: c_uint,
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_op_adduid_start(
         ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char, reserved: c_uint
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_op_adduid(
         ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char, reserved: c_uint
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_op_revuid_start(
         ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char, reserved: c_uint
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_op_revuid(
         ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char, reserved: c_uint
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_9_0")]
     pub fn gpgme_op_set_uid_flag_start(
         ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char, name: *const c_char,
         value: *const c_char,
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_9_0")]
     pub fn gpgme_op_set_uid_flag(
         ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char, name: *const c_char,
         value: *const c_char,
@@ -352,21 +322,17 @@ extern "C" {
         ctx: gpgme_ctx_t, key: gpgme_key_t, allow_secret: c_int
     ) -> gpgme_error_t;
 
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_op_keysign_start(
         ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char, expires: c_ulong, flags: c_uint
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_op_keysign(
         ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char, expires: c_ulong, flags: c_uint
     ) -> gpgme_error_t;
 
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_op_interact_start(
         ctx: gpgme_ctx_t, key: gpgme_key_t, flags: c_uint, fnc: gpgme_interact_cb_t,
         fnc_value: *mut c_void, out: gpgme_data_t,
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_op_interact(
         ctx: gpgme_ctx_t, key: gpgme_key_t, flags: c_uint, fnc: gpgme_interact_cb_t,
         fnc_value: *mut c_void, out: gpgme_data_t,
@@ -389,21 +355,17 @@ extern "C" {
         out: gpgme_data_t,
     ) -> gpgme_error_t;
 
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_op_tofu_policy_start(
         ctx: gpgme_ctx_t, key: gpgme_key_t, policy: gpgme_tofu_policy_t
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_7_0")]
     pub fn gpgme_op_tofu_policy(
         ctx: gpgme_ctx_t, key: gpgme_key_t, policy: gpgme_tofu_policy_t
     ) -> gpgme_error_t;
 
-    #[cfg(feature = "v1_5_0")]
     pub fn gpgme_op_spawn_start(
         ctx: gpgme_ctx_t, file: *const c_char, argv: *mut *const c_char, datain: gpgme_data_t,
         dataout: gpgme_data_t, dataerr: gpgme_data_t, flags: c_uint,
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_5_0")]
     pub fn gpgme_op_spawn(
         ctx: gpgme_ctx_t, file: *const c_char, argv: *mut *const c_char, datain: gpgme_data_t,
         dataout: gpgme_data_t, dataerr: gpgme_data_t, flags: c_uint,
@@ -416,18 +378,15 @@ extern "C" {
     pub fn gpgme_op_keylist_ext_start(
         ctx: gpgme_ctx_t, pattern: *mut *const c_char, secret_only: c_int, _reserved: c_int
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_9_0")]
     pub fn gpgme_op_keylist_from_data_start(
         ctx: gpgme_ctx_t, data: gpgme_data_t, reserved: c_int
     ) -> gpgme_error_t;
     pub fn gpgme_op_keylist_next(ctx: gpgme_ctx_t, r_key: *mut gpgme_key_t) -> gpgme_error_t;
     pub fn gpgme_op_keylist_end(ctx: gpgme_ctx_t) -> gpgme_error_t;
 
-    #[cfg(feature = "v1_3_0")]
     pub fn gpgme_op_passwd_start(
         ctx: gpgme_ctx_t, key: gpgme_key_t, flags: c_uint
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_3_0")]
     pub fn gpgme_op_passwd(ctx: gpgme_ctx_t, key: gpgme_key_t, flags: c_uint) -> gpgme_error_t;
 
     pub fn gpgme_op_trustlist_start(
@@ -469,11 +428,9 @@ extern "C" {
         op_err: *mut gpgme_error_t,
     ) -> gpgme_error_t;
 
-    #[cfg(feature = "v1_8_0")]
     pub fn gpgme_op_query_swdb(
         ctx: gpgme_ctx_t, name: *const c_char, iversion: *const c_char, _reserved: c_uint
     ) -> gpgme_error_t;
-    #[cfg(feature = "v1_8_0")]
     pub fn gpgme_op_query_swdb_result(ctx: gpgme_ctx_t) -> gpgme_query_swdb_result_t;
 
     pub fn gpgme_conf_arg_new(

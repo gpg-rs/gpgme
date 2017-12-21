@@ -190,20 +190,19 @@ impl Key {
     }
 
     #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
     pub fn fingerprint_raw(&self) -> Option<&CStr> {
-        self.primary_key().and_then(|k| k.fingerprint_raw())
-    }
-
-    #[inline]
-    #[cfg(feature = "v1_7_0")]
-    pub fn fingerprint_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw())
-                .fpr
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-                .or_else(|| self.primary_key().and_then(|k| k.fingerprint_raw()))
+        require_gpgme_ver! {
+            (1, 7) => {
+                unsafe {
+                    (*self.as_raw())
+                        .fpr
+                        .as_ref()
+                        .map(|s| CStr::from_ptr(s))
+                        .or_else(|| self.primary_key().and_then(|k| k.fingerprint_raw()))
+                }
+            } else {
+                self.primary_key().and_then(|k| k.fingerprint_raw())
+            }
         }
     }
 
@@ -229,10 +228,10 @@ impl Key {
 
     #[inline]
     pub fn updated(&self) -> ::Result<Key> {
-        let mut ctx = try!(::Context::from_protocol(self.protocol()));
+        let mut ctx = ::Context::from_protocol(self.protocol())?;
         let _ = ctx.set_key_list_mode(
-            ::KEY_LIST_MODE_LOCAL | ::KEY_LIST_MODE_SIGS | ::KEY_LIST_MODE_SIG_NOTATIONS |
-                ::KEY_LIST_MODE_VALIDATE | ::KEY_LIST_MODE_WITH_TOFU,
+            KeyListMode::LOCAL | KeyListMode::SIGS | KeyListMode::SIG_NOTATIONS
+                | KeyListMode::VALIDATE | KeyListMode::WITH_TOFU,
         );
         if self.has_secret() {
             ctx.get_secret_key(self)
@@ -383,7 +382,6 @@ impl<'a> Subkey<'a> {
     }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn algorithm_name(&self) -> ::Result<String> {
         unsafe {
             match ffi::gpgme_pubkey_algo_string(self.as_raw()).as_mut() {
@@ -407,15 +405,14 @@ impl<'a> Subkey<'a> {
     }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn keygrip_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.as_raw()).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn keygrip_raw(&self) -> Option<&'a CStr> {
-        None
+        require_gpgme_ver! {
+            (1, 7) => {
+                unsafe { (*self.as_raw()).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
+            } else {
+                None
+            }
+        }
     }
 
     #[inline]
@@ -446,15 +443,14 @@ impl<'a> Subkey<'a> {
     }
 
     #[inline]
-    #[cfg(feature = "v1_5_0")]
     pub fn curve_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.as_raw()).curve.as_ref().map(|s| CStr::from_ptr(s)) }
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_5_0"))]
-    pub fn curve_raw(&self) -> Option<&'a CStr> {
-        None
+        require_gpgme_ver! {
+            (1,5) => {
+                unsafe { (*self.as_raw()).curve.as_ref().map(|s| CStr::from_ptr(s)) }
+            } else {
+                None
+            }
+        }
     }
 }
 
@@ -570,20 +566,19 @@ impl<'a> UserId<'a> {
     }
 
     #[inline]
-    #[cfg(feature = "v1_7_0")]
     pub fn tofu_info(&self) -> Option<::TofuInfo> {
-        unsafe {
-            (*self.as_raw())
-                .tofu
-                .as_mut()
-                .map(|t| ::TofuInfo::from_raw(t))
+        require_gpgme_ver! {
+            (1,7) => {
+                unsafe {
+                    (*self.as_raw())
+                        .tofu
+                        .as_mut()
+                        .map(|t| ::TofuInfo::from_raw(t))
+                }
+            } else {
+                None
+            }
         }
-    }
-
-    #[inline]
-    #[cfg(not(feature = "v1_7_0"))]
-    pub fn tofu_info(&self) -> Option<::TofuInfo> {
-        None
     }
 }
 

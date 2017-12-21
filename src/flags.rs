@@ -3,114 +3,114 @@ use std::ffi::CStr;
 use std::fmt;
 use std::str::Utf8Error;
 
-use libc;
 use ffi;
+use libc;
 
 bitflags! {
     pub struct KeyListMode: ffi::gpgme_keylist_mode_t {
-        const KEY_LIST_MODE_LOCAL = ffi::GPGME_KEYLIST_MODE_LOCAL;
-        const KEY_LIST_MODE_EXTERN = ffi::GPGME_KEYLIST_MODE_EXTERN;
-        const KEY_LIST_MODE_SIGS = ffi::GPGME_KEYLIST_MODE_SIGS;
-        const KEY_LIST_MODE_SIG_NOTATIONS = ffi::GPGME_KEYLIST_MODE_SIG_NOTATIONS;
-        const KEY_LIST_MODE_WITH_SECRET = ffi::GPGME_KEYLIST_MODE_WITH_SECRET;
-        const KEY_LIST_MODE_WITH_TOFU = ffi::GPGME_KEYLIST_MODE_WITH_TOFU;
-        const KEY_LIST_MODE_EPHEMERAL = ffi::GPGME_KEYLIST_MODE_EPHEMERAL;
-        const KEY_LIST_MODE_VALIDATE = ffi::GPGME_KEYLIST_MODE_VALIDATE;
+        const LOCAL = ffi::GPGME_KEYLIST_MODE_LOCAL;
+        const EXTERN = ffi::GPGME_KEYLIST_MODE_EXTERN;
+        const SIGS = ffi::GPGME_KEYLIST_MODE_SIGS;
+        const SIG_NOTATIONS = ffi::GPGME_KEYLIST_MODE_SIG_NOTATIONS;
+        const WITH_SECRET = ffi::GPGME_KEYLIST_MODE_WITH_SECRET;
+        const WITH_TOFU = ffi::GPGME_KEYLIST_MODE_WITH_TOFU;
+        const EPHEMERAL = ffi::GPGME_KEYLIST_MODE_EPHEMERAL;
+        const VALIDATE = ffi::GPGME_KEYLIST_MODE_VALIDATE;
     }
 }
 
 bitflags! {
     pub struct CreateKeyFlags: libc::c_uint {
-        const CREATE_SIGN = ffi::GPGME_CREATE_SIGN;
-        const CREATE_ENCR = ffi::GPGME_CREATE_ENCR;
-        const CREATE_CERT = ffi::GPGME_CREATE_CERT;
-        const CREATE_AUTH = ffi::GPGME_CREATE_AUTH;
-        const CREATE_NOPASSWD = ffi::GPGME_CREATE_NOPASSWD;
-        const CREATE_SELFSIGNED = ffi::GPGME_CREATE_SELFSIGNED;
-        const CREATE_NOSTORE = ffi::GPGME_CREATE_NOSTORE;
-        const CREATE_WANTPUB = ffi::GPGME_CREATE_WANTPUB;
-        const CREATE_WANTSEC = ffi::GPGME_CREATE_WANTSEC;
-        const CREATE_FORCE = ffi::GPGME_CREATE_FORCE;
-        const CREATE_NOEXPIRE = ffi::GPGME_CREATE_NOEXPIRE;
+        const SIGN = ffi::GPGME_CREATE_SIGN;
+        const ENCR = ffi::GPGME_CREATE_ENCR;
+        const CERT = ffi::GPGME_CREATE_CERT;
+        const AUTH = ffi::GPGME_CREATE_AUTH;
+        const NOPASSWD = ffi::GPGME_CREATE_NOPASSWD;
+        const SELFSIGNED = ffi::GPGME_CREATE_SELFSIGNED;
+        const NOSTORE = ffi::GPGME_CREATE_NOSTORE;
+        const WANTPUB = ffi::GPGME_CREATE_WANTPUB;
+        const WANTSEC = ffi::GPGME_CREATE_WANTSEC;
+        const FORCE = ffi::GPGME_CREATE_FORCE;
+        const NOEXPIRE = ffi::GPGME_CREATE_NOEXPIRE;
     }
 }
 
 bitflags! {
     pub struct KeySigningFlags: libc::c_uint {
-        const KEY_SIGN_LOCAL = ffi::GPGME_KEYSIGN_LOCAL;
-        const KEY_SIGN_LFSEP = ffi::GPGME_KEYSIGN_LFSEP;
-        const KEY_SIGN_NOEXPIRE = ffi::GPGME_KEYSIGN_NOEXPIRE;
+        const LOCAL = ffi::GPGME_KEYSIGN_LOCAL;
+        const LFSEP = ffi::GPGME_KEYSIGN_LFSEP;
+        const NOEXPIRE = ffi::GPGME_KEYSIGN_NOEXPIRE;
     }
 }
 
 bitflags! {
     pub struct ImportFlags: libc::c_uint {
-        const IMPORT_NEW = ffi::GPGME_IMPORT_NEW;
-        const IMPORT_UID = ffi::GPGME_IMPORT_UID;
-        const IMPORT_SIG = ffi::GPGME_IMPORT_SIG;
-        const IMPORT_SUBKEY = ffi::GPGME_IMPORT_SUBKEY;
-        const IMPORT_SECRET = ffi::GPGME_IMPORT_SECRET;
+        const NEW = ffi::GPGME_IMPORT_NEW;
+        const UID = ffi::GPGME_IMPORT_UID;
+        const SIG = ffi::GPGME_IMPORT_SIG;
+        const SUBKEY = ffi::GPGME_IMPORT_SUBKEY;
+        const SECRET = ffi::GPGME_IMPORT_SECRET;
     }
 }
 
 bitflags! {
     pub struct ExportMode: ffi::gpgme_export_mode_t {
-        const EXPORT_EXTERN = ffi::GPGME_EXPORT_MODE_EXTERN;
-        const EXPORT_MINIMAL = ffi::GPGME_EXPORT_MODE_MINIMAL;
-        const EXPORT_SECRET = ffi::GPGME_EXPORT_MODE_SECRET;
-        const EXPORT_RAW = ffi::GPGME_EXPORT_MODE_RAW;
-        const EXPORT_PKCS12 = ffi::GPGME_EXPORT_MODE_PKCS12;
+        const EXTERN = ffi::GPGME_EXPORT_MODE_EXTERN;
+        const MINIMAL = ffi::GPGME_EXPORT_MODE_MINIMAL;
+        const SECRET = ffi::GPGME_EXPORT_MODE_SECRET;
+        const RAW = ffi::GPGME_EXPORT_MODE_RAW;
+        const PKCS12 = ffi::GPGME_EXPORT_MODE_PKCS12;
     }
 }
 
 bitflags! {
     pub struct EncryptFlags: ffi::gpgme_encrypt_flags_t {
-        const ENCRYPT_ALWAYS_TRUST = ffi::GPGME_ENCRYPT_ALWAYS_TRUST;
-        const ENCRYPT_NO_ENCRYPT_TO = ffi::GPGME_ENCRYPT_NO_ENCRYPT_TO;
-        const ENCRYPT_PREPARE = ffi::GPGME_ENCRYPT_PREPARE;
-        const ENCRYPT_EXPECT_SIGN = ffi::GPGME_ENCRYPT_EXPECT_SIGN;
-        const ENCRYPT_NO_COMPRESS= ffi::GPGME_ENCRYPT_NO_COMPRESS;
-        const ENCRYPT_SYMMETRIC = ffi::GPGME_ENCRYPT_SYMMETRIC;
-        const ENCRYPT_THROW_KEYIDS = ffi::GPGME_ENCRYPT_THROW_KEYIDS;
-        const ENCRYPT_WRAP = ffi::GPGME_ENCRYPT_WRAP;
+        const ALWAYS_TRUST = ffi::GPGME_ENCRYPT_ALWAYS_TRUST;
+        const NO_ENCRYPT_TO = ffi::GPGME_ENCRYPT_NO_ENCRYPT_TO;
+        const PREPARE = ffi::GPGME_ENCRYPT_PREPARE;
+        const EXPECT_SIGN = ffi::GPGME_ENCRYPT_EXPECT_SIGN;
+        const NO_COMPRESS= ffi::GPGME_ENCRYPT_NO_COMPRESS;
+        const SYMMETRIC = ffi::GPGME_ENCRYPT_SYMMETRIC;
+        const THROW_KEYIDS = ffi::GPGME_ENCRYPT_THROW_KEYIDS;
+        const WRAP = ffi::GPGME_ENCRYPT_WRAP;
     }
 }
 
 bitflags! {
     pub struct DecryptFlags: ffi::gpgme_decrypt_flags_t {
-        const DECRYPT_VERIFY = ffi::GPGME_DECRYPT_VERIFY;
-        const DECRYPT_UNWRAP = ffi::GPGME_DECRYPT_UNWRAP;
+        const VERIFY = ffi::GPGME_DECRYPT_VERIFY;
+        const UNWRAP = ffi::GPGME_DECRYPT_UNWRAP;
     }
 }
 
 bitflags! {
     pub struct SignatureSummary: ffi::gpgme_sigsum_t {
-        const SIGNATURE_VALID = ffi::GPGME_SIGSUM_VALID;
-        const SIGNATURE_GREEN = ffi::GPGME_SIGSUM_GREEN;
-        const SIGNATURE_RED = ffi::GPGME_SIGSUM_RED;
-        const SIGNATURE_KEY_REVOKED = ffi::GPGME_SIGSUM_KEY_REVOKED;
-        const SIGNATURE_KEY_EXPIRED = ffi::GPGME_SIGSUM_KEY_EXPIRED;
-        const SIGNATURE_SIG_EXPIRED = ffi::GPGME_SIGSUM_SIG_EXPIRED;
-        const SIGNATURE_KEY_MISSING = ffi::GPGME_SIGSUM_KEY_MISSING;
-        const SIGNATURE_CRL_MISSING = ffi::GPGME_SIGSUM_CRL_MISSING;
-        const SIGNATURE_CRL_TOO_OLD = ffi::GPGME_SIGSUM_CRL_TOO_OLD;
-        const SIGNATURE_BAD_POLICY = ffi::GPGME_SIGSUM_BAD_POLICY;
-        const SIGNATURE_SYS_ERROR = ffi::GPGME_SIGSUM_SYS_ERROR;
-        const SIGNATURE_TOFU_CONFLICT = ffi::GPGME_SIGSUM_TOFU_CONFLICT;
+        const VALID = ffi::GPGME_SIGSUM_VALID;
+        const GREEN = ffi::GPGME_SIGSUM_GREEN;
+        const RED = ffi::GPGME_SIGSUM_RED;
+        const KEY_REVOKED = ffi::GPGME_SIGSUM_KEY_REVOKED;
+        const KEY_EXPIRED = ffi::GPGME_SIGSUM_KEY_EXPIRED;
+        const SIG_EXPIRED = ffi::GPGME_SIGSUM_SIG_EXPIRED;
+        const KEY_MISSING = ffi::GPGME_SIGSUM_KEY_MISSING;
+        const CRL_MISSING = ffi::GPGME_SIGSUM_CRL_MISSING;
+        const CRL_TOO_OLD = ffi::GPGME_SIGSUM_CRL_TOO_OLD;
+        const BAD_POLICY = ffi::GPGME_SIGSUM_BAD_POLICY;
+        const SYS_ERROR = ffi::GPGME_SIGSUM_SYS_ERROR;
+        const TOFU_CONFLICT = ffi::GPGME_SIGSUM_TOFU_CONFLICT;
     }
 }
 
 bitflags! {
     pub struct SignatureNotationFlags: ffi::gpgme_sig_notation_flags_t {
-        const NOTATION_HUMAN_READABLE = ffi::GPGME_SIG_NOTATION_HUMAN_READABLE;
-        const NOTATION_CRITICAL = ffi::GPGME_SIG_NOTATION_CRITICAL;
+        const HUMAN_READABLE = ffi::GPGME_SIG_NOTATION_HUMAN_READABLE;
+        const CRITICAL = ffi::GPGME_SIG_NOTATION_CRITICAL;
     }
 }
 
 bitflags! {
     pub struct AuditLogFlags: libc::c_uint {
-        const AUDIT_LOG_HTML = ffi::GPGME_AUDITLOG_HTML;
-        const AUDIT_LOG_WITH_HELP = ffi::GPGME_AUDITLOG_WITH_HELP;
+        const HTML = ffi::GPGME_AUDITLOG_HTML;
+        const WITH_HELP = ffi::GPGME_AUDITLOG_WITH_HELP;
     }
 }
 
