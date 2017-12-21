@@ -125,12 +125,7 @@ fn main() {
     let signature = match File::open(&matches.free[0]) {
         Ok(file) => file,
         Err(err) => {
-            eprintln!(
-                "{}: can't open '{}': {}",
-                program,
-                &matches.free[0],
-                err
-            );
+            eprintln!("{}: can't open '{}': {}", program, &matches.free[0], err);
             exit(1);
         }
     };
@@ -139,12 +134,7 @@ fn main() {
         let signed = match File::open(&matches.free[1]) {
             Ok(file) => file,
             Err(err) => {
-                eprintln!(
-                    "{}: can't open '{}': {}",
-                    program,
-                    &matches.free[1],
-                    err
-                );
+                eprintln!("{}: can't open '{}': {}", program, &matches.free[1], err);
                 exit(1);
             }
         };

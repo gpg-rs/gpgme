@@ -15,7 +15,7 @@ a more recent version.
 
 By default, the gpgme-sys crate will attempt to build the latest version of the
 library from source using autoconf and automake. An existing installation may
-be specified using `GPGME_LIB_PATH`, `GPGME_LIBS` and `GPGME_STATIC`
+be specified using `GPGME_LIB_DIR`, `GPGME_LIBS` and `GPGME_STATIC`
 (optional). Alternatively the path to the gpgme configuration program
 (`gpgme-config`) may be specified using `GPGME_CONFIG`.
 
