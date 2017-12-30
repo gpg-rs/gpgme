@@ -1142,8 +1142,8 @@ impl Context {
     ///
     /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
     /// let key = ctx.find_key("some pattern").unwrap();
-    /// let (mut plaintext, mut ciphertext) = (Vec::new(), Vec::new());
-    /// ctx.encrypt(Some(&key), &mut plaintext, &mut ciphertext).unwrap();
+    /// let (plaintext, mut ciphertext) = ("Hello, World!", Vec::new());
+    /// ctx.encrypt(Some(&key), plaintext, &mut ciphertext).unwrap();
     /// ```
     #[inline]
     pub fn encrypt<'k, 'p, 'c, I, P, C>(
@@ -1213,8 +1213,8 @@ impl Context {
     ///
     /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
     /// let key = ctx.find_key("some pattern").unwrap();
-    /// let (mut plaintext, mut ciphertext) = (Vec::new(), Vec::new());
-    /// ctx.sign_and_encrypt(Some(&key), &mut plaintext, &mut ciphertext).unwrap();
+    /// let (plaintext, mut ciphertext) = ("Hello, World!", Vec::new());
+    /// ctx.sign_and_encrypt(Some(&key), plaintext, &mut ciphertext).unwrap();
     /// ```
     #[inline]
     pub fn sign_and_encrypt<'k, 'p, 'c, I, P, C>(
