@@ -582,6 +582,7 @@ impl Context {
         Ok(())
     }
 
+    /// Please see `sign_key_with_flags(...)` for details.
     #[inline]
     pub fn sign_key<I>(
         &mut self, key: &Key, userids: I, expires: Option<SystemTime>
@@ -592,6 +593,14 @@ impl Context {
         self.sign_key_with_flags(key, userids, expires, ::KeySigningFlags::empty())
     }
 
+    /// Signs the given `key` with the default key you have a secret key for,
+    /// or the keys specified via `add_signer(...)`.
+    /// `userids` can be the specific user-ids of `key` to sign, or if empty, all suitable
+    /// user-ids will be signed.
+    /// `expires`, if not None, is the expiry data of the signature.
+    /// Please have a look at the `KeySigningFlags` type for learning more about its
+    /// possible values.
+    #[inline]
     pub fn sign_key_with_flags<I>(
         &mut self, key: &Key, userids: I, expires: Option<SystemTime>, flags: ::KeySigningFlags
     ) -> Result<()>
@@ -602,21 +611,21 @@ impl Context {
             let mut userids = userids.into_iter();
             match (userids.next(), userids.next()) {
                 (Some(first), Some(second)) => (
-                    userids.fold(
+                    Some(userids.fold(
                         [first.as_ref(), second.as_ref()].join(&b'\n'),
                         |mut acc, x| {
                             acc.push(b'\n');
                             acc.extend_from_slice(x.as_ref());
                             acc
                         },
-                    ),
+                    )),
                     ::KeySigningFlags::LFSEP | flags,
                 ),
-                (Some(first), None) => (first.as_ref().to_owned(), flags),
-                _ => panic!("no userids provided"),
+                (Some(first), None) => (Some(first.as_ref().to_owned()), flags),
+                _ => (None, flags)
             }
         };
-        let userids = userids.into_cstr();
+        let userids = userids.map(Vec::into_cstr);
         let expires = expires
             .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
             .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
@@ -624,7 +633,7 @@ impl Context {
             return_err!(ffi::gpgme_op_keysign(
                 self.as_raw(),
                 key.as_raw(),
-                userids.as_ref().as_ptr(),
+                userids.map_or(::std::ptr::null(), |uid| uid.as_ref().as_ptr()),
                 expires,
                 flags.bits(),
             ));
