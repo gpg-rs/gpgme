@@ -2,7 +2,7 @@ use std::borrow::BorrowMut;
 use std::ffi::CStr;
 use std::fmt;
 use std::fs::File;
-use std::io;
+use std::io::{self, Cursor};
 use std::io::prelude::*;
 use std::marker::PhantomData;
 use std::mem;
@@ -495,13 +495,13 @@ extern "C" fn release_callback<S>(handle: *mut libc::c_void) {
     }
 }
 
-pub trait DataSource<'a> {
+trait DataSource<'a> {
     type Output: BorrowMut<Data<'a>>;
 
     fn into_data(self) -> Result<Self::Output>;
 }
 
-pub trait DataSink<'a> {
+trait DataSink<'a> {
     type Output: BorrowMut<Data<'a>>;
 
     fn into_data(self) -> Result<Self::Output>;
@@ -533,7 +533,7 @@ impl<'a> IntoData<'a> for &'a [u8] {
     type Output = Data<'a>;
 
     fn into_data(self) -> Result<Data<'a>> {
-        Data::from_buffer(self)
+        Data::from_seekable_reader(Cursor::new(self)).map_err(|e| e.error())
     }
 }
 
@@ -541,7 +541,7 @@ impl<'a> IntoData<'a> for &'a Vec<u8> {
     type Output = Data<'a>;
 
     fn into_data(self) -> Result<Data<'a>> {
-        Data::from_buffer(self)
+        self.as_slice().into_data()
     }
 }
 
@@ -549,6 +549,7 @@ impl<'a> IntoData<'a> for &'a mut Vec<u8> {
     type Output = Data<'a>;
 
     fn into_data(self) -> Result<Data<'a>> {
+        // Waiting for https://github.com/rust-lang/rust/issues/30132 to stabilize
         Data::from_writer(self).map_err(|e| e.error())
     }
 }
@@ -557,7 +558,7 @@ impl IntoData<'static> for Vec<u8> {
     type Output = Data<'static>;
 
     fn into_data(self) -> Result<Data<'static>> {
-        Data::from_bytes(self)
+        Data::from_seekable_stream(Cursor::new(self)).map_err(|e| e.error())
     }
 }
 
@@ -565,7 +566,7 @@ impl<'a> IntoData<'a> for &'a str {
     type Output = Data<'a>;
 
     fn into_data(self) -> Result<Data<'a>> {
-        Data::from_buffer(self)
+        self.as_bytes().into_data()
     }
 }
 
@@ -573,7 +574,7 @@ impl IntoData<'static> for String {
     type Output = Data<'static>;
 
     fn into_data(self) -> Result<Data<'static>> {
-        Data::from_bytes(self)
+        self.into_bytes().into_data()
     }
 }
 
