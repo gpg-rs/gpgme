@@ -311,9 +311,7 @@ impl Context {
 
     #[inline]
     pub fn key_list_mode(&self) -> KeyListMode {
-        unsafe {
-            ::KeyListMode::from_bits_truncate(ffi::gpgme_get_keylist_mode(self.as_raw()))
-        }
+        unsafe { ::KeyListMode::from_bits_truncate(ffi::gpgme_get_keylist_mode(self.as_raw())) }
     }
 
     #[inline]
@@ -582,6 +580,10 @@ impl Context {
         Ok(())
     }
 
+    /// Signs the given key with the default signing key, or the keys specified via
+    /// [`add_signer`].
+    ///
+    /// [`add_signer`]: struct.Context.html#method.add_signer
     #[inline]
     pub fn sign_key<I>(
         &mut self, key: &Key, userids: I, expires: Option<SystemTime>
@@ -602,21 +604,21 @@ impl Context {
             let mut userids = userids.into_iter();
             match (userids.next(), userids.next()) {
                 (Some(first), Some(second)) => (
-                    userids.fold(
+                    Some(userids.fold(
                         [first.as_ref(), second.as_ref()].join(&b'\n'),
                         |mut acc, x| {
                             acc.push(b'\n');
                             acc.extend_from_slice(x.as_ref());
                             acc
                         },
-                    ),
+                    )),
                     ::KeySigningFlags::LFSEP | flags,
                 ),
-                (Some(first), None) => (first.as_ref().to_owned(), flags),
-                _ => panic!("no userids provided"),
+                (Some(first), None) => (Some(first.as_ref().to_owned()), flags),
+                _ => (None, flags),
             }
         };
-        let userids = userids.into_cstr();
+        let userids = userids.map(Vec::into_cstr);
         let expires = expires
             .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
             .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
@@ -624,7 +626,7 @@ impl Context {
             return_err!(ffi::gpgme_op_keysign(
                 self.as_raw(),
                 key.as_raw(),
-                userids.as_ref().as_ptr(),
+                userids.map_or(ptr::null(), |uid| uid.as_ref().as_ptr()),
                 expires,
                 flags.bits(),
             ));
