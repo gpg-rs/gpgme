@@ -311,9 +311,7 @@ impl Context {
 
     #[inline]
     pub fn key_list_mode(&self) -> KeyListMode {
-        unsafe {
-            ::KeyListMode::from_bits_truncate(ffi::gpgme_get_keylist_mode(self.as_raw()))
-        }
+        unsafe { ::KeyListMode::from_bits_truncate(ffi::gpgme_get_keylist_mode(self.as_raw())) }
     }
 
     #[inline]
@@ -582,7 +580,10 @@ impl Context {
         Ok(())
     }
 
-    /// Please see `sign_key_with_flags(...)` for details.
+    /// Signs the given key with the default signing key, or the keys specified via
+    /// [`add_signer`].
+    ///
+    /// [`add_signer`]: struct.Context.html#method.add_signer
     #[inline]
     pub fn sign_key<I>(
         &mut self, key: &Key, userids: I, expires: Option<SystemTime>
@@ -593,14 +594,6 @@ impl Context {
         self.sign_key_with_flags(key, userids, expires, ::KeySigningFlags::empty())
     }
 
-    /// Signs the given `key` with the default key you have a secret key for,
-    /// or the keys specified via `add_signer(...)`.
-    /// `userids` can be the specific user-ids of `key` to sign, or if empty, all suitable
-    /// user-ids will be signed.
-    /// `expires`, if not None, is the expiry data of the signature.
-    /// Please have a look at the `KeySigningFlags` type for learning more about its
-    /// possible values.
-    #[inline]
     pub fn sign_key_with_flags<I>(
         &mut self, key: &Key, userids: I, expires: Option<SystemTime>, flags: ::KeySigningFlags
     ) -> Result<()>
@@ -622,7 +615,7 @@ impl Context {
                     ::KeySigningFlags::LFSEP | flags,
                 ),
                 (Some(first), None) => (Some(first.as_ref().to_owned()), flags),
-                _ => (None, flags)
+                _ => (None, flags),
             }
         };
         let userids = userids.map(Vec::into_cstr);
@@ -633,7 +626,7 @@ impl Context {
             return_err!(ffi::gpgme_op_keysign(
                 self.as_raw(),
                 key.as_raw(),
-                userids.map_or(::std::ptr::null(), |uid| uid.as_ref().as_ptr()),
+                userids.map_or(ptr::null(), |uid| uid.as_ref().as_ptr()),
                 expires,
                 flags.bits(),
             ));
