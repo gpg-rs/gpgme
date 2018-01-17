@@ -193,7 +193,7 @@ impl Context {
     }
 
     #[inline]
-    pub fn pinentry_mode(self) -> ::PinentryMode {
+    pub fn pinentry_mode(&self) -> ::PinentryMode {
         unsafe { ::PinentryMode::from_raw(ffi::gpgme_get_pinentry_mode(self.as_raw())) }
     }
 
