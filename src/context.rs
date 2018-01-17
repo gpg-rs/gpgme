@@ -199,13 +199,10 @@ impl Context {
 
     #[inline]
     pub fn set_pinentry_mode(&mut self, mode: ::PinentryMode) -> Result<()> {
-        require_gpgme_ver! {
-            (1, 7) => {} else {
-                if (self.protocol() == Protocol::OpenPgp) &&
-                    !self.engine_info().check_version("2.1.0") {
-                    return Ok(());
-                }
-            }
+        if (mode != ::PinentryMode::Default) &&
+            (self.protocol() == Protocol::OpenPgp) &&
+                !self.engine_info().check_version("2.1.0") {
+            return Err(Error::UNSUPPORTED_OPERATION);
         }
         unsafe {
             return_err!(ffi::gpgme_set_pinentry_mode(self.as_raw(), mode.raw()));
