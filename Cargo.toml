@@ -60,4 +60,7 @@ name = "edit"
 [[test]]
 name = "context"
 
+[[test]]
+name = "keysign"
+
 [workspace]

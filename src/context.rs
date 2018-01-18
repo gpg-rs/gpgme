@@ -199,10 +199,10 @@ impl Context {
 
     #[inline]
     pub fn set_pinentry_mode(&mut self, mode: ::PinentryMode) -> Result<()> {
-        if (mode != ::PinentryMode::Default) &&
-            (self.protocol() == Protocol::OpenPgp) &&
-                !self.engine_info().check_version("2.1.0") {
-            return Err(Error::UNSUPPORTED_OPERATION);
+        if (mode != ::PinentryMode::Default) && (self.protocol() == Protocol::OpenPgp)
+            && !self.engine_info().check_version("2.1")
+        {
+            return Err(Error::NOT_SUPPORTED);
         }
         unsafe {
             return_err!(ffi::gpgme_set_pinentry_mode(self.as_raw(), mode.raw()));
@@ -317,7 +317,7 @@ impl Context {
             let old = ffi::gpgme_get_keylist_mode(self.as_raw());
             return_err!(ffi::gpgme_set_keylist_mode(
                 self.as_raw(),
-                mask.bits() | (old & !KeyListMode::all().bits()),
+                mask.bits() | old,
             ));
         }
         Ok(())
@@ -343,18 +343,16 @@ impl Context {
 
     #[inline]
     pub fn get_key(&mut self, key: &Key) -> Result<Key> {
-        match key.fingerprint_raw() {
-            Some(fpr) => self.find_key(fpr),
-            None => Err(Error::AMBIGUOUS_NAME),
-        }
+        key.fingerprint_raw()
+            .ok_or(Error::AMBIGUOUS_NAME)
+            .and_then(|x| self.find_key(x))
     }
 
     #[inline]
     pub fn get_secret_key(&mut self, key: &Key) -> Result<Key> {
-        match key.fingerprint_raw() {
-            Some(fpr) => self.find_secret_key(fpr),
-            None => Err(Error::AMBIGUOUS_NAME),
-        }
+        key.fingerprint_raw()
+            .ok_or(Error::AMBIGUOUS_NAME)
+            .and_then(|x| self.find_secret_key(x))
     }
 
     /// Returns the public key with the specified fingerprint, if such a key can

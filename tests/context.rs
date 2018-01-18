@@ -4,7 +4,7 @@ extern crate gpgme;
 extern crate lazy_static;
 extern crate tempdir;
 
-use gpgme::{Context, PinentryMode, Error};
+use gpgme::{Context, Error, PinentryMode};
 
 #[macro_use]
 mod support;

@@ -62,15 +62,9 @@ impl<'a> EngineInfo<'a> {
     pub fn check_version(&self, v: &str) -> bool {
         self.version()
             .map(|s| {
-                let mut it1 = s.split('.').map(|x| x.parse::<u8>());
-                let mut it2 = v.split('.').map(|x| x.parse::<u8>());
-                loop {
-                    match (it1.next(), it2.next()) {
-                        (Some(Ok(x)), Some(Ok(y))) if x >= y => continue,
-                        (Some(Ok(_)), None) | (None, None) => return true,
-                        _ => return false,
-                    }
-                }
+                let it1 = s.split('.').scan((), |_, x| x.parse::<u8>().ok());
+                let it2 = v.split('.').scan((), |_, x| x.parse::<u8>().ok());
+                Iterator::ge(it1, it2)
             })
             .unwrap_or(false)
     }

@@ -233,17 +233,21 @@ impl Key {
     }
 
     #[inline]
+    pub fn update(&mut self) -> ::Result<()> {
+        *self = self.updated()?;
+        Ok(())
+    }
+
+    #[inline]
     pub fn updated(&self) -> ::Result<Key> {
         let mut ctx = ::Context::from_protocol(self.protocol())?;
-        let _ = ctx.set_key_list_mode(
-            KeyListMode::LOCAL | KeyListMode::SIGS | KeyListMode::SIG_NOTATIONS
-                | KeyListMode::VALIDATE | KeyListMode::WITH_TOFU,
-        );
+        let _ = ctx.set_key_list_mode(self.key_list_mode());
         if self.has_secret() {
-            ctx.get_secret_key(self)
-        } else {
-            ctx.get_key(self)
+            if let r @ Ok(_) = ctx.get_secret_key(self) {
+                return r;
+            }
         }
+        ctx.get_key(self)
     }
 }
 
