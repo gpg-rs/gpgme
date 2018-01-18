@@ -19,7 +19,7 @@ require_gpgme_ver! {
                     Ok(()) => {
                         assert_eq!(mode, Context::pinentry_mode(&ctx));
                     }
-                    Err(Error::UNSUPPORTED_OPERATION) => (),
+                    Err(e) if e.code() == Error::NOT_SUPPORTED.code() => (),
                     e @ Err(_) => fail_if_err!(e),
                 }
             }
