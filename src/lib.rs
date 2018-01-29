@@ -1,20 +1,18 @@
 #![warn(trivial_numeric_casts)]
 #![deny(missing_debug_implementations)]
-#![cfg_attr(any(nightly, feature = "nightly"), feature(nonzero))]
 #[macro_use]
 extern crate bitflags;
 #[macro_use]
 extern crate cfg_if;
 extern crate conv;
-#[cfg(any(nightly, feature = "nightly"))]
-extern crate core;
 extern crate cstr_argument;
+#[macro_use]
+pub extern crate gpg_error as error;
 extern crate gpgme_sys as ffi;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
-#[macro_use]
-pub extern crate gpg_error as error;
+extern crate smallvec;
 
 use std::ffi::CStr;
 use std::fmt;
@@ -333,5 +331,3 @@ impl Token {
 unsafe trait OpResult: Clone {
     fn from_context(ctx: &Context) -> Option<Self>;
 }
-
-type NonZero<T> = utils::NonZero<T>;

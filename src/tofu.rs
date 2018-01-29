@@ -6,7 +6,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ffi;
 
-use NonZero;
+use utils::NonNull;
 
 ffi_enum_wrapper! {
     pub enum TofuPolicy: ffi::gpgme_tofu_policy_t {
@@ -20,13 +20,13 @@ ffi_enum_wrapper! {
 }
 
 #[derive(Copy, Clone)]
-pub struct TofuInfo<'a>(NonZero<ffi::gpgme_tofu_info_t>, PhantomData<&'a ()>);
+pub struct TofuInfo<'a>(NonNull<ffi::gpgme_tofu_info_t>, PhantomData<&'a ()>);
 
 unsafe impl<'a> Send for TofuInfo<'a> {}
 unsafe impl<'a> Sync for TofuInfo<'a> {}
 
 impl<'a> TofuInfo<'a> {
-    impl_wrapper!(@phantom TofuInfo: ffi::gpgme_tofu_info_t);
+    impl_wrapper!(TofuInfo(ffi::gpgme_tofu_info_t), PhantomData);
 
     #[inline]
     pub fn validity(&self) -> u32 {

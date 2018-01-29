@@ -6,17 +6,17 @@ use std::str::Utf8Error;
 
 use ffi;
 
-use NonZero;
 use SignatureNotationFlags;
+use utils::NonNull;
 
 #[derive(Copy, Clone)]
-pub struct SignatureNotation<'a>(NonZero<ffi::gpgme_sig_notation_t>, PhantomData<&'a ()>);
+pub struct SignatureNotation<'a>(NonNull<ffi::gpgme_sig_notation_t>, PhantomData<&'a ()>);
 
 unsafe impl<'a> Send for SignatureNotation<'a> {}
 unsafe impl<'a> Sync for SignatureNotation<'a> {}
 
 impl<'a> SignatureNotation<'a> {
-    impl_wrapper!(@phantom SignatureNotation: ffi::gpgme_sig_notation_t);
+    impl_wrapper!(SignatureNotation(ffi::gpgme_sig_notation_t), PhantomData);
 
     #[inline]
     pub fn is_human_readable(&self) -> bool {

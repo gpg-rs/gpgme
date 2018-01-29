@@ -45,7 +45,8 @@ pub trait PassphraseProvider: UnwindSafe + Send {
 }
 
 impl<T: UnwindSafe + Send> PassphraseProvider for T
-where T: FnMut(PassphraseRequest, &mut io::Write) -> Result<(), Error> {
+where T: FnMut(PassphraseRequest, &mut io::Write) -> Result<(), Error>
+{
     fn get_passphrase<W: io::Write>(
         &mut self, request: PassphraseRequest, mut out: W
     ) -> Result<(), Error> {
@@ -133,7 +134,8 @@ pub trait ProgressHandler: UnwindSafe + Send {
 }
 
 impl<T: UnwindSafe + Send> ProgressHandler for T
-where T: FnMut(ProgressInfo) {
+where T: FnMut(ProgressInfo)
+{
     fn handle(&mut self, info: ProgressInfo) {
         (*self)(info);
     }
@@ -191,7 +193,8 @@ pub trait StatusHandler: UnwindSafe + Send {
 }
 
 impl<T: UnwindSafe + Send> StatusHandler for T
-where T: FnMut(Option<&CStr>, Option<&CStr>) -> Result<(), Error> {
+where T: FnMut(Option<&CStr>, Option<&CStr>) -> Result<(), Error>
+{
     fn handle(&mut self, keyword: Option<&CStr>, args: Option<&CStr>) -> Result<(), Error> {
         (*self)(keyword, args)
     }

@@ -8,17 +8,17 @@ use std::sync::{RwLock, RwLockReadGuard};
 
 use ffi;
 
-use {NonZero, Protocol};
-use error::Result;
+use {Protocol, Result};
+use utils::NonNull;
 
 #[derive(Copy, Clone)]
-pub struct EngineInfo<'a>(NonZero<ffi::gpgme_engine_info_t>, PhantomData<&'a ()>);
+pub struct EngineInfo<'a>(NonNull<ffi::gpgme_engine_info_t>, PhantomData<&'a ()>);
 
 unsafe impl<'a> Send for EngineInfo<'a> {}
 unsafe impl<'a> Sync for EngineInfo<'a> {}
 
 impl<'a> EngineInfo<'a> {
-    impl_wrapper!(@phantom EngineInfo: ffi::gpgme_engine_info_t);
+    impl_wrapper!(EngineInfo(ffi::gpgme_engine_info_t), PhantomData);
 
     /// Returns the `Protocol` implemented by the engine.
     #[inline]

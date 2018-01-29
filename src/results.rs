@@ -10,14 +10,15 @@ use ffi;
 use libc;
 
 use {
-    Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm, NonZero, OpResult, Result, SignMode,
+    Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm, OpResult, Result, SignMode,
     SignatureSummary, Validity,
 };
 use notation::SignatureNotations;
+use utils::NonNull;
 
 macro_rules! impl_result {
     ($Name:ident: $T:ty = $Constructor:expr) => {
-        pub struct $Name(NonZero<$T>);
+        pub struct $Name(NonNull<$T>);
 
         unsafe impl Send for $Name {}
         unsafe impl Sync for $Name {}
@@ -53,7 +54,7 @@ macro_rules! impl_result {
         }
 
         impl $Name {
-            impl_wrapper!($Name: $T);
+            impl_wrapper!($Name($T));
         }
     };
 }
@@ -61,13 +62,13 @@ macro_rules! impl_result {
 macro_rules! impl_subresult {
     ($Name:ident: $T:ty, $IterName:ident, $Owner:ty) => {
         #[derive(Copy, Clone)]
-        pub struct $Name<'a>(NonZero<$T>, PhantomData<&'a $Owner>);
+        pub struct $Name<'a>(NonNull<$T>, PhantomData<&'a $Owner>);
 
         unsafe impl<'a> Send for $Name<'a> {}
         unsafe impl<'a> Sync for $Name<'a> {}
 
         impl<'a> $Name<'a> {
-            impl_wrapper!(@phantom $Name: $T);
+            impl_wrapper!($Name($T), PhantomData);
         }
 
         impl_list_iterator!($IterName, $Name, $T);

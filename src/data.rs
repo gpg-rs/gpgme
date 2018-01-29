@@ -5,7 +5,6 @@ use std::fs::File;
 use std::io::{self, Cursor};
 use std::io::prelude::*;
 use std::marker::PhantomData;
-use std::mem;
 #[cfg(unix)]
 use std::os::unix::io::AsRawFd;
 use std::ptr;
@@ -17,8 +16,8 @@ use conv::{UnwrapOrSaturate, ValueInto};
 use ffi;
 use libc;
 
-use {Error, NonZero, Result};
-use utils::CStrArgument;
+use {Error, Result};
+use utils::{CStrArgument, NonNull};
 
 ffi_enum_wrapper! {
     pub enum Encoding: ffi::gpgme_data_encoding_t {
@@ -81,7 +80,7 @@ impl<S> fmt::Display for WrappedError<S> {
 }
 
 #[derive(Debug)]
-pub struct Data<'a>(NonZero<ffi::gpgme_data_t>, PhantomData<&'a ()>);
+pub struct Data<'a>(NonNull<ffi::gpgme_data_t>, PhantomData<&'a mut ()>);
 
 unsafe impl<'a> Send for Data<'a> {}
 
@@ -95,22 +94,7 @@ impl<'a> Drop for Data<'a> {
 }
 
 impl<'a> Data<'a> {
-    #[inline]
-    pub unsafe fn from_raw(raw: ffi::gpgme_data_t) -> Self {
-        Data(NonZero::new(raw).unwrap(), PhantomData)
-    }
-
-    #[inline]
-    pub fn as_raw(&self) -> ffi::gpgme_data_t {
-        self.0.get()
-    }
-
-    #[inline]
-    pub fn into_raw(self) -> ffi::gpgme_data_t {
-        let raw = self.0.get();
-        mem::forget(self);
-        raw
-    }
+    impl_wrapper!(Data(ffi::gpgme_data_t), PhantomData);
 
     #[inline]
     pub fn stdin() -> Result<Data<'static>> {
@@ -160,16 +144,12 @@ impl<'a> Data<'a> {
     pub fn from_bytes<B: AsRef<[u8]>>(bytes: B) -> Result<Data<'static>> {
         ::init();
         let bytes = bytes.as_ref();
-        let mut data = unsafe {
+        unsafe {
             let (buf, len) = (bytes.as_ptr() as *const _, bytes.len().into());
             let mut data = ptr::null_mut();
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf, len, 1));
-            Data::from_raw(data)
-        };
-        require_gpgme_ver!((1, 7) => {
-            let _ = data.set_flag("size-hint", bytes.len().to_string());
-        });
-        Ok(data)
+            Ok(Data::from_raw(data))
+        }
     }
 
     /// Constructs a data object which copies from `buf` as needed.
@@ -177,16 +157,12 @@ impl<'a> Data<'a> {
     pub fn from_buffer<B: AsRef<[u8]> + ?Sized>(buf: &B) -> Result<Data> {
         ::init();
         let buf = buf.as_ref();
-        let mut data = unsafe {
+        unsafe {
             let (buf, len) = (buf.as_ptr() as *const _, buf.len().into());
             let mut data = ptr::null_mut();
             return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf, len, 0));
-            Data::from_raw(data)
-        };
-        require_gpgme_ver!((1, 7) => {
-            let _ = data.set_flag("size-hint", buf.len().to_string());
-        });
-        Ok(data)
+            Ok(Data::from_raw(data))
+        }
     }
 
     #[inline]
@@ -372,8 +348,12 @@ impl<'a> Data<'a> {
         unsafe {
             let mut len = 0;
             ffi::gpgme_data_release_and_get_mem(self.into_raw(), &mut len)
-                .as_ref()
-                .map(|b| slice::from_raw_parts(b as *const _ as *const _, len).to_vec())
+                .as_mut()
+                .map(|b| {
+                    let r = slice::from_raw_parts(b as *const _ as *const _, len).to_vec();
+                    ffi::gpgme_free(b as *mut _ as *mut _);
+                    r
+                })
         }
     }
 }

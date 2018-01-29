@@ -10,17 +10,17 @@ use ffi;
 use libc;
 
 use {
-    Data, EditInteractor, Error, ExportMode, IntoData, Key, KeyListMode, NonZero,
-    PassphraseProvider, ProgressHandler, Protocol, Result, SignMode, TrustItem,
+    Data, EditInteractor, Error, ExportMode, IntoData, Key, KeyListMode, PassphraseProvider,
+    ProgressHandler, Protocol, Result, SignMode, TrustItem,
 };
 use {callbacks, edit, results};
 use engine::EngineInfo;
 use notation::SignatureNotations;
-use utils::CStrArgument;
+use utils::{CStrArgument, NonNull, SmallVec};
 
 /// A context for cryptographic operations
 #[must_use]
-pub struct Context(NonZero<ffi::gpgme_ctx_t>);
+pub struct Context(NonNull<ffi::gpgme_ctx_t>);
 
 impl Drop for Context {
     #[inline]
@@ -30,7 +30,7 @@ impl Drop for Context {
 }
 
 impl Context {
-    impl_wrapper!(Context: ffi::gpgme_ctx_t);
+    impl_wrapper!(Context(ffi::gpgme_ctx_t));
 
     #[inline]
     fn new() -> Result<Self> {
@@ -599,21 +599,24 @@ impl Context {
             let mut userids = userids.into_iter();
             match (userids.next(), userids.next()) {
                 (Some(first), Some(second)) => (
-                    Some(userids.fold(
-                        [first.as_ref(), second.as_ref()].join(&b'\n'),
-                        |mut acc, x| {
-                            acc.push(b'\n');
-                            acc.extend_from_slice(x.as_ref());
-                            acc
-                        },
-                    )),
+                    Some(
+                        userids
+                            .fold(
+                                [first.as_ref(), second.as_ref()].join(&b'\n'),
+                                |mut acc, x| {
+                                    acc.push(b'\n');
+                                    acc.extend_from_slice(x.as_ref());
+                                    acc
+                                },
+                            )
+                            .into_cstr(),
+                    ),
                     ::KeySigningFlags::LFSEP | flags,
                 ),
-                (Some(first), None) => (Some(first.as_ref().to_owned()), flags),
+                (Some(first), None) => (Some(first.as_ref().to_owned().into_cstr()), flags),
                 _ => (None, flags),
             }
         };
-        let userids = userids.map(Vec::into_cstr);
         let expires = expires
             .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
             .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
@@ -801,7 +804,7 @@ impl Context {
 
     pub fn import_keys<'k, I>(&mut self, keys: I) -> Result<results::ImportResult>
     where I: IntoIterator<Item = &'k Key> {
-        let mut ptrs: Vec<_> = keys.into_iter().map(Key::as_raw).collect();
+        let mut ptrs: SmallVec<_> = keys.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
             ptrs.as_mut_ptr()
@@ -827,7 +830,7 @@ impl Context {
     where
         I: IntoIterator,
         I::Item: CStrArgument, {
-        let patterns: Vec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
+        let patterns: SmallVec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
         self.export_(&patterns, mode | ExportMode::EXTERN, None)
     }
 
@@ -845,7 +848,7 @@ impl Context {
         I::Item: CStrArgument,
         D: IntoData<'a>, {
         let mut dst = dst.into_data()?;
-        let patterns: Vec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
+        let patterns: SmallVec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
         self.export_(&patterns, mode, Some(dst.borrow_mut()))
     }
 
@@ -854,7 +857,7 @@ impl Context {
         I: IntoIterator,
         I::Item: AsRef<CStr>, {
         let dst = dst.map_or(ptr::null_mut(), |d| d.as_raw());
-        let mut patterns: Vec<_> = patterns.into_iter().map(|s| s.as_ref().as_ptr()).collect();
+        let mut patterns: SmallVec<_> = patterns.into_iter().map(|s| s.as_ref().as_ptr()).collect();
         let ptr = if !patterns.is_empty() {
             patterns.push(ptr::null());
             patterns.as_mut_ptr()
@@ -892,7 +895,7 @@ impl Context {
     ) -> Result<()>
     where I: IntoIterator<Item = &'k Key> {
         let dst = dst.map_or(ptr::null_mut(), |d| d.as_raw());
-        let mut ptrs: Vec<_> = keys.into_iter().map(Key::as_raw).collect();
+        let mut ptrs: SmallVec<_> = keys.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
             ptrs.as_mut_ptr()
@@ -1162,7 +1165,7 @@ impl Context {
         C: IntoData<'c>, {
         let mut plain = plaintext.into_data()?;
         let mut cipher = ciphertext.into_data()?;
-        let mut ptrs: Vec<_> = recp.into_iter().map(Key::as_raw).collect();
+        let mut ptrs: SmallVec<_> = recp.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
             ptrs.as_mut_ptr()
@@ -1233,7 +1236,7 @@ impl Context {
         C: IntoData<'c>, {
         let mut plain = plaintext.into_data()?;
         let mut cipher = ciphertext.into_data()?;
-        let mut ptrs: Vec<_> = recp.into_iter().map(Key::as_raw).collect();
+        let mut ptrs: SmallVec<_> = recp.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
             ptrs.as_mut_ptr()
@@ -1407,8 +1410,8 @@ impl<'a> Keys<'a, ()> {
     where
         I: IntoIterator,
         I::Item: CStrArgument, {
-        let patterns: Vec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
-        let mut patterns: Vec<_> = patterns.iter().map(|s| s.as_ref().as_ptr()).collect();
+        let patterns: SmallVec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
+        let mut patterns: SmallVec<_> = patterns.iter().map(|s| s.as_ref().as_ptr()).collect();
         let ptr = if !patterns.is_empty() {
             patterns.push(ptr::null());
             patterns.as_mut_ptr()

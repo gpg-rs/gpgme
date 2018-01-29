@@ -31,6 +31,7 @@ cfg-if = "0.1"
 bitflags = "1"
 lazy_static = "1"
 conv = "0.3"
+smallvec = "0.6"
 cstr-argument = "0.0.2"
 gpg-error = "0.3.1"
 

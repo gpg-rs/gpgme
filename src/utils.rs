@@ -4,15 +4,13 @@ use std::io::prelude::*;
 use ffi;
 use libc;
 
-use error::Error;
+use Error;
 
 pub use cstr_argument::CStrArgument;
 
-include!(concat!(env!("OUT_DIR"), "/version.rs"));
+pub type SmallVec<T> = ::smallvec::SmallVec<[T; 4]>;
 
-macro_rules! try_opt {
-    ($e:expr) => (match $e { Some(v) => v, None => return None });
-}
+include!(concat!(env!("OUT_DIR"), "/version.rs"));
 
 macro_rules! count_list {
     ($list:expr) => {
@@ -20,7 +18,7 @@ macro_rules! count_list {
             let mut count = 0usize;
             let mut current = $list;
             while !current.is_null() {
-                count = try_opt!(count.checked_add(1));
+                count = count.checked_add(1)?;
                 current = (*current).next;
             }
             Some(count)
@@ -54,7 +52,7 @@ macro_rules! impl_list_iterator {
                 unsafe {
                     self.current.take().map(|c| {
                         self.current = (*c.as_raw()).next.as_mut().map(|r| $Item::from_raw(r));
-                        self.left = self.left.and_then(|x| x.checked_sub(1));
+                        self.left = self.left.map(|x| x.saturating_sub(1));
                         c
                     })
                 }
@@ -75,31 +73,20 @@ macro_rules! impl_list_iterator {
 }
 
 macro_rules! impl_wrapper {
-    (@phantom $Name:ident: $T:ty) => {
+    ($Name:ident($T:ty)$(, $Args:expr)*) => {
         #[inline]
         pub unsafe fn from_raw(raw: $T) -> Self {
-            $Name(NonZero::new(raw).unwrap(), PhantomData)
+            $Name(NonNull::<$T>::new(raw).unwrap()$(, $Args)*)
         }
 
         #[inline]
         pub fn as_raw(&self) -> $T {
-            self.0.get()
-        }
-    };
-    ($Name:ident: $T:ty) => {
-        #[inline]
-        pub unsafe fn from_raw(raw: $T) -> Self {
-            $Name(NonZero::new(raw).unwrap())
-        }
-
-        #[inline]
-        pub fn as_raw(&self) -> $T {
-            self.0.get()
+            self.0.as_ptr()
         }
 
         #[inline]
         pub fn into_raw(self) -> $T {
-            let raw = self.0.get();
+            let raw = self.as_raw();
             ::std::mem::forget(self);
             raw
         }
@@ -234,43 +221,55 @@ impl Write for FdWriter {
     }
 }
 
-cfg_if! {
-    if #[cfg(any(nightly, feature = "nightly"))] {
-        pub use core::nonzero::NonZero;
-    } else {
-        pub unsafe trait Zeroable {
-            fn is_zero(&self) -> bool;
-        }
+pub(crate) trait Ptr {
+    type Inner;
+}
 
-        unsafe impl<T: ?Sized> Zeroable for *mut T {
-            #[inline]
-            fn is_zero(&self) -> bool {
-                (*self as *mut u8).is_null()
-            }
-        }
+impl<T> Ptr for *mut T {
+    type Inner = T;
+}
 
-        unsafe impl<T: ?Sized> Zeroable for *const T {
-            #[inline]
-            fn is_zero(&self) -> bool {
-                (*self as *mut u8).is_null()
-            }
-        }
+impl<T> Ptr for *const T {
+    type Inner = T;
+}
 
-        #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-        pub struct NonZero<T: Zeroable>(T);
+pub(crate) type NonNull<T> = details::NonNull<<T as Ptr>::Inner>;
 
-        impl<T: Zeroable> NonZero<T> {
-            #[inline(always)]
-            pub fn new(inner: T) -> Option<Self> {
-                if inner.is_zero() {
-                    None
-                } else {
-                    Some(NonZero(inner))
+mod details {
+    cfg_if! {
+        if #[cfg(any(nightly, feature = "nightly"))] {
+            pub type NonNull<T> = ::std::ptr::NonNull<T>;
+        } else {
+            use std::fmt;
+
+            pub struct NonNull<T>(*const T);
+
+            impl<T> NonNull<T> {
+                #[inline(always)]
+                pub fn new(inner: *mut T) -> Option<Self> {
+                    if inner.is_null() {
+                        None
+                    } else {
+                        Some(NonNull(inner))
+                    }
+                }
+
+                pub fn as_ptr(&self) -> *mut T {
+                    self.0 as *mut T
                 }
             }
 
-            pub fn get(self) -> T {
-                self.0
+            impl<T> Copy for NonNull<T> {}
+            impl<T> Clone for NonNull<T> {
+                fn clone(&self) -> Self {
+                    *self
+                }
+            }
+
+            impl<T> fmt::Debug for NonNull<T> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    fmt::Pointer::fmt(&self.as_ptr(), f)
+                }
             }
         }
     }

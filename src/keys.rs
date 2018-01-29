@@ -6,10 +6,11 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ffi;
 
-use {Error, KeyAlgorithm, KeyListMode, NonZero, Protocol, Validity};
+use {Error, KeyAlgorithm, KeyListMode, Protocol, Validity};
 use notation::SignatureNotations;
+use utils::{CStrArgument, NonNull};
 
-pub struct Key(NonZero<ffi::gpgme_key_t>);
+pub struct Key(NonNull<ffi::gpgme_key_t>);
 
 unsafe impl Send for Key {}
 unsafe impl Sync for Key {}
@@ -34,7 +35,7 @@ impl Clone for Key {
 }
 
 impl Key {
-    impl_wrapper!(Key: ffi::gpgme_key_t);
+    impl_wrapper!(Key(ffi::gpgme_key_t));
 
     #[inline]
     pub fn is_revoked(&self) -> bool {
@@ -79,6 +80,11 @@ impl Key {
     #[inline]
     pub fn is_qualified(&self) -> bool {
         unsafe { (*self.as_raw()).is_qualified() }
+    }
+
+    #[inline]
+    pub fn is_de_vs(&self) -> bool {
+        self.subkeys().all(|x| x.is_de_vs())
     }
 
     #[inline]
@@ -172,8 +178,8 @@ impl Key {
 
     #[inline]
     pub fn short_id(&self) -> Result<&str, Option<Utf8Error>> {
-        self.id()
-            .map(|s| if s.len() >= 8 { &s[(s.len() - 8)..] } else { s })
+        self.short_id_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
@@ -277,13 +283,13 @@ impl fmt::Debug for Key {
 }
 
 #[derive(Copy, Clone)]
-pub struct Subkey<'a>(NonZero<ffi::gpgme_subkey_t>, PhantomData<&'a Key>);
+pub struct Subkey<'a>(NonNull<ffi::gpgme_subkey_t>, PhantomData<&'a Key>);
 
 unsafe impl<'a> Send for Subkey<'a> {}
 unsafe impl<'a> Sync for Subkey<'a> {}
 
 impl<'a> Subkey<'a> {
-    impl_wrapper!(@phantom Subkey: ffi::gpgme_subkey_t);
+    impl_wrapper!(Subkey(ffi::gpgme_subkey_t), PhantomData);
 
     #[inline]
     pub fn id(&self) -> Result<&'a str, Option<Utf8Error>> {
@@ -385,6 +391,11 @@ impl<'a> Subkey<'a> {
     #[inline]
     pub fn is_secret(&self) -> bool {
         unsafe { (*self.as_raw()).secret() }
+    }
+
+    #[inline]
+    pub fn is_de_vs(&self) -> bool {
+        unsafe { (*self.as_raw()).is_de_vs() }
     }
 
     #[inline]
@@ -493,13 +504,13 @@ impl<'a> fmt::Debug for Subkey<'a> {
 impl_list_iterator!(Subkeys, Subkey, ffi::gpgme_subkey_t);
 
 #[derive(Copy, Clone)]
-pub struct UserId<'a>(NonZero<ffi::gpgme_user_id_t>, PhantomData<&'a Key>);
+pub struct UserId<'a>(NonNull<ffi::gpgme_user_id_t>, PhantomData<&'a Key>);
 
 unsafe impl<'a> Send for UserId<'a> {}
 unsafe impl<'a> Sync for UserId<'a> {}
 
 impl<'a> UserId<'a> {
-    impl_wrapper!(@phantom UserId: ffi::gpgme_user_id_t);
+    impl_wrapper!(UserId(ffi::gpgme_user_id_t), PhantomData);
 
     #[inline]
     pub fn id(&self) -> Result<&'a str, Option<Utf8Error>> {
@@ -627,13 +638,13 @@ impl<'a> fmt::Display for UserId<'a> {
 impl_list_iterator!(UserIds, UserId, ffi::gpgme_user_id_t);
 
 #[derive(Copy, Clone)]
-pub struct UserIdSignature<'a>(NonZero<ffi::gpgme_key_sig_t>, PhantomData<&'a Key>);
+pub struct UserIdSignature<'a>(NonNull<ffi::gpgme_key_sig_t>, PhantomData<&'a Key>);
 
 unsafe impl<'a> Send for UserIdSignature<'a> {}
 unsafe impl<'a> Sync for UserIdSignature<'a> {}
 
 impl<'a> UserIdSignature<'a> {
-    impl_wrapper!(@phantom UserIdSignature: ffi::gpgme_key_sig_t);
+    impl_wrapper!(UserIdSignature(ffi::gpgme_key_sig_t), PhantomData);
 
     #[inline]
     pub fn signer_key_id(&self) -> Result<&'a str, Option<Utf8Error>> {

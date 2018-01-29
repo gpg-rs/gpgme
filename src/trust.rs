@@ -4,9 +4,9 @@ use std::str::Utf8Error;
 
 use ffi;
 
-use NonZero;
+use utils::NonNull;
 
-pub struct TrustItem(NonZero<ffi::gpgme_trust_item_t>);
+pub struct TrustItem(NonNull<ffi::gpgme_trust_item_t>);
 
 unsafe impl Send for TrustItem {}
 unsafe impl Sync for TrustItem {}
@@ -29,7 +29,7 @@ impl Clone for TrustItem {
 }
 
 impl TrustItem {
-    impl_wrapper!(TrustItem: ffi::gpgme_trust_item_t);
+    impl_wrapper!(TrustItem(ffi::gpgme_trust_item_t));
 
     #[inline]
     pub fn trust_level(&self) -> i32 {
