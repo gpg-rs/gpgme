@@ -1,6 +1,6 @@
 [package]
 name = "gpgme"
-version = "0.7.1"
+version = "0.7.2"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
 readme = "README.md"
