@@ -8,7 +8,7 @@ use ffi;
 
 use {Error, KeyAlgorithm, KeyListMode, Protocol, Validity};
 use notation::SignatureNotations;
-use utils::{CStrArgument, NonNull};
+use utils::NonNull;
 
 pub struct Key(NonNull<ffi::gpgme_key_t>);
 
@@ -248,12 +248,7 @@ impl Key {
     pub fn updated(&self) -> ::Result<Key> {
         let mut ctx = ::Context::from_protocol(self.protocol())?;
         let _ = ctx.set_key_list_mode(self.key_list_mode());
-        if self.has_secret() {
-            if let r @ Ok(_) = ctx.get_secret_key(self) {
-                return r;
-            }
-        }
-        ctx.get_key(self)
+        ctx.refresh_key(self)
     }
 }
 

@@ -1,4 +1,3 @@
-array_horizontal_layout_threshold = 10
 brace_style = "PreferSameLine"
 fn_args_density = "Compressed"
 imports_indent = "Block"

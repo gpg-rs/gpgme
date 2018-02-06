@@ -342,6 +342,18 @@ impl Context {
     }
 
     #[inline]
+    pub fn refresh_key(&mut self, key: &Key) -> Result<Key> {
+        let fpr = key.fingerprint_raw().ok_or(Error::AMBIGUOUS_NAME)?;
+        if key.has_secret() {
+            if let r @ Ok(_) = self.find_secret_key(fpr) {
+                return r;
+            }
+        }
+        self.find_key(fpr)
+    }
+
+    #[inline]
+    #[deprecated(since = "0.7.2", note = "use `refresh_key` instead")]
     pub fn get_key(&mut self, key: &Key) -> Result<Key> {
         key.fingerprint_raw()
             .ok_or(Error::AMBIGUOUS_NAME)
@@ -349,6 +361,7 @@ impl Context {
     }
 
     #[inline]
+    #[deprecated(since = "0.7.2", note = "use `refresh_key` instead")]
     pub fn get_secret_key(&mut self, key: &Key) -> Result<Key> {
         key.fingerprint_raw()
             .ok_or(Error::AMBIGUOUS_NAME)
