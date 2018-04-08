@@ -8,9 +8,9 @@ use std::thread;
 use ffi;
 use libc;
 
-use {Data, Error};
 use edit;
 use utils::FdWriter;
+use {Data, Error};
 
 #[derive(Debug, Copy, Clone)]
 pub struct PassphraseRequest<'a> {

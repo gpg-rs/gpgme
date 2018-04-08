@@ -8,8 +8,7 @@ use std::sync::{RwLock, RwLockReadGuard};
 
 use ffi;
 
-use {Protocol, Result};
-use utils::NonNull;
+use {NonNull, Protocol, Result};
 
 #[derive(Copy, Clone)]
 pub struct EngineInfo<'a>(NonNull<ffi::gpgme_engine_info_t>, PhantomData<&'a ()>);

@@ -4,7 +4,7 @@ use std::str::Utf8Error;
 
 use ffi;
 
-use utils::NonNull;
+use NonNull;
 
 pub struct TrustItem(NonNull<ffi::gpgme_trust_item_t>);
 

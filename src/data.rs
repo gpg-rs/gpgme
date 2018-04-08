@@ -2,8 +2,8 @@ use std::borrow::BorrowMut;
 use std::ffi::CStr;
 use std::fmt;
 use std::fs::File;
-use std::io::{self, Cursor};
 use std::io::prelude::*;
+use std::io::{self, Cursor};
 use std::marker::PhantomData;
 #[cfg(unix)]
 use std::os::unix::io::AsRawFd;
@@ -16,8 +16,8 @@ use conv::{UnwrapOrSaturate, ValueInto};
 use ffi;
 use libc;
 
-use {Error, Result};
-use utils::{CStrArgument, NonNull};
+use utils::CStrArgument;
+use {Error, NonNull, Result};
 
 ffi_enum_wrapper! {
     pub enum Encoding: ffi::gpgme_data_encoding_t {
@@ -478,13 +478,29 @@ extern "C" fn release_callback<S>(handle: *mut libc::c_void) {
 trait DataSource<'a> {
     type Output: BorrowMut<Data<'a>>;
 
-    fn into_data(self) -> Result<Self::Output>;
+    fn into_source(self) -> Result<Self::Output>;
+}
+
+impl<'a, T: Read + Send + 'a> DataSource<'a> for T {
+    type Output = Data<'a>;
+
+    fn into_source(self) -> Result<Self::Output> {
+        Data::from_reader(self).map_err(|e| e.error())
+    }
 }
 
 trait DataSink<'a> {
     type Output: BorrowMut<Data<'a>>;
 
-    fn into_data(self) -> Result<Self::Output>;
+    fn into_sink(self) -> Result<Self::Output>;
+}
+
+impl<'a, T: Write + Send + 'a> DataSink<'a> for T {
+    type Output = Data<'a>;
+
+    fn into_sink(self) -> Result<Self::Output> {
+        Data::from_writer(self).map_err(|e| e.error())
+    }
 }
 
 pub trait IntoData<'a> {
@@ -529,8 +545,7 @@ impl<'a> IntoData<'a> for &'a mut Vec<u8> {
     type Output = Data<'a>;
 
     fn into_data(self) -> Result<Data<'a>> {
-        // Waiting for https://github.com/rust-lang/rust/issues/30132 to stabilize
-        Data::from_writer(self).map_err(|e| e.error())
+        Data::from_seekable_stream(Cursor::new(self)).map_err(|e| e.error())
     }
 }
 

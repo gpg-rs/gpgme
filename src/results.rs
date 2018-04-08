@@ -9,15 +9,14 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use ffi;
 use libc;
 
+use notation::SignatureNotations;
 use {
-    Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm, OpResult, Result, SignMode,
+    Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm, NonNull, OpResult, Result, SignMode,
     SignatureSummary, Validity,
 };
-use notation::SignatureNotations;
-use utils::NonNull;
 
 macro_rules! impl_result {
-    ($Name:ident: $T:ty = $Constructor:expr) => {
+    ($Name:ident : $T:ty = $Constructor:expr) => {
         pub struct $Name(NonNull<$T>);
 
         unsafe impl Send for $Name {}
@@ -60,7 +59,7 @@ macro_rules! impl_result {
 }
 
 macro_rules! impl_subresult {
-    ($Name:ident: $T:ty, $IterName:ident, $Owner:ty) => {
+    ($Name:ident : $T:ty, $IterName:ident, $Owner:ty) => {
         #[derive(Copy, Clone)]
         pub struct $Name<'a>(NonNull<$T>, PhantomData<&'a $Owner>);
 

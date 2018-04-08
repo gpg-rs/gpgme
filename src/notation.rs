@@ -6,8 +6,8 @@ use std::str::Utf8Error;
 
 use ffi;
 
+use NonNull;
 use SignatureNotationFlags;
-use utils::NonNull;
 
 #[derive(Copy, Clone)]
 pub struct SignatureNotation<'a>(NonNull<ffi::gpgme_sig_notation_t>, PhantomData<&'a ()>);

@@ -15,10 +15,21 @@ pub type gpgme_off_t = libc::off_t;
 
 pub type gpgme_ssize_t = libc::ssize_t;
 
-pub enum gpgme_context {}
-pub type gpgme_ctx_t = *mut gpgme_context;
+// extern {
+//     pub type gpgme_context;
+//     pub type gpgme_data;
+// }
+#[repr(C)]
+pub struct gpgme_context {
+    _priv: [u8; 0],
+}
 
-pub enum gpgme_data {}
+#[repr(C)]
+pub struct gpgme_data {
+    _priv: [u8; 0],
+}
+
+pub type gpgme_ctx_t = *mut gpgme_context;
 pub type gpgme_data_t = *mut gpgme_data;
 
 #[repr(C)]

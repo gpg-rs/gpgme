@@ -6,7 +6,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ffi;
 
-use utils::NonNull;
+use NonNull;
 
 ffi_enum_wrapper! {
     pub enum TofuPolicy: ffi::gpgme_tofu_policy_t {

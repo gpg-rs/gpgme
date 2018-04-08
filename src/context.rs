@@ -1,22 +1,22 @@
-use std::{mem, ptr, result};
 use std::borrow::BorrowMut;
 use std::ffi::CStr;
 use std::fmt;
 use std::str::Utf8Error;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::{mem, ptr, result};
 
 use conv::{UnwrapOrSaturate, ValueInto};
 use ffi;
 use libc;
 
-use {
-    Data, EditInteractor, Error, ExportMode, IntoData, Key, KeyListMode, PassphraseProvider,
-    ProgressHandler, Protocol, Result, SignMode, TrustItem,
-};
-use {callbacks, edit, results};
 use engine::EngineInfo;
 use notation::SignatureNotations;
-use utils::{CStrArgument, NonNull, SmallVec};
+use utils::{CStrArgument, SmallVec};
+use {
+    Data, EditInteractor, Error, ExportMode, IntoData, Key, KeyListMode, NonNull,
+    PassphraseProvider, ProgressHandler, Protocol, Result, SignMode, TrustItem,
+};
+use {callbacks, edit, results};
 
 /// A context for cryptographic operations
 #[must_use]
@@ -467,6 +467,17 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    /// Creates a new OpenPGP key.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use gpgme::{Context, Data, Protocol};
+    ///
+    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
+    /// let result = ctx.create_key("Example User <example@example.com>", "default", None).unwrap();
+    /// println!("Key Fingerprint: {}", result.fingerprint().unwrap());
+    /// ```
     #[inline]
     pub fn create_key<S1, S2>(
         &mut self, userid: S1, algo: S2, expires: Option<SystemTime>
@@ -484,24 +495,30 @@ impl Context {
     where
         S1: CStrArgument,
         S2: CStrArgument, {
-        let userid = userid.into_cstr();
-        let algo = algo.into_cstr();
-        let expires = expires
-            .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
-            .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
+        require_gpgme_ver! {
+            (1, 7) => {
+                let userid = userid.into_cstr();
+                let algo = algo.into_cstr();
+                let expires = expires
+                    .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
+                    .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
 
-        unsafe {
-            return_err!(ffi::gpgme_op_createkey(
-                self.as_raw(),
-                userid.as_ref().as_ptr(),
-                algo.as_ref().as_ptr(),
-                0,
-                expires,
-                ptr::null_mut(),
-                flags.bits(),
-            ));
+                unsafe {
+                    return_err!(ffi::gpgme_op_createkey(
+                            self.as_raw(),
+                            userid.as_ref().as_ptr(),
+                            algo.as_ref().as_ptr(),
+                            0,
+                            expires,
+                            ptr::null_mut(),
+                            flags.bits(),
+                            ));
+                }
+                Ok(self.get_result().unwrap())
+            } else {
+                Err(Error::NOT_SUPPORTED)
+            }
         }
-        Ok(self.get_result().unwrap())
     }
 
     #[inline]

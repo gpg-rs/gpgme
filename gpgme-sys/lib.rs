@@ -7,5 +7,5 @@ pub use self::funcs::*;
 pub use self::types::*;
 
 mod consts;
-mod types;
 mod funcs;
+mod types;

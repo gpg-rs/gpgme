@@ -2,8 +2,6 @@
 #![deny(missing_debug_implementations)]
 #[macro_use]
 extern crate bitflags;
-#[macro_use]
-extern crate cfg_if;
 extern crate conv;
 extern crate cstr_argument;
 #[macro_use]
@@ -20,7 +18,7 @@ use std::mem;
 use std::ptr;
 use std::result;
 use std::str::Utf8Error;
-use std::sync::{Mutex, Once, RwLock, ONCE_INIT};
+use std::sync::{Mutex, Once, RwLock};
 
 use self::engine::EngineInfoGuard;
 use self::utils::CStrArgument;
@@ -47,16 +45,16 @@ pub use self::trust::TrustItem;
 #[macro_use]
 mod utils;
 mod callbacks;
-mod flags;
-pub mod results;
-pub mod engine;
 pub mod context;
 pub mod data;
-pub mod keys;
-pub mod trust;
-pub mod notation;
-pub mod tofu;
 pub mod edit;
+pub mod engine;
+mod flags;
+pub mod keys;
+pub mod notation;
+pub mod results;
+pub mod tofu;
+pub mod trust;
 
 /// Constants for use with `Token::get_dir_info`.
 pub mod info {
@@ -164,7 +162,7 @@ where
 /// ```
 #[inline]
 pub fn init() -> Token {
-    static INIT: Once = ONCE_INIT;
+    static INIT: Once = Once::new();
     static mut VERSION: Option<&str> = None;
     static mut ENGINE_LOCK: Option<mem::ManuallyDrop<RwLock<()>>> = None;
 
@@ -331,3 +329,5 @@ impl Token {
 unsafe trait OpResult: Clone {
     fn from_context(ctx: &Context) -> Option<Self>;
 }
+
+type NonNull<T> = ptr::NonNull<<T as utils::Ptr>::Inner>;

@@ -6,9 +6,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ffi;
 
-use {Error, KeyAlgorithm, KeyListMode, Protocol, Validity};
 use notation::SignatureNotations;
-use utils::NonNull;
+use {Error, KeyAlgorithm, KeyListMode, NonNull, Protocol, Validity};
 
 pub struct Key(NonNull<ffi::gpgme_key_t>);
 
@@ -99,8 +98,6 @@ impl Key {
 
     #[inline]
     pub fn is_root(&self) -> bool {
-        #[allow(unused_imports)]
-        use std::ascii::AsciiExt;
         if let (Some(fpr), Some(chain_id)) = (self.fingerprint_raw(), self.chain_id_raw()) {
             fpr.to_bytes().eq_ignore_ascii_case(chain_id.to_bytes())
         } else {

@@ -13,10 +13,12 @@ use gpgme::{self, Context, PassphraseRequest, PinentryMode};
 
 #[macro_export]
 macro_rules! fail_if_err {
-    ($e:expr) => (match $e {
-        Ok(v) => v,
-        Err(err) => panic!("Operation failed: {}", err),
-    });
+    ($e:expr) => {
+        match $e {
+            Ok(v) => v,
+            Err(err) => panic!("Operation failed: {}", err),
+        }
+    };
 }
 
 macro_rules! count {

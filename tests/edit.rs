@@ -5,8 +5,8 @@ extern crate tempdir;
 
 use std::io::prelude::*;
 
-use gpgme::{Error, Result};
 use gpgme::edit::{self, EditInteractionStatus, Editor};
+use gpgme::{Error, Result};
 
 use self::support::passphrase_cb;
 

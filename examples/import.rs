@@ -6,8 +6,8 @@ use std::process::exit;
 
 use getopts::Options;
 
-use gpgme::{Context, Data, ImportFlags};
 use gpgme::data;
+use gpgme::{Context, Data, ImportFlags};
 
 fn print_import_result(result: gpgme::ImportResult) {
     for import in result.imports() {
