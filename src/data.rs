@@ -1,5 +1,6 @@
 use std::borrow::BorrowMut;
 use std::ffi::CStr;
+use std::error::Error as StdError;
 use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
@@ -76,6 +77,12 @@ impl<S> fmt::Debug for WrappedError<S> {
 impl<S> fmt::Display for WrappedError<S> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.0, fmt)
+    }
+}
+
+impl<S> StdError for WrappedError<S> {
+    fn description(&self) -> &str {
+        StdError::description(&self.0)
     }
 }
 
