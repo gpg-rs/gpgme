@@ -1,6 +1,7 @@
 use std::borrow::BorrowMut;
 use std::ffi::CStr;
 use std::fmt;
+use std::iter::FusedIterator;
 use std::str::Utf8Error;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{mem, ptr, result};
@@ -12,11 +13,11 @@ use libc;
 use engine::EngineInfo;
 use notation::SignatureNotations;
 use utils::{CStrArgument, SmallVec};
+use {callbacks, edit, results};
 use {
     Data, EditInteractor, Error, ExportMode, IntoData, Key, KeyListMode, NonNull,
     PassphraseProvider, ProgressHandler, Protocol, Result, SignMode, TrustItem,
 };
-use {callbacks, edit, results};
 
 /// A context for cryptographic operations
 #[must_use]
@@ -93,15 +94,13 @@ impl Context {
     }
 
     #[inline]
-    pub fn get_flag<S>(&self, name: S) -> result::Result<&str, Option<Utf8Error>>
-    where S: CStrArgument {
+    pub fn get_flag(&self, name: impl CStrArgument) -> result::Result<&str, Option<Utf8Error>> {
         self.get_flag_raw(name)
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn get_flag_raw<S>(&self, name: S) -> Option<&CStr>
-    where S: CStrArgument {
+    pub fn get_flag_raw(&self, name: impl CStrArgument) -> Option<&CStr> {
         let name = name.into_cstr();
         unsafe {
             ffi::gpgme_get_ctx_flag(self.as_raw(), name.as_ref().as_ptr())
@@ -111,32 +110,35 @@ impl Context {
     }
 
     #[inline]
-    pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
-    where
-        S1: CStrArgument,
-        S2: CStrArgument, {
-        let name = name.into_cstr();
-        let value = value.into_cstr();
-        unsafe {
-            return_err!(ffi::gpgme_set_ctx_flag(
-                self.as_raw(),
-                name.as_ref().as_ptr(),
-                value.as_ref().as_ptr(),
-            ));
+    pub fn set_flag(&mut self, name: impl CStrArgument, value: impl CStrArgument) -> Result<()> {
+        require_gpgme_ver! {
+            (1, 7) => {
+                let name = name.into_cstr();
+                let value = value.into_cstr();
+                unsafe {
+                    return_err!(ffi::gpgme_set_ctx_flag(
+                            self.as_raw(),
+                            name.as_ref().as_ptr(),
+                            value.as_ref().as_ptr(),
+                            ));
+                }
+                Ok(())
+            } else {
+                Err(Error::NOT_SUPPORTED)
+            }
         }
-        Ok(())
     }
 
     #[inline]
-    pub fn engine_info(&self) -> EngineInfo {
+    pub fn engine_info(&self) -> EngineInfo<'_> {
         unsafe { EngineInfo::from_raw(ffi::gpgme_ctx_get_engine_info(self.as_raw())) }
     }
 
     #[inline]
-    pub fn set_engine_path<S>(&mut self, path: S) -> Result<()>
-    where S: CStrArgument {
+    pub fn set_engine_path(&mut self, path: impl CStrArgument) -> Result<()> {
         let path = path.into_cstr();
-        let home_dir = self.engine_info()
+        let home_dir = self
+            .engine_info()
             .home_dir_raw()
             .map_or(ptr::null(), CStr::as_ptr);
         unsafe {
@@ -151,9 +153,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn set_engine_home_dir<S>(&mut self, home_dir: S) -> Result<()>
-    where S: CStrArgument {
-        let path = self.engine_info()
+    pub fn set_engine_home_dir(&mut self, home_dir: impl CStrArgument) -> Result<()> {
+        let path = self
+            .engine_info()
             .path_raw()
             .map_or(ptr::null(), CStr::as_ptr);
         let home_dir = home_dir.into_cstr();
@@ -169,14 +171,11 @@ impl Context {
     }
 
     #[inline]
-    pub fn set_engine_info<S1, S2>(
-        &mut self, path: Option<S1>, home_dir: Option<S2>
-    ) -> Result<()>
-    where
-        S1: CStrArgument,
-        S2: CStrArgument, {
-        let path = path.map(S1::into_cstr);
-        let home_dir = home_dir.map(S2::into_cstr);
+    pub fn set_engine_info(
+        &mut self, path: Option<impl CStrArgument>, home_dir: Option<impl CStrArgument>,
+    ) -> Result<()> {
+        let path = path.map(CStrArgument::into_cstr);
+        let home_dir = home_dir.map(CStrArgument::into_cstr);
         unsafe {
             let path = path.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
             let home_dir = home_dir
@@ -199,7 +198,8 @@ impl Context {
 
     #[inline]
     pub fn set_pinentry_mode(&mut self, mode: ::PinentryMode) -> Result<()> {
-        if (mode != ::PinentryMode::Default) && (self.protocol() == Protocol::OpenPgp)
+        if (mode != ::PinentryMode::Default)
+            && (self.protocol() == Protocol::OpenPgp)
             && !self.engine_info().check_version("2.1")
         {
             return Err(Error::NOT_SUPPORTED);
@@ -228,17 +228,17 @@ impl Context {
     ///     // Do something with ctx requiring a passphrase, for example decryption
     /// });
     /// ```
-    pub fn with_passphrase_provider<P, F, R>(&mut self, provider: P, f: F) -> R
-    where
-        P: PassphraseProvider,
-        F: FnOnce(&mut Context) -> R, {
+    pub fn with_passphrase_provider<R, P>(
+        &mut self, provider: P, f: impl FnOnce(&mut Context) -> R,
+    ) -> R
+    where P: PassphraseProvider {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_passphrase_cb(self.as_raw(), &mut old.0, &mut old.1);
             let mut wrapper = callbacks::PassphraseProviderWrapper {
                 ctx: self.as_raw(),
-                old: old,
                 state: Some(Ok(provider)),
+                old,
             };
             ffi::gpgme_set_passphrase_cb(
                 self.as_raw(),
@@ -249,17 +249,17 @@ impl Context {
         }
     }
 
-    pub fn with_progress_handler<H, F, R>(&mut self, handler: H, f: F) -> R
-    where
-        H: ProgressHandler,
-        F: FnOnce(&mut Context) -> R, {
+    pub fn with_progress_handler<R, H>(
+        &mut self, handler: H, f: impl FnOnce(&mut Context) -> R,
+    ) -> R
+    where H: ProgressHandler {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_progress_cb(self.as_raw(), &mut old.0, &mut old.1);
             let mut wrapper = callbacks::ProgressHandlerWrapper {
                 ctx: self.as_raw(),
-                old: old,
                 state: Some(Ok(handler)),
+                old,
             };
             ffi::gpgme_set_progress_cb(
                 self.as_raw(),
@@ -270,17 +270,17 @@ impl Context {
         }
     }
 
-    pub fn with_status_handler<H, F, R>(&mut self, handler: H, f: F) -> R
-    where
-        H: ::StatusHandler,
-        F: FnOnce(&mut Context) -> R, {
+    pub fn with_status_handler<R, H>(
+        &mut self, handler: H, f: impl FnOnce(&mut Context) -> R,
+    ) -> R
+    where H: ::StatusHandler {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_status_cb(self.as_raw(), &mut old.0, &mut old.1);
             let mut wrapper = callbacks::StatusHandlerWrapper {
                 ctx: self.as_raw(),
-                old: old,
                 state: Some(Ok(handler)),
+                old,
             };
             ffi::gpgme_set_status_cb(
                 self.as_raw(),
@@ -292,9 +292,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn find_trust_items<S: CStrArgument>(
-        &mut self, pattern: S, max_level: i32
-    ) -> Result<TrustItems> {
+    pub fn find_trust_items(
+        &mut self, pattern: impl CStrArgument, max_level: i32,
+    ) -> Result<TrustItems<'_>> {
         let pattern = pattern.into_cstr();
         unsafe {
             return_err!(ffi::gpgme_op_trustlist_start(
@@ -332,47 +332,31 @@ impl Context {
     }
 
     #[inline]
-    pub fn keys(&mut self) -> Result<Keys> {
-        Keys::new(self, None::<String>, false)
+    pub fn keys(&mut self) -> Result<Keys<'_>> {
+        self.find_keys(None::<String>)
     }
 
     #[inline]
-    pub fn secret_keys(&mut self) -> Result<Keys> {
-        Keys::new(self, None::<String>, true)
+    pub fn secret_keys(&mut self) -> Result<Keys<'_>> {
+        self.find_secret_keys(None::<String>)
     }
 
     #[inline]
     pub fn refresh_key(&mut self, key: &Key) -> Result<Key> {
         let fpr = key.fingerprint_raw().ok_or(Error::AMBIGUOUS_NAME)?;
         if key.has_secret() {
-            if let r @ Ok(_) = self.find_secret_key(fpr) {
+            if let r @ Ok(_) = self.get_secret_key(fpr) {
                 return r;
             }
         }
-        self.find_key(fpr)
-    }
-
-    #[inline]
-    #[deprecated(since = "0.7.2", note = "use `refresh_key` instead")]
-    pub fn get_key(&mut self, key: &Key) -> Result<Key> {
-        key.fingerprint_raw()
-            .ok_or(Error::AMBIGUOUS_NAME)
-            .and_then(|x| self.find_key(x))
-    }
-
-    #[inline]
-    #[deprecated(since = "0.7.2", note = "use `refresh_key` instead")]
-    pub fn get_secret_key(&mut self, key: &Key) -> Result<Key> {
-        key.fingerprint_raw()
-            .ok_or(Error::AMBIGUOUS_NAME)
-            .and_then(|x| self.find_secret_key(x))
+        self.get_key(fpr)
     }
 
     /// Returns the public key with the specified fingerprint, if such a key can
     /// be found. Otherwise, an error is returned.
     #[inline]
-    pub fn find_key<S: CStrArgument>(&self, fingerprint: S) -> Result<Key> {
-        let fingerprint = fingerprint.into_cstr();
+    pub fn get_key(&mut self, fpr: impl CStrArgument) -> Result<Key> {
+        let fingerprint = fpr.into_cstr();
         unsafe {
             let mut key = ptr::null_mut();
             return_err!(ffi::gpgme_get_key(
@@ -388,8 +372,8 @@ impl Context {
     /// Returns the secret key with the specified fingerprint, if such a key can
     /// be found. Otherwise, an error is returned.
     #[inline]
-    pub fn find_secret_key<S: CStrArgument>(&self, fingerprint: S) -> Result<Key> {
-        let fingerprint = fingerprint.into_cstr();
+    pub fn get_secret_key(&mut self, fpr: impl CStrArgument) -> Result<Key> {
+        let fingerprint = fpr.into_cstr();
         unsafe {
             let mut key = ptr::null_mut();
             return_err!(ffi::gpgme_get_key(
@@ -402,24 +386,62 @@ impl Context {
         }
     }
 
+    #[deprecated(since = "0.8.0", note = "use `get_key` instead")]
+    #[inline]
+    pub fn find_key(&mut self, fpr: impl CStrArgument) -> Result<Key> {
+        self.get_key(fpr)
+    }
+
+    #[deprecated(since = "0.8.0", note = "use `get_secret_key` instead")]
+    #[inline]
+    pub fn find_secret_key(&mut self, fpr: impl CStrArgument) -> Result<Key> {
+        self.get_secret_key(fpr)
+    }
+
     /// Returns an iterator for a list of all public keys matching one or more of the
     /// specified patterns.
     #[inline]
-    pub fn find_keys<I>(&mut self, patterns: I) -> Result<Keys>
+    pub fn find_keys<I>(&mut self, patterns: I) -> Result<Keys<'_>>
     where
         I: IntoIterator,
         I::Item: CStrArgument, {
-        Keys::new(self, patterns, false)
+        self.search_keys(patterns, false)
     }
 
     /// Returns an iterator for a list of all secret keys matching one or more of the
     /// specified patterns.
     #[inline]
-    pub fn find_secret_keys<I>(&mut self, patterns: I) -> Result<Keys>
+    pub fn find_secret_keys<I>(&mut self, patterns: I) -> Result<Keys<'_>>
     where
         I: IntoIterator,
         I::Item: CStrArgument, {
-        Keys::new(self, patterns, true)
+        self.search_keys(patterns, true)
+    }
+
+    fn search_keys<I>(&mut self, patterns: I, secret_only: bool) -> Result<Keys<'_>>
+    where
+        I: IntoIterator,
+        I::Item: CStrArgument, {
+        let patterns: SmallVec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
+        let mut patterns: SmallVec<_> = patterns.iter().map(|s| s.as_ref().as_ptr()).collect();
+        let ptr = if !patterns.is_empty() {
+            patterns.push(ptr::null());
+            patterns.as_mut_ptr()
+        } else {
+            ptr::null_mut()
+        };
+        unsafe {
+            return_err!(ffi::gpgme_op_keylist_ext_start(
+                self.as_raw(),
+                ptr,
+                if secret_only { 1 } else { 0 },
+                0,
+            ));
+        }
+        Ok(Keys {
+            ctx: self,
+            _src: (),
+        })
     }
 
     /// Returns an iterator over the keys encoded in the specified source.
@@ -436,17 +458,16 @@ impl Context {
     /// }
     /// ```
     #[inline]
-    pub fn read_keys<'d, D>(&mut self, src: D) -> Result<Keys<D::Output>>
+    pub fn read_keys<'d, D>(&mut self, src: D) -> Result<Keys<'_, D::Output>>
     where D: IntoData<'d> {
         Keys::from_data(self, src)
     }
 
     #[inline]
-    pub fn generate_key<'d1, 'd2, S, D1, D2>(
-        &mut self, params: S, public: Option<D1>, secret: Option<D2>
+    pub fn generate_key<'d1, 'd2, D1, D2>(
+        &mut self, params: impl CStrArgument, public: Option<D1>, secret: Option<D2>,
     ) -> Result<results::KeyGenerationResult>
     where
-        S: CStrArgument,
         D1: IntoData<'d1>,
         D2: IntoData<'d2>, {
         let params = params.into_cstr();
@@ -479,22 +500,18 @@ impl Context {
     /// println!("Key Fingerprint: {}", result.fingerprint().unwrap());
     /// ```
     #[inline]
-    pub fn create_key<S1, S2>(
-        &mut self, userid: S1, algo: S2, expires: Option<SystemTime>
-    ) -> Result<results::KeyGenerationResult>
-    where
-        S1: CStrArgument,
-        S2: CStrArgument, {
+    pub fn create_key(
+        &mut self, userid: impl CStrArgument, algo: impl CStrArgument, expires: Option<SystemTime>,
+    ) -> Result<results::KeyGenerationResult> {
         self.create_key_with_flags(userid, algo, expires, ::CreateKeyFlags::empty())
     }
 
     #[inline]
-    pub fn create_key_with_flags<S1, S2>(
-        &mut self, userid: S1, algo: S2, expires: Option<SystemTime>, flags: ::CreateKeyFlags
+    pub fn create_key_with_flags(
+        &mut self, userid: impl CStrArgument, algo: impl CStrArgument, expires: Option<SystemTime>,
+        flags: ::CreateKeyFlags,
     ) -> Result<results::KeyGenerationResult>
-    where
-        S1: CStrArgument,
-        S2: CStrArgument, {
+    {
         require_gpgme_ver! {
             (1, 7) => {
                 let userid = userid.into_cstr();
@@ -522,74 +539,88 @@ impl Context {
     }
 
     #[inline]
-    pub fn create_subkey<S>(
-        &mut self, key: &Key, algo: S, expires: Option<SystemTime>
-    ) -> Result<results::KeyGenerationResult>
-    where S: CStrArgument {
+    pub fn create_subkey(
+        &mut self, key: &Key, algo: impl CStrArgument, expires: Option<SystemTime>,
+    ) -> Result<results::KeyGenerationResult> {
         self.create_subkey_with_flags(key, algo, expires, ::CreateKeyFlags::empty())
     }
 
     #[inline]
-    pub fn create_subkey_with_flags<S>(
-        &mut self, key: &Key, algo: S, expires: Option<SystemTime>, flags: ::CreateKeyFlags
+    pub fn create_subkey_with_flags(
+        &mut self, key: &Key, algo: impl CStrArgument, expires: Option<SystemTime>,
+        flags: ::CreateKeyFlags,
     ) -> Result<results::KeyGenerationResult>
-    where S: CStrArgument {
-        let algo = algo.into_cstr();
-        let expires = expires
-            .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
-            .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
+    {
+        require_gpgme_ver! {
+            (1, 7) => {
+                let algo = algo.into_cstr();
+                let expires = expires
+                    .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
+                    .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
 
-        unsafe {
-            return_err!(ffi::gpgme_op_createsubkey(
-                self.as_raw(),
-                key.as_raw(),
-                algo.as_ref().as_ptr(),
-                0,
-                expires,
-                flags.bits(),
-            ));
+                unsafe {
+                    return_err!(ffi::gpgme_op_createsubkey(
+                            self.as_raw(),
+                            key.as_raw(),
+                            algo.as_ref().as_ptr(),
+                            0,
+                            expires,
+                            flags.bits(),
+                            ));
+                }
+                Ok(self.get_result().unwrap())
+            } else {
+                Err(Error::NOT_SUPPORTED)
+            }
         }
-        Ok(self.get_result().unwrap())
     }
 
     #[inline]
-    pub fn add_uid<S>(&mut self, key: &Key, userid: S) -> Result<()>
-    where S: CStrArgument {
-        let userid = userid.into_cstr();
-        unsafe {
-            return_err!(ffi::gpgme_op_adduid(
-                self.as_raw(),
-                key.as_raw(),
-                userid.as_ref().as_ptr(),
-                0,
-            ));
+    pub fn add_uid(&mut self, key: &Key, userid: impl CStrArgument) -> Result<()> {
+        require_gpgme_ver! {
+            (1, 7) => {
+                let userid = userid.into_cstr();
+                unsafe {
+                    return_err!(ffi::gpgme_op_adduid(
+                            self.as_raw(),
+                            key.as_raw(),
+                            userid.as_ref().as_ptr(),
+                            0,
+                            ));
+                }
+                Ok(())
+            } else {
+                Err(Error::NOT_SUPPORTED)
+            }
         }
-        Ok(())
     }
 
     #[inline]
-    pub fn revoke_uid<S>(&mut self, key: &Key, userid: S) -> Result<()>
-    where S: CStrArgument {
-        let userid = userid.into_cstr();
-        unsafe {
-            return_err!(ffi::gpgme_op_revuid(
-                self.as_raw(),
-                key.as_raw(),
-                userid.as_ref().as_ptr(),
-                0,
-            ));
+    pub fn revoke_uid(&mut self, key: &Key, userid: impl CStrArgument) -> Result<()> {
+        require_gpgme_ver! {
+            (1, 7) => {
+                let userid = userid.into_cstr();
+                unsafe {
+                    return_err!(ffi::gpgme_op_revuid(
+                            self.as_raw(),
+                            key.as_raw(),
+                            userid.as_ref().as_ptr(),
+                            0,
+                            ));
+                }
+                Ok(())
+            } else {
+                Err(Error::NOT_SUPPORTED)
+            }
         }
-        Ok(())
     }
 
     #[inline]
-    pub fn set_uid_flag<S1, S2, S3>(
-        &mut self, key: &Key, userid: S1, name: S2, value: Option<S3>
+    pub fn set_uid_flag(
+        &mut self, key: &Key, userid: impl CStrArgument, name: impl CStrArgument,
+        value: Option<impl CStrArgument>,
     ) -> Result<()>
-    where
-        S1: CStrArgument,
-        S2: CStrArgument,
-        S3: CStrArgument, {
+    {
         let userid = userid.into_cstr();
         let name = name.into_cstr();
         let value = value.map(CStrArgument::into_cstr);
@@ -611,7 +642,7 @@ impl Context {
     /// [`add_signer`]: struct.Context.html#method.add_signer
     #[inline]
     pub fn sign_key<I>(
-        &mut self, key: &Key, userids: I, expires: Option<SystemTime>
+        &mut self, key: &Key, userids: I, expires: Option<SystemTime>,
     ) -> Result<()>
     where
         I: IntoIterator,
@@ -620,58 +651,59 @@ impl Context {
     }
 
     pub fn sign_key_with_flags<I>(
-        &mut self, key: &Key, userids: I, expires: Option<SystemTime>, flags: ::KeySigningFlags
+        &mut self, key: &Key, userids: I, expires: Option<SystemTime>, flags: ::KeySigningFlags,
     ) -> Result<()>
     where
         I: IntoIterator,
         I::Item: AsRef<[u8]>, {
-        let (userids, flags) = {
-            let mut userids = userids.into_iter();
-            match (userids.next(), userids.next()) {
-                (Some(first), Some(second)) => (
-                    Some(
-                        userids
-                            .fold(
-                                [first.as_ref(), second.as_ref()].join(&b'\n'),
-                                |mut acc, x| {
-                                    acc.push(b'\n');
-                                    acc.extend_from_slice(x.as_ref());
-                                    acc
-                                },
-                            )
-                            .into_cstr(),
-                    ),
-                    ::KeySigningFlags::LFSEP | flags,
-                ),
-                (Some(first), None) => (Some(first.as_ref().to_owned().into_cstr()), flags),
-                _ => (None, flags),
+        require_gpgme_ver! {
+            (1, 7) => {
+                let mut userids = userids.into_iter().fuse();
+                let (userids, flags) = match (userids.next(), userids.next()) {
+                    (Some(first), Some(second)) => (Some(userids.fold([first.as_ref(), second.as_ref()].join(&b'\n'),
+                        |mut acc, x| {
+                            acc.push(b'\n');
+                            acc.extend_from_slice(x.as_ref());
+                            acc
+                        }).into_cstr()), ::KeySigningFlags::LFSEP | flags),
+                    (Some(first), None) => (Some(first.as_ref().to_owned().into_cstr()), flags),
+                    _ => (None, flags),
+                };
+                let expires = expires
+                    .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
+                    .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
+                unsafe {
+                    return_err!(ffi::gpgme_op_keysign(
+                            self.as_raw(),
+                            key.as_raw(),
+                            userids.map_or(ptr::null(), |uid| uid.as_ref().as_ptr()),
+                            expires,
+                            flags.bits(),
+                            ));
+                }
+                Ok(())
+            } else {
+                Err(Error::NOT_SUPPORTED)
             }
-        };
-        let expires = expires
-            .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
-            .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
-        unsafe {
-            return_err!(ffi::gpgme_op_keysign(
-                self.as_raw(),
-                key.as_raw(),
-                userids.map_or(ptr::null(), |uid| uid.as_ref().as_ptr()),
-                expires,
-                flags.bits(),
-            ));
         }
-        Ok(())
     }
 
     #[inline]
     pub fn change_key_tofu_policy(&mut self, key: &Key, policy: ::TofuPolicy) -> Result<()> {
-        unsafe {
-            return_err!(ffi::gpgme_op_tofu_policy(
-                self.as_raw(),
-                key.as_raw(),
-                policy.raw(),
-            ));
+        require_gpgme_ver! {
+            (1, 7) => {
+                unsafe {
+                    return_err!(ffi::gpgme_op_tofu_policy(
+                            self.as_raw(),
+                            key.as_raw(),
+                            policy.raw(),
+                            ));
+                }
+                Ok(())
+            } else {
+                Err(Error::NOT_SUPPORTED)
+            }
         }
-        Ok(())
     }
 
     // Only works with GPG >= 2.0.15
@@ -728,18 +760,18 @@ impl Context {
     }
 
     #[inline]
-    pub fn edit_key_with<'a, E, D>(&mut self, key: &Key, editor: E, data: D) -> Result<()>
-    where
-        E: edit::Editor,
-        D: IntoData<'a>, {
+    pub fn edit_key_with<'a, D>(
+        &mut self, key: &Key, editor: impl edit::Editor, data: D,
+    ) -> Result<()>
+    where D: IntoData<'a> {
         self.edit_key(key, edit::EditorWrapper::new(editor), data)
     }
 
     #[inline]
-    pub fn edit_card_key_with<'a, E, D>(&mut self, key: &Key, editor: E, data: D) -> Result<()>
-    where
-        E: edit::Editor,
-        D: IntoData<'a>, {
+    pub fn edit_card_key_with<'a, D>(
+        &mut self, key: &Key, editor: impl edit::Editor, data: D,
+    ) -> Result<()>
+    where D: IntoData<'a> {
         self.edit_card_key(key, edit::EditorWrapper::new(editor), data)
     }
 
@@ -768,7 +800,7 @@ impl Context {
 
     #[inline]
     pub fn interact_with_card<'a, I, D>(
-        &mut self, key: &Key, interactor: I, data: D
+        &mut self, key: &Key, interactor: I, data: D,
     ) -> Result<()>
     where
         I: ::Interactor,
@@ -848,7 +880,7 @@ impl Context {
     }
 
     #[inline]
-    pub fn export_all_extern<'a, I>(&mut self, mode: ExportMode) -> Result<()>
+    pub fn export_all_extern<I>(&mut self, mode: ExportMode) -> Result<()>
     where
         I: IntoIterator,
         I::Item: CStrArgument, {
@@ -856,7 +888,7 @@ impl Context {
     }
 
     #[inline]
-    pub fn export_extern<'a, I>(&mut self, patterns: I, mode: ExportMode) -> Result<()>
+    pub fn export_extern<I>(&mut self, patterns: I, mode: ExportMode) -> Result<()>
     where
         I: IntoIterator,
         I::Item: CStrArgument, {
@@ -921,7 +953,7 @@ impl Context {
     }
 
     fn export_keys_<'k, I>(
-        &mut self, keys: I, mode: ExportMode, dst: Option<&mut Data>
+        &mut self, keys: I, mode: ExportMode, dst: Option<&mut Data>,
     ) -> Result<()>
     where I: IntoIterator<Item = &'k Key> {
         let dst = dst.map_or(ptr::null_mut(), |d| d.as_raw());
@@ -952,7 +984,7 @@ impl Context {
     }
 
     #[inline]
-    pub fn set_sender<S: CStrArgument>(&mut self, sender: S) -> Result<()> {
+    pub fn set_sender(&mut self, sender: impl CStrArgument) -> Result<()> {
         let sender = sender.into_cstr();
         unsafe {
             return_err!(ffi::gpgme_set_sender(
@@ -992,7 +1024,7 @@ impl Context {
     }
 
     #[inline]
-    pub fn signers(&self) -> Signers {
+    pub fn signers(&self) -> Signers<'_> {
         Signers {
             ctx: self,
             current: Some(0),
@@ -1007,12 +1039,11 @@ impl Context {
     }
 
     #[inline]
-    pub fn add_signature_notation<S1, S2>(
-        &mut self, name: S1, value: S2, flags: ::SignatureNotationFlags
+    pub fn add_signature_notation(
+        &mut self, name: impl CStrArgument, value: impl CStrArgument,
+        flags: ::SignatureNotationFlags,
     ) -> Result<()>
-    where
-        S1: CStrArgument,
-        S2: CStrArgument, {
+    {
         let name = name.into_cstr();
         let value = value.into_cstr();
         unsafe {
@@ -1027,8 +1058,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn add_signature_policy_url<S>(&mut self, url: S, critical: bool) -> Result<()>
-    where S: CStrArgument {
+    pub fn add_signature_policy_url(
+        &mut self, url: impl CStrArgument, critical: bool,
+    ) -> Result<()> {
         let url = url.into_cstr();
         unsafe {
             let critical = if critical {
@@ -1067,13 +1099,13 @@ impl Context {
     }
 
     #[inline]
-    pub fn signature_notations(&self) -> SignatureNotations {
+    pub fn signature_notations(&self) -> SignatureNotations<'_> {
         unsafe { SignatureNotations::from_list(ffi::gpgme_sig_notation_get(self.as_raw())) }
     }
 
     #[inline]
     pub fn sign_clear<'p, 't, P, T>(
-        &mut self, plaintext: P, signedtext: T
+        &mut self, plaintext: P, signedtext: T,
     ) -> Result<results::SigningResult>
     where
         P: IntoData<'p>,
@@ -1083,7 +1115,7 @@ impl Context {
 
     #[inline]
     pub fn sign_detached<'p, 's, P, S>(
-        &mut self, plaintext: P, signature: S
+        &mut self, plaintext: P, signature: S,
     ) -> Result<results::SigningResult>
     where
         P: IntoData<'p>,
@@ -1093,7 +1125,7 @@ impl Context {
 
     #[inline]
     pub fn sign_normal<'p, 't, P, T>(
-        &mut self, plaintext: P, signedtext: T
+        &mut self, plaintext: P, signedtext: T,
     ) -> Result<results::SigningResult>
     where
         P: IntoData<'p>,
@@ -1103,7 +1135,7 @@ impl Context {
 
     #[inline]
     pub fn sign<'p, 's, P, S>(
-        &mut self, mode: ::SignMode, plaintext: P, signature: S
+        &mut self, mode: ::SignMode, plaintext: P, signature: S,
     ) -> Result<results::SigningResult>
     where
         P: IntoData<'p>,
@@ -1123,7 +1155,7 @@ impl Context {
 
     #[inline]
     pub fn verify_detached<'s, 't, S, T>(
-        &mut self, signature: S, signedtext: T
+        &mut self, signature: S, signedtext: T,
     ) -> Result<results::VerificationResult>
     where
         S: IntoData<'s>,
@@ -1135,7 +1167,7 @@ impl Context {
 
     #[inline]
     pub fn verify_opaque<'s, 'p, S, P>(
-        &mut self, signedtext: S, plaintext: P
+        &mut self, signedtext: S, plaintext: P,
     ) -> Result<results::VerificationResult>
     where
         S: IntoData<'s>,
@@ -1171,13 +1203,13 @@ impl Context {
     /// use gpgme::{Context, Data, Protocol};
     ///
     /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
-    /// let key = ctx.find_key("some pattern").unwrap();
+    /// let key = ctx.find_key("[some key fingerprint]").unwrap();
     /// let (plaintext, mut ciphertext) = ("Hello, World!", Vec::new());
     /// ctx.encrypt(Some(&key), plaintext, &mut ciphertext).unwrap();
     /// ```
     #[inline]
     pub fn encrypt<'k, 'p, 'c, I, P, C>(
-        &mut self, recp: I, plaintext: P, ciphertext: C
+        &mut self, recp: I, plaintext: P, ciphertext: C,
     ) -> Result<results::EncryptionResult>
     where
         I: IntoIterator<Item = &'k Key>,
@@ -1187,7 +1219,7 @@ impl Context {
     }
 
     pub fn encrypt_with_flags<'k, 'p, 'c, I, P, C>(
-        &mut self, recp: I, plaintext: P, ciphertext: C, flags: ::EncryptFlags
+        &mut self, recp: I, plaintext: P, ciphertext: C, flags: ::EncryptFlags,
     ) -> Result<results::EncryptionResult>
     where
         I: IntoIterator<Item = &'k Key>,
@@ -1225,7 +1257,7 @@ impl Context {
 
     #[inline]
     pub fn encrypt_symmetric_with_flags<'p, 'c, P, C>(
-        &mut self, plaintext: P, ciphertext: C, flags: ::EncryptFlags
+        &mut self, plaintext: P, ciphertext: C, flags: ::EncryptFlags,
     ) -> Result<()>
     where
         P: IntoData<'p>,
@@ -1242,13 +1274,13 @@ impl Context {
     /// use gpgme::{Context, Protocol};
     ///
     /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
-    /// let key = ctx.find_key("some pattern").unwrap();
+    /// let key = ctx.find_key("[some key fingerprint]").unwrap();
     /// let (plaintext, mut ciphertext) = ("Hello, World!", Vec::new());
     /// ctx.sign_and_encrypt(Some(&key), plaintext, &mut ciphertext).unwrap();
     /// ```
     #[inline]
     pub fn sign_and_encrypt<'k, 'p, 'c, I, P, C>(
-        &mut self, recp: I, plaintext: P, ciphertext: C
+        &mut self, recp: I, plaintext: P, ciphertext: C,
     ) -> Result<(results::EncryptionResult, results::SigningResult)>
     where
         I: IntoIterator<Item = &'k Key>,
@@ -1258,7 +1290,7 @@ impl Context {
     }
 
     pub fn sign_and_encrypt_with_flags<'k, 'p, 'c, I, P, C>(
-        &mut self, recp: I, plaintext: P, ciphertext: C, flags: ::EncryptFlags
+        &mut self, recp: I, plaintext: P, ciphertext: C, flags: ::EncryptFlags,
     ) -> Result<(results::EncryptionResult, results::SigningResult)>
     where
         I: IntoIterator<Item = &'k Key>,
@@ -1300,7 +1332,7 @@ impl Context {
     /// ```
     #[inline]
     pub fn decrypt<'c, 'p, C, P>(
-        &mut self, ciphertext: C, plaintext: P
+        &mut self, ciphertext: C, plaintext: P,
     ) -> Result<results::DecryptionResult>
     where
         C: IntoData<'c>,
@@ -1319,7 +1351,7 @@ impl Context {
 
     #[inline]
     pub fn decrypt_with_flags<'c, 'p, C, P>(
-        &mut self, ciphertext: C, plaintext: P, flags: ::DecryptFlags
+        &mut self, ciphertext: C, plaintext: P, flags: ::DecryptFlags,
     ) -> Result<results::DecryptionResult>
     where
         C: IntoData<'c>,
@@ -1351,7 +1383,7 @@ impl Context {
     /// ```
     #[inline]
     pub fn decrypt_and_verify<'c, 'p, C, P>(
-        &mut self, ciphertext: C, plaintext: P
+        &mut self, ciphertext: C, plaintext: P,
     ) -> Result<(results::DecryptionResult, results::VerificationResult)>
     where
         C: IntoData<'c>,
@@ -1370,7 +1402,7 @@ impl Context {
 
     #[inline]
     pub fn decrypt_and_verify_with_flags<'c, 'p, C, P>(
-        &mut self, ciphertext: C, plaintext: P, flags: ::DecryptFlags
+        &mut self, ciphertext: C, plaintext: P, flags: ::DecryptFlags,
     ) -> Result<(results::DecryptionResult, results::VerificationResult)>
     where
         C: IntoData<'c>,
@@ -1380,12 +1412,9 @@ impl Context {
     }
 
     #[inline]
-    pub fn query_swdb<S1, S2>(
-        &mut self, name: Option<S1>, installed_ver: Option<S2>
-    ) -> Result<results::QuerySwdbResult>
-    where
-        S1: CStrArgument,
-        S2: CStrArgument, {
+    pub fn query_swdb(
+        &mut self, name: Option<impl CStrArgument>, installed_ver: Option<impl CStrArgument>,
+    ) -> Result<results::QuerySwdbResult> {
         let name = name.map(|s| s.into_cstr());
         let iversion = installed_ver.map(|s| s.into_cstr());
         unsafe {
@@ -1418,7 +1447,7 @@ impl Context {
 }
 
 impl fmt::Debug for Context {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Context")
             .field("raw", &self.as_raw())
             .field("protocol", &self.protocol())
@@ -1430,40 +1459,14 @@ impl fmt::Debug for Context {
 }
 
 #[derive(Debug)]
-pub struct Keys<'a, D = ()> {
-    ctx: &'a mut Context,
-    _src: Option<D>,
+pub struct Keys<'ctx, D = ()> {
+    ctx: &'ctx mut Context,
+    _src: D,
 }
 
-impl<'a> Keys<'a, ()> {
-    fn new<I>(ctx: &mut Context, patterns: I, secret_only: bool) -> Result<Keys<()>>
-    where
-        I: IntoIterator,
-        I::Item: CStrArgument, {
-        let patterns: SmallVec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
-        let mut patterns: SmallVec<_> = patterns.iter().map(|s| s.as_ref().as_ptr()).collect();
-        let ptr = if !patterns.is_empty() {
-            patterns.push(ptr::null());
-            patterns.as_mut_ptr()
-        } else {
-            ptr::null_mut()
-        };
-        unsafe {
-            return_err!(ffi::gpgme_op_keylist_ext_start(
-                ctx.as_raw(),
-                ptr,
-                if secret_only { 1 } else { 0 },
-                0,
-            ));
-        }
-        Ok(Keys {
-            ctx: ctx,
-            _src: None,
-        })
-    }
-
+impl<'ctx> Keys<'ctx, ()> {
     #[inline]
-    pub fn from_data<'d, D>(ctx: &mut Context, src: D) -> Result<Keys<D::Output>>
+    pub fn from_data<'d, D>(ctx: &mut Context, src: D) -> Result<Keys<'_, D::Output>>
     where D: IntoData<'d> {
         let mut src = src.into_data()?;
         unsafe {
@@ -1473,14 +1476,11 @@ impl<'a> Keys<'a, ()> {
                 0,
             ));
         }
-        Ok(Keys {
-            ctx: ctx,
-            _src: Some(src),
-        })
+        Ok(Keys { _src: src, ctx })
     }
 }
 
-impl<'a, D> Keys<'a, D> {
+impl<'ctx, D> Keys<'ctx, D> {
     #[inline]
     pub fn finish(self) -> Result<results::KeyListResult> {
         let ctx = self.ctx as *mut Context;
@@ -1492,7 +1492,7 @@ impl<'a, D> Keys<'a, D> {
     }
 }
 
-impl<'a, D> Drop for Keys<'a, D> {
+impl<'ctx, D> Drop for Keys<'ctx, D> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -1501,7 +1501,7 @@ impl<'a, D> Drop for Keys<'a, D> {
     }
 }
 
-impl<'a, D> Iterator for Keys<'a, D> {
+impl<'ctx, D> Iterator for Keys<'ctx, D> {
     type Item = Result<Key>;
 
     #[inline]
@@ -1517,12 +1517,14 @@ impl<'a, D> Iterator for Keys<'a, D> {
     }
 }
 
+impl<'ctx, D> FusedIterator for Keys<'ctx, D> {}
+
 #[derive(Debug)]
-pub struct TrustItems<'a> {
-    ctx: &'a mut Context,
+pub struct TrustItems<'ctx> {
+    ctx: &'ctx mut Context,
 }
 
-impl<'a> TrustItems<'a> {
+impl<'ctx> TrustItems<'ctx> {
     #[inline]
     pub fn finish(self) -> Result<()> {
         let ctx = self.ctx as *mut Context;
@@ -1534,7 +1536,7 @@ impl<'a> TrustItems<'a> {
     }
 }
 
-impl<'a> Drop for TrustItems<'a> {
+impl<'ctx> Drop for TrustItems<'ctx> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -1543,7 +1545,7 @@ impl<'a> Drop for TrustItems<'a> {
     }
 }
 
-impl<'a> Iterator for TrustItems<'a> {
+impl<'ctx> Iterator for TrustItems<'ctx> {
     type Item = Result<TrustItem>;
 
     #[inline]
@@ -1562,13 +1564,15 @@ impl<'a> Iterator for TrustItems<'a> {
     }
 }
 
+impl<'ctx> FusedIterator for TrustItems<'ctx> {}
+
 #[derive(Clone)]
-pub struct Signers<'a> {
-    ctx: &'a Context,
+pub struct Signers<'ctx> {
+    ctx: &'ctx Context,
     current: Option<libc::c_int>,
 }
 
-impl<'a> Iterator for Signers<'a> {
+impl<'ctx> Iterator for Signers<'ctx> {
     type Item = Key;
 
     #[inline]
@@ -1591,7 +1595,8 @@ impl<'a> Iterator for Signers<'a> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.current = self.current
+        self.current = self
+            .current
             .and_then(|x| n.value_into().ok().and_then(|n| x.checked_add(n)));
         self.next()
     }
@@ -1616,8 +1621,10 @@ impl<'a> Iterator for Signers<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Signers<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<'ctx> FusedIterator for Signers<'ctx> {}
+
+impl<'ctx> fmt::Debug for Signers<'ctx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }

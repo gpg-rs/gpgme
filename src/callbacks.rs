@@ -40,7 +40,7 @@ impl<'a> PassphraseRequest<'a> {
 
 pub trait PassphraseProvider: UnwindSafe + Send {
     fn get_passphrase<W: io::Write>(
-        &mut self, request: PassphraseRequest, out: W
+        &mut self, request: PassphraseRequest, out: W,
     ) -> Result<(), Error>;
 }
 
@@ -48,7 +48,7 @@ impl<T: UnwindSafe + Send> PassphraseProvider for T
 where T: FnMut(PassphraseRequest, &mut io::Write) -> Result<(), Error>
 {
     fn get_passphrase<W: io::Write>(
-        &mut self, request: PassphraseRequest, mut out: W
+        &mut self, request: PassphraseRequest, mut out: W,
     ) -> Result<(), Error> {
         (*self)(request, &mut out)
     }
@@ -219,7 +219,7 @@ impl<H> Drop for StatusHandlerWrapper<H> {
 }
 
 pub extern "C" fn status_cb<H: StatusHandler>(
-    hook: *mut libc::c_void, keyword: *const libc::c_char, args: *const libc::c_char
+    hook: *mut libc::c_void, keyword: *const libc::c_char, args: *const libc::c_char,
 ) -> ffi::gpgme_error_t {
     let wrapper = unsafe { &mut *(hook as *mut StatusHandlerWrapper<H>) };
     let mut handler = match wrapper.state.take() {
@@ -273,7 +273,7 @@ impl<'a> EditInteractionStatus<'a> {
 
 pub trait EditInteractor: UnwindSafe + Send {
     fn interact<W: io::Write>(
-        &mut self, status: EditInteractionStatus, out: Option<W>
+        &mut self, status: EditInteractionStatus, out: Option<W>,
     ) -> Result<(), Error>;
 }
 
@@ -311,11 +311,11 @@ pub extern "C" fn edit_cb<E: EditInteractor>(
             args: args.as_ref().map(|s| CStr::from_ptr(s)),
             response: &mut *response,
         };
-        let result = if fd < 0 {
+        let result = (if fd < 0 {
             interactor.interact(status, None::<&mut io::Write>)
         } else {
             interactor.interact(status, Some(FdWriter::new(fd)))
-        }.err()
+        }).err()
             .map(|err| err.raw())
             .unwrap_or(0);
         (interactor, result)
@@ -358,7 +358,7 @@ impl<'a> InteractionStatus<'a> {
 
 pub trait Interactor: UnwindSafe + Send + 'static {
     fn interact<W: io::Write>(
-        &mut self, status: InteractionStatus, out: Option<W>
+        &mut self, status: InteractionStatus, out: Option<W>,
     ) -> Result<(), Error>;
 }
 
@@ -396,11 +396,11 @@ pub extern "C" fn interact_cb<I: Interactor>(
             args: args.as_ref().map(|s| CStr::from_ptr(s)),
             response: &mut *response,
         };
-        let result = if fd < 0 {
+        let result = (if fd < 0 {
             interactor.interact(status, None::<&mut io::Write>)
         } else {
             interactor.interact(status, Some(FdWriter::new(fd)))
-        }.err()
+        }).err()
             .map(|err| err.raw())
             .unwrap_or(0);
         (interactor, result)

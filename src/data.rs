@@ -1,6 +1,6 @@
 use std::borrow::BorrowMut;
-use std::ffi::CStr;
 use std::error::Error as StdError;
+use std::ffi::CStr;
 use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
@@ -50,11 +50,6 @@ ffi_enum_wrapper! {
     }
 }
 
-struct CallbackWrapper<S> {
-    cbs: ffi::gpgme_data_cbs,
-    inner: S,
-}
-
 #[derive(Clone)]
 pub struct WrappedError<S>(Error, S);
 
@@ -69,13 +64,13 @@ impl<S> WrappedError<S> {
 }
 
 impl<S> fmt::Debug for WrappedError<S> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.0, fmt)
     }
 }
 
 impl<S> fmt::Display for WrappedError<S> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.0, fmt)
     }
 }
@@ -84,14 +79,18 @@ impl<S> StdError for WrappedError<S> {
     fn description(&self) -> &str {
         StdError::description(&self.0)
     }
+
+    fn cause(&self) -> Option<&StdError> {
+        Some(&self.0)
+    }
 }
 
 #[derive(Debug)]
-pub struct Data<'a>(NonNull<ffi::gpgme_data_t>, PhantomData<&'a mut ()>);
+pub struct Data<'data>(NonNull<ffi::gpgme_data_t>, PhantomData<&'data mut ()>);
 
-unsafe impl<'a> Send for Data<'a> {}
+unsafe impl<'data> Send for Data<'data> {}
 
-impl<'a> Drop for Data<'a> {
+impl<'data> Drop for Data<'data> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -100,7 +99,7 @@ impl<'a> Drop for Data<'a> {
     }
 }
 
-impl<'a> Data<'a> {
+impl<'data> Data<'data> {
     impl_wrapper!(Data(ffi::gpgme_data_t), PhantomData);
 
     #[inline]
@@ -132,7 +131,7 @@ impl<'a> Data<'a> {
     /// Constructs a data object and fills it with the contents of the file
     /// referenced by `path`.
     #[inline]
-    pub fn load<P: CStrArgument>(path: P) -> Result<Data<'static>> {
+    pub fn load(path: impl CStrArgument) -> Result<Data<'static>> {
         ::init();
         let path = path.into_cstr();
         unsafe {
@@ -148,7 +147,7 @@ impl<'a> Data<'a> {
 
     /// Constructs a data object and fills it with a copy of `bytes`.
     #[inline]
-    pub fn from_bytes<B: AsRef<[u8]>>(bytes: B) -> Result<Data<'static>> {
+    pub fn from_bytes(bytes: impl AsRef<[u8]>) -> Result<Data<'static>> {
         ::init();
         let bytes = bytes.as_ref();
         unsafe {
@@ -161,7 +160,7 @@ impl<'a> Data<'a> {
 
     /// Constructs a data object which copies from `buf` as needed.
     #[inline]
-    pub fn from_buffer<B: AsRef<[u8]> + ?Sized>(buf: &B) -> Result<Data> {
+    pub fn from_buffer(buf: &'data (impl AsRef<[u8]> + ?Sized)) -> Result<Self> {
         ::init();
         let buf = buf.as_ref();
         unsafe {
@@ -174,7 +173,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     #[cfg(unix)]
-    pub fn from_fd<T: AsRawFd + ?Sized>(file: &T) -> Result<Data> {
+    pub fn from_fd(file: &'data (impl AsRawFd + ?Sized)) -> Result<Self> {
         ::init();
         unsafe {
             let mut data = ptr::null_mut();
@@ -192,14 +191,11 @@ impl<'a> Data<'a> {
     }
 
     unsafe fn from_callbacks<S>(
-        cbs: ffi::gpgme_data_cbs, src: S
+        cbs: ffi::gpgme_data_cbs, src: S,
     ) -> result::Result<Self, WrappedError<S>>
-    where S: Send + 'a {
+    where S: Send + 'data {
         ::init();
-        let src = Box::into_raw(Box::new(CallbackWrapper {
-            cbs: cbs,
-            inner: src,
-        }));
+        let src = Box::into_raw(Box::new(CallbackWrapper { inner: src, cbs }));
         let cbs = &mut (*src).cbs as *mut _;
         let mut data = ptr::null_mut();
         let result = ffi::gpgme_data_new_from_cbs(&mut data, cbs, src as *mut _);
@@ -212,7 +208,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_reader<R>(r: R) -> result::Result<Self, WrappedError<R>>
-    where R: Read + Send + 'a {
+    where R: Read + Send + 'data {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -224,7 +220,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_seekable_reader<R>(r: R) -> result::Result<Self, WrappedError<R>>
-    where R: Read + Seek + Send + 'a {
+    where R: Read + Seek + Send + 'data {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -236,7 +232,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_writer<W>(w: W) -> result::Result<Self, WrappedError<W>>
-    where W: Write + Send + 'a {
+    where W: Write + Send + 'data {
         let cbs = ffi::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -248,7 +244,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_seekable_writer<W>(w: W) -> result::Result<Self, WrappedError<W>>
-    where W: Write + Seek + Send + 'a {
+    where W: Write + Seek + Send + 'data {
         let cbs = ffi::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -260,7 +256,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_stream<S: Send>(s: S) -> result::Result<Self, WrappedError<S>>
-    where S: Read + Write + Send + 'a {
+    where S: Read + Write + Send + 'data {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -272,7 +268,7 @@ impl<'a> Data<'a> {
 
     #[inline]
     pub fn from_seekable_stream<S>(s: S) -> result::Result<Self, WrappedError<S>>
-    where S: Read + Write + Seek + Send + 'a {
+    where S: Read + Write + Seek + Send + 'data {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -306,7 +302,7 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    pub fn set_filename<S: CStrArgument>(&mut self, name: S) -> Result<()> {
+    pub fn set_filename(&mut self, name: impl CStrArgument) -> Result<()> {
         let name = name.into_cstr();
         unsafe {
             return_err!(ffi::gpgme_data_set_file_name(
@@ -329,10 +325,7 @@ impl<'a> Data<'a> {
     }
 
     #[inline]
-    pub fn set_flag<S1, S2>(&mut self, name: S1, value: S2) -> Result<()>
-    where
-        S1: CStrArgument,
-        S2: CStrArgument, {
+    pub fn set_flag(&mut self, name: impl CStrArgument, value: impl CStrArgument) -> Result<()> {
         let name = name.into_cstr();
         let value = value.into_cstr();
         unsafe {
@@ -365,7 +358,7 @@ impl<'a> Data<'a> {
     }
 }
 
-impl<'a> Read for Data<'a> {
+impl<'data> Read for Data<'data> {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let result = unsafe {
@@ -380,7 +373,7 @@ impl<'a> Read for Data<'a> {
     }
 }
 
-impl<'a> Write for Data<'a> {
+impl<'data> Write for Data<'data> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let result = unsafe {
@@ -400,7 +393,7 @@ impl<'a> Write for Data<'a> {
     }
 }
 
-impl<'a> Seek for Data<'a> {
+impl<'data> Seek for Data<'data> {
     #[inline]
     fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
         let (off, whence) = match pos {
@@ -417,8 +410,13 @@ impl<'a> Seek for Data<'a> {
     }
 }
 
+struct CallbackWrapper<S> {
+    cbs: ffi::gpgme_data_cbs,
+    inner: S,
+}
+
 extern "C" fn read_callback<S: Read>(
-    handle: *mut libc::c_void, buffer: *mut libc::c_void, size: libc::size_t
+    handle: *mut libc::c_void, buffer: *mut libc::c_void, size: libc::size_t,
 ) -> libc::ssize_t {
     let handle = handle as *mut CallbackWrapper<S>;
     unsafe {
@@ -435,7 +433,7 @@ extern "C" fn read_callback<S: Read>(
 }
 
 extern "C" fn write_callback<S: Write>(
-    handle: *mut libc::c_void, buffer: *const libc::c_void, size: libc::size_t
+    handle: *mut libc::c_void, buffer: *const libc::c_void, size: libc::size_t,
 ) -> libc::ssize_t {
     let handle = handle as *mut CallbackWrapper<S>;
     unsafe {
@@ -452,7 +450,7 @@ extern "C" fn write_callback<S: Write>(
 }
 
 extern "C" fn seek_callback<S: Seek>(
-    handle: *mut libc::c_void, offset: libc::off_t, whence: libc::c_int
+    handle: *mut libc::c_void, offset: libc::off_t, whence: libc::c_int,
 ) -> libc::off_t {
     let handle = handle as *mut CallbackWrapper<S>;
     let pos = match whence {

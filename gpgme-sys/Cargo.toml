@@ -25,4 +25,4 @@ semver = "0.9"
 
 [dependencies]
 libc = "0.2"
-libgpg-error-sys = "0.3.1"
+libgpg-error-sys = "0.4"

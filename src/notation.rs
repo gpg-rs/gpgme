@@ -57,7 +57,7 @@ impl<'a> SignatureNotation<'a> {
 }
 
 impl<'a> fmt::Debug for SignatureNotation<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SignatureNotation")
             .field("raw", &self.as_raw())
             .field("name", &self.name_raw())

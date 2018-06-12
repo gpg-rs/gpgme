@@ -22,7 +22,7 @@ test_case! {
         assert_eq!(result.signatures().count(), 1);
 
         let sig = result.signatures().nth(0).unwrap();
-        let key = ctx.find_key(sig.fingerprint_raw().unwrap()).unwrap();
+        let key = ctx.get_key(sig.fingerprint_raw().unwrap()).unwrap();
         for subkey in key.subkeys() {
             if subkey.fingerprint_raw() == sig.fingerprint_raw() {
                 return;

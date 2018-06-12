@@ -4,8 +4,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::sync::RwLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::RwLock;
 
 use tempdir::TempDir;
 

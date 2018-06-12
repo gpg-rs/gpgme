@@ -106,7 +106,7 @@ impl<'a> TofuInfo<'a> {
 }
 
 impl<'a> fmt::Debug for TofuInfo<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TofuInfo")
             .field("raw", &self.as_raw())
             .field("description", &self.description_raw())

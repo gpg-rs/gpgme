@@ -12,35 +12,15 @@ pub type SmallVec<T> = ::smallvec::SmallVec<[T; 4]>;
 
 include!(concat!(env!("OUT_DIR"), "/version.rs"));
 
-macro_rules! count_list {
-    ($list:expr) => {
-        (|| {
-            let mut count = 0usize;
-            let mut current = $list;
-            while !current.is_null() {
-                count = count.checked_add(1)?;
-                current = (*current).next;
-            }
-            Some(count)
-        })()
-    };
-}
-
 macro_rules! impl_list_iterator {
     ($Name:ident, $Item:ident, $Raw:ty) => {
         #[derive(Clone)]
-        pub struct $Name<'a> {
-            current: Option<$Item<'a>>,
-            left: Option<usize>,
-        }
+        pub struct $Name<'a>(Option<$Item<'a>>);
 
         impl<'a> $Name<'a> {
             #[inline]
             pub unsafe fn from_list(first: $Raw) -> Self {
-                $Name {
-                    current: first.as_mut().map(|r| $Item::from_raw(r)),
-                    left: count_list!(first),
-                }
+                $Name(first.as_mut().map(|r| $Item::from_raw(r)))
             }
         }
 
@@ -50,22 +30,18 @@ macro_rules! impl_list_iterator {
             #[inline]
             fn next(&mut self) -> Option<Self::Item> {
                 unsafe {
-                    self.current.take().map(|c| {
-                        self.current = (*c.as_raw()).next.as_mut().map(|r| $Item::from_raw(r));
-                        self.left = self.left.map(|x| x.saturating_sub(1));
+                    self.0.take().map(|c| {
+                        self.0 = (*c.as_raw()).next.as_mut().map(|r| $Item::from_raw(r));
                         c
                     })
                 }
             }
-
-            #[inline]
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                (self.left.unwrap_or(usize::max_value()), self.left)
-            }
         }
 
+        impl<'a> ::std::iter::FusedIterator for $Name<'a> {}
+
         impl<'a> ::std::fmt::Debug for $Name<'a> {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 f.debug_list().entries(self.clone()).finish()
             }
         }
@@ -122,7 +98,7 @@ macro_rules! ffi_enum_wrapper {
         }
 
         impl ::std::fmt::Debug for $Name {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 match *self {
                     $($Name::$Item => {
                         write!(f, concat!(stringify!($Name), "::",
@@ -172,7 +148,7 @@ macro_rules! ffi_enum_wrapper {
         }
 
         impl ::std::fmt::Debug for $Name {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 match *self {
                     $($Name::$Item => {
                         write!(f, concat!(stringify!($Name), "::",
@@ -201,7 +177,7 @@ pub struct FdWriter {
 
 impl FdWriter {
     pub unsafe fn new(fd: libc::c_int) -> FdWriter {
-        FdWriter { fd: fd }
+        FdWriter { fd }
     }
 }
 

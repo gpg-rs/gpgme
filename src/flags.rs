@@ -175,8 +175,8 @@ impl KeyAlgorithm {
 
 impl fmt::Display for KeyAlgorithm {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.name().unwrap_or("Unknown"))
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name().unwrap_or("Unknown"))
     }
 }
 
@@ -219,8 +219,8 @@ impl HashAlgorithm {
 
 impl fmt::Display for HashAlgorithm {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.name().unwrap_or("Unknown"))
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name().unwrap_or("Unknown"))
     }
 }
 

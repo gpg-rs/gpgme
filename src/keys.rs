@@ -221,17 +221,17 @@ impl Key {
     }
 
     #[inline]
-    pub fn primary_key(&self) -> Option<Subkey> {
+    pub fn primary_key(&self) -> Option<Subkey<'_>> {
         self.subkeys().next()
     }
 
     #[inline]
-    pub fn user_ids(&self) -> UserIds {
+    pub fn user_ids(&self) -> UserIds<'_> {
         unsafe { UserIds::from_list((*self.as_raw()).uids) }
     }
 
     #[inline]
-    pub fn subkeys(&self) -> Subkeys {
+    pub fn subkeys(&self) -> Subkeys<'_> {
         unsafe { Subkeys::from_list((*self.as_raw()).subkeys) }
     }
 
@@ -250,7 +250,7 @@ impl Key {
 }
 
 impl fmt::Debug for Key {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Key")
             .field("raw", &self.as_raw())
             .field("protocol", &self.protocol())
@@ -275,33 +275,33 @@ impl fmt::Debug for Key {
 }
 
 #[derive(Copy, Clone)]
-pub struct Subkey<'a>(NonNull<ffi::gpgme_subkey_t>, PhantomData<&'a Key>);
+pub struct Subkey<'key>(NonNull<ffi::gpgme_subkey_t>, PhantomData<&'key Key>);
 
-unsafe impl<'a> Send for Subkey<'a> {}
-unsafe impl<'a> Sync for Subkey<'a> {}
+unsafe impl<'key> Send for Subkey<'key> {}
+unsafe impl<'key> Sync for Subkey<'key> {}
 
-impl<'a> Subkey<'a> {
+impl<'key> Subkey<'key> {
     impl_wrapper!(Subkey(ffi::gpgme_subkey_t), PhantomData);
 
     #[inline]
-    pub fn id(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn id(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.id_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn id_raw(&self) -> Option<&'a CStr> {
+    pub fn id_raw(&self) -> Option<&'key CStr> {
         unsafe { (*self.as_raw()).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
-    pub fn fingerprint(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn fingerprint(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.fingerprint_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn fingerprint_raw(&self) -> Option<&'a CStr> {
+    pub fn fingerprint_raw(&self) -> Option<&'key CStr> {
         unsafe { (*self.as_raw()).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
@@ -413,13 +413,13 @@ impl<'a> Subkey<'a> {
     }
 
     #[inline]
-    pub fn keygrip(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn keygrip(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.keygrip_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn keygrip_raw(&self) -> Option<&'a CStr> {
+    pub fn keygrip_raw(&self) -> Option<&'key CStr> {
         require_gpgme_ver! {
             (1, 7) => {
                 unsafe { (*self.as_raw()).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
@@ -435,13 +435,13 @@ impl<'a> Subkey<'a> {
     }
 
     #[inline]
-    pub fn card_serial_number(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn card_serial_number(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.card_serial_number_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn card_serial_number_raw(&self) -> Option<&'a CStr> {
+    pub fn card_serial_number_raw(&self) -> Option<&'key CStr> {
         unsafe {
             (*self.as_raw())
                 .card_number
@@ -451,13 +451,13 @@ impl<'a> Subkey<'a> {
     }
 
     #[inline]
-    pub fn curve(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn curve(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.curve_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn curve_raw(&self) -> Option<&'a CStr> {
+    pub fn curve_raw(&self) -> Option<&'key CStr> {
         require_gpgme_ver! {
             (1,5) => {
                 unsafe { (*self.as_raw()).curve.as_ref().map(|s| CStr::from_ptr(s)) }
@@ -468,8 +468,8 @@ impl<'a> Subkey<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Subkey<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<'key> fmt::Debug for Subkey<'key> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Subkey")
             .field("raw", &self.as_raw())
             .field("fingerprint", &self.fingerprint_raw())
@@ -496,66 +496,66 @@ impl<'a> fmt::Debug for Subkey<'a> {
 impl_list_iterator!(Subkeys, Subkey, ffi::gpgme_subkey_t);
 
 #[derive(Copy, Clone)]
-pub struct UserId<'a>(NonNull<ffi::gpgme_user_id_t>, PhantomData<&'a Key>);
+pub struct UserId<'key>(NonNull<ffi::gpgme_user_id_t>, PhantomData<&'key Key>);
 
-unsafe impl<'a> Send for UserId<'a> {}
-unsafe impl<'a> Sync for UserId<'a> {}
+unsafe impl<'key> Send for UserId<'key> {}
+unsafe impl<'key> Sync for UserId<'key> {}
 
-impl<'a> UserId<'a> {
+impl<'key> UserId<'key> {
     impl_wrapper!(UserId(ffi::gpgme_user_id_t), PhantomData);
 
     #[inline]
-    pub fn id(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn id(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.id_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn id_raw(&self) -> Option<&'a CStr> {
+    pub fn id_raw(&self) -> Option<&'key CStr> {
         unsafe { (*self.as_raw()).uid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
-    pub fn name(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn name(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.name_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn name_raw(&self) -> Option<&'a CStr> {
+    pub fn name_raw(&self) -> Option<&'key CStr> {
         unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
-    pub fn email(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn email(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.email_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn email_raw(&self) -> Option<&'a CStr> {
+    pub fn email_raw(&self) -> Option<&'key CStr> {
         unsafe { (*self.as_raw()).email.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
-    pub fn comment(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn comment(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.comment_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn comment_raw(&self) -> Option<&'a CStr> {
+    pub fn comment_raw(&self) -> Option<&'key CStr> {
         unsafe { (*self.as_raw()).comment.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
-    pub fn address(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn address(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.address_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn address_raw(&self) -> Option<&'a CStr> {
+    pub fn address_raw(&self) -> Option<&'key CStr> {
         unsafe { (*self.as_raw()).address.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
@@ -580,12 +580,12 @@ impl<'a> UserId<'a> {
     }
 
     #[inline]
-    pub fn signatures(&self) -> UserIdSignatures {
+    pub fn signatures(&self) -> UserIdSignatures<'key> {
         unsafe { UserIdSignatures::from_list((*self.as_raw()).signatures) }
     }
 
     #[inline]
-    pub fn tofu_info(&self) -> Option<::TofuInfo> {
+    pub fn tofu_info(&self) -> Option<::TofuInfo<'key>> {
         require_gpgme_ver! {
             (1,7) => {
                 unsafe {
@@ -601,8 +601,8 @@ impl<'a> UserId<'a> {
     }
 }
 
-impl<'a> fmt::Debug for UserId<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<'key> fmt::Debug for UserId<'key> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("UserId")
             .field("raw", &self.as_raw())
             .field("name", &self.name_raw())
@@ -618,34 +618,36 @@ impl<'a> fmt::Debug for UserId<'a> {
     }
 }
 
-impl<'a> fmt::Display for UserId<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let uid = self.id_raw()
-            .map(|s| s.to_string_lossy())
-            .unwrap_or("".into());
-        write!(f, "{}", uid)
+impl<'key> fmt::Display for UserId<'key> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(
+            &*self
+                .id_raw()
+                .map(|s| s.to_string_lossy())
+                .unwrap_or("".into()),
+        )
     }
 }
 
 impl_list_iterator!(UserIds, UserId, ffi::gpgme_user_id_t);
 
 #[derive(Copy, Clone)]
-pub struct UserIdSignature<'a>(NonNull<ffi::gpgme_key_sig_t>, PhantomData<&'a Key>);
+pub struct UserIdSignature<'key>(NonNull<ffi::gpgme_key_sig_t>, PhantomData<&'key Key>);
 
-unsafe impl<'a> Send for UserIdSignature<'a> {}
-unsafe impl<'a> Sync for UserIdSignature<'a> {}
+unsafe impl<'key> Send for UserIdSignature<'key> {}
+unsafe impl<'key> Sync for UserIdSignature<'key> {}
 
-impl<'a> UserIdSignature<'a> {
+impl<'key> UserIdSignature<'key> {
     impl_wrapper!(UserIdSignature(ffi::gpgme_key_sig_t), PhantomData);
 
     #[inline]
-    pub fn signer_key_id(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn signer_key_id(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.signer_key_id_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn signer_key_id_raw(&self) -> Option<&'a CStr> {
+    pub fn signer_key_id_raw(&self) -> Option<&'key CStr> {
         unsafe { (*self.as_raw()).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
@@ -700,46 +702,46 @@ impl<'a> UserIdSignature<'a> {
     }
 
     #[inline]
-    pub fn signer_user_id(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn signer_user_id(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.signer_user_id_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn signer_user_id_raw(&self) -> Option<&'a CStr> {
+    pub fn signer_user_id_raw(&self) -> Option<&'key CStr> {
         unsafe { (*self.as_raw()).uid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
-    pub fn signer_name(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn signer_name(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.signer_name_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn signer_name_raw(&self) -> Option<&'a CStr> {
+    pub fn signer_name_raw(&self) -> Option<&'key CStr> {
         unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
-    pub fn signer_email(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn signer_email(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.signer_email_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn signer_email_raw(&self) -> Option<&'a CStr> {
+    pub fn signer_email_raw(&self) -> Option<&'key CStr> {
         unsafe { (*self.as_raw()).email.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
-    pub fn signer_comment(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn signer_comment(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.signer_comment_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn signer_comment_raw(&self) -> Option<&'a CStr> {
+    pub fn signer_comment_raw(&self) -> Option<&'key CStr> {
         unsafe { (*self.as_raw()).comment.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
@@ -754,13 +756,13 @@ impl<'a> UserIdSignature<'a> {
     }
 
     #[inline]
-    pub fn policy_url(&self) -> Result<&'a str, Option<Utf8Error>> {
+    pub fn policy_url(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.policy_url_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn policy_url_raw(&self) -> Option<&'a CStr> {
+    pub fn policy_url_raw(&self) -> Option<&'key CStr> {
         unsafe {
             let mut notation = (*self.as_raw()).notations;
             while !notation.is_null() {
@@ -774,13 +776,13 @@ impl<'a> UserIdSignature<'a> {
     }
 
     #[inline]
-    pub fn notations(&self) -> SignatureNotations<'a> {
+    pub fn notations(&self) -> SignatureNotations<'key> {
         unsafe { SignatureNotations::from_list((*self.as_raw()).notations) }
     }
 }
 
-impl<'a> fmt::Debug for UserIdSignature<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<'key> fmt::Debug for UserIdSignature<'key> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("UserIdSignature")
             .field("raw", &self.as_raw())
             .field("signer_key", &self.signer_key_id_raw())

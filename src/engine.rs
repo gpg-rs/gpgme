@@ -97,7 +97,7 @@ impl<'a> EngineInfo<'a> {
 }
 
 impl<'a> fmt::Debug for EngineInfo<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("EngineInfo")
             .field("raw", &self.as_raw())
             .field("protocol", &self.protocol())
@@ -115,7 +115,7 @@ pub struct EngineInfoGuard(RwLockReadGuard<'static, ()>);
 
 impl EngineInfoGuard {
     pub fn new(lock: &'static RwLock<()>) -> Result<EngineInfoGuard> {
-        let lock = lock.read().expect("Engine info lock could not be acquired");
+        let lock = lock.read().expect("engine info lock was poisoned");
         unsafe {
             let mut info = ptr::null_mut();
             return_err!(ffi::gpgme_get_engine_info(&mut info));
@@ -124,12 +124,12 @@ impl EngineInfoGuard {
     }
 
     #[inline]
-    pub fn get(&self, proto: Protocol) -> Option<EngineInfo> {
+    pub fn get(&self, proto: Protocol) -> Option<EngineInfo<'_>> {
         self.iter().find(|info| info.protocol() == proto)
     }
 
     #[inline]
-    pub fn iter(&self) -> EngineInfos {
+    pub fn iter(&self) -> EngineInfos<'_> {
         unsafe {
             let mut first = ptr::null_mut();
             assert_eq!(ffi::gpgme_get_engine_info(&mut first), 0);
@@ -149,7 +149,7 @@ impl<'a> IntoIterator for &'a EngineInfoGuard {
 }
 
 impl fmt::Debug for EngineInfoGuard {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "EngineInfoGuard(..)")
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("EngineInfoGuard(..)")
     }
 }
