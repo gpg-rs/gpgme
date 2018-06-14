@@ -16,6 +16,8 @@ travis-ci = { repository = "johnschug/rust-gpgme" }
 maintenance = { status = "experimental" }
 
 [features]
+default = ["bundled"]
+bundled = ["gpgme-sys/bundled", "gpg-error/bundled"]
 nightly = ["lazy_static/nightly"]
 
 [dev-dependencies]
@@ -29,11 +31,12 @@ lazy_static = "1"
 conv = "0.3"
 smallvec = "0.6"
 cstr-argument = "0.1"
-gpg-error = "0.4"
+gpg-error = { version = "0.4", default-features = false }
 
 [dependencies.gpgme-sys]
 path = "gpgme-sys"
 version = "0.7.0"
+default-features = false
 
 [[bin]]
 name = "pinentry"

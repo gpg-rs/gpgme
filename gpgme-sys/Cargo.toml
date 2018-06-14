@@ -19,10 +19,13 @@ maintenance = { status = "experimental" }
 name = "gpgme_sys"
 path = "lib.rs"
 
+[features]
+default = ["bundled"]
+bundled = ["libgpg-error-sys/bundled"]
+
 [build-dependencies]
 cc = "1.0.2"
-semver = "0.9"
 
 [dependencies]
 libc = "0.2"
-libgpg-error-sys = "0.4"
+libgpg-error-sys = { version = "0.4", default-features = false }
