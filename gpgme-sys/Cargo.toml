@@ -3,7 +3,7 @@ name = "gpgme-sys"
 version = "0.7.0"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
-repository = "https://github.com/johnschug/rust-gpgme"
+repository = "https://github.com/gpg-rs/gpgme/gpgme-sys"
 documentation = "https://docs.rs/gpgme-sys"
 categories = ["external-ffi-bindings"]
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
@@ -12,7 +12,7 @@ links = "gpgme"
 build = "build.rs"
 
 [badges]
-travis-ci = { repository = "johnschug/rust-gpgme" }
+travis-ci = { repository = "gpg-rs/gpgme" }
 maintenance = { status = "experimental" }
 
 [lib]

@@ -1,8 +1,8 @@
-# rust-gpgme
+# gpgme-rs
 
-[![Build Status](https://travis-ci.org/johnschug/rust-gpgme.svg?branch=master)](https://travis-ci.org/johnschug/rust-gpgme)
-[![LGPL-2.1 licensed](https://img.shields.io/badge/license-LGPL--2.1-blue.svg)](./COPYING)
-[![crates.io](https://meritbadge.herokuapp.com/gpgme)](https://crates.io/crates/gpgme)
+[![Build Status](https://travis-ci.org/gpg-rs/gpgme.svg?branch=master)](https://travis-ci.org/gpg-rs/gpgme)
+[![LGPL-2.1 licensed](https://img.shields.io/crates/l/gpgme.svg)](./COPYING)
+[![Crates.io](https://img.shields.io/crates/v/gpgme.svg)](https://crates.io/crates/gpgme)
 
 [GPGME][upstream] bindings for Rust.
 
@@ -13,10 +13,14 @@
 The wrapper is usable with GPGME 1.2.0 or later. Some features may require
 a more recent version.
 
-By default, the gpgme-sys crate will attempt to build the latest version of the
-library from source using autoconf and automake. An existing installation may
-be specified using `GPGME_LIB_DIR`, `GPGME_LIBS` and `GPGME_STATIC`
-(optional). Alternatively the path to the gpgme configuration program
+By default, the gpgme-sys crate will attempt to build the bundled version of
+the library from source using autoconf, automake and various C build tools. The
+`bundled` feature flag controls this functionality and can be disabled by using
+`default-features = false` in dependent crates and/or overridden by setting the
+environment variable `GPGME_USE_BUNDLED` to the empty string, `no`, `off`, or
+`false` to disable or anything else to enable. An existing installation may be
+specified using `GPGME_LIB_DIR`, `GPGME_LIBS`, `GPGME_STATIC` (optional) and
+`GPGME_INCLUDE`. Alternatively the path to the gpgme configuration program
 (`gpgme-config`) may be specified using `GPGME_CONFIG`.
 
 ## Usage

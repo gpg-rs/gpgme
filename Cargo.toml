@@ -4,15 +4,14 @@ version = "0.7.2"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
 readme = "README.md"
-repository = "https://github.com/johnschug/rust-gpgme"
+repository = "https://github.com/gpg-rs/gpgme"
 documentation = "https://docs.rs/gpgme"
 categories = ["api-bindings"]
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 description = "GPGme bindings for Rust"
-build = "build.rs"
 
 [badges]
-travis-ci = { repository = "johnschug/rust-gpgme" }
+travis-ci = { repository = "gpg-rs/gpgme" }
 maintenance = { status = "experimental" }
 
 [features]
