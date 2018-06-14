@@ -8,53 +8,44 @@ matrix:
         - brew link gettext --force
       after_script:
         - otool -L target/debug/examples/encrypt
-    - os: linux
+    - env:
+        - CARGO_FLAGS=--no-default-features
       addons:
         apt:
           packages:
             - libgpgme11-dev
-    - os: linux
-      env:
+    - env:
         - GETTEXT_VERSION=0.19.8.1
       before_install:
-        - curl -sL https://ftp.gnu.org/gnu/gettext/gettext-${GETTEXT_VERSION}.tar.gz -o gettext-${GETTEXT_VERSION}.tar.gz
-        - tar -xf gettext-${GETTEXT_VERSION}.tar.gz
-        - pushd gettext-${GETTEXT_VERSION}
-        - ./configure --without-emacs --disable-java --disable-csharp --disable-c++ --enable-fast-install --prefix=${HOME}/.local >/dev/null
-        - make -j2 install >/dev/null
-        - popd
-        - export PATH=${HOME}/.local/bin:$PATH
-        - export LD_LIBRARY_PATH=${HOME}/.local/lib:$LD_LIBRARY_PATH
-    - os: linux
-      env:
+        - .travis/install-gettext.sh $GETTEXT_VERSION
+    - env:
+        - CARGO_FLAGS="--target x86_64-unknown-linux-musl"
         - GETTEXT_VERSION=0.19.8.1
       addons:
         apt:
           packages:
             - musl-tools
       before_install:
-        - curl -sL https://ftp.gnu.org/gnu/gettext/gettext-${GETTEXT_VERSION}.tar.gz -o gettext-${GETTEXT_VERSION}.tar.gz
-        - tar -xf gettext-${GETTEXT_VERSION}.tar.gz
-        - pushd gettext-${GETTEXT_VERSION}
-        - ./configure --without-emacs --disable-java --disable-csharp --disable-c++ --enable-fast-install --prefix=${HOME}/.local >/dev/null
-        - make -j2 install >/dev/null
-        - popd
-        - export PATH=${HOME}/.local/bin:$PATH
-        - export LD_LIBRARY_PATH=${HOME}/.local/lib:$LD_LIBRARY_PATH
+        - .travis/install-gettext.sh $GETTEXT_VERSION
         - rustup target add x86_64-unknown-linux-musl
-      script:
-        - cargo build --target=x86_64-unknown-linux-musl --verbose --verbose
-        - cargo test --target=x86_64-unknown-linux-musl --verbose --verbose
       after_script:
         - objdump -T target/x86_64-unknown-linux-musl/debug/examples/encrypt
+    - rust: nightly
+      env:
+        - CARGO_FLAGS="--features nightly"
+        - GETTEXT_VERSION=0.19.8.1
+      before_install:
+        - .travis/install-gettext.sh $GETTEXT_VERSION
+  allow_failures:
+    - rust: nightly
+  fast_finish: true
 before_script:
   - gpg --version || true
   - gpg2 --version || true
   - gpg-agent --version || true
 script:
-  - cargo build --verbose --verbose
-  - cargo test --no-fail-fast
-  - cargo doc
+  - cargo build --verbose --verbose $CARGO_FLAGS
+  - cargo test --verbose --no-fail-fast $CARGO_FLAGS
 after_script:
   - ldd target/debug/examples/encrypt
 env:
