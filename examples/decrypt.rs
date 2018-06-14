@@ -1,62 +1,42 @@
-extern crate getopts;
 extern crate gpgme;
+#[macro_use]
+extern crate quicli;
 
-use std::env;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::process::exit;
-
-use getopts::Options;
+use std::path::PathBuf;
 
 use gpgme::{Context, Protocol};
+use quicli::prelude::*;
 
-fn print_usage(program: &str, opts: &Options) {
-    let brief = format!("Usage: {} [options] FILENAME", program);
-    eprintln!("{}", opts.usage(&brief));
+#[derive(Debug, StructOpt)]
+struct Cli {
+    #[structopt(long = "openpgp")]
+    /// Use the OpenPGP protocol
+    openpgp: bool,
+    #[structopt(long = "cms", conflicts_with = "openpgp")]
+    /// Use the CMS protocol
+    cms: bool,
+    #[structopt(parse(from_os_str))]
+    /// File to decrypt
+    filename: PathBuf,
 }
 
-fn main() {
-    let args: Vec<_> = env::args().collect();
-    let program = &args[0];
-
-    let mut opts = Options::new();
-    opts.optflag("h", "help", "display this help message");
-    opts.optflag("", "openpgp", "use the OpenPGP protocol (default)");
-    opts.optflag("", "cms", "use the CMS protocol");
-
-    let matches = match opts.parse(&args[1..]) {
-        Ok(matches) => matches,
-        Err(fail) => {
-            print_usage(program, &opts);
-            eprintln!("{}", fail);
-            exit(1);
-        }
-    };
-
-    if matches.opt_present("h") {
-        print_usage(program, &opts);
-        return;
-    }
-
-    if matches.free.len() != 1 {
-        print_usage(program, &opts);
-        exit(1);
-    }
-
-    let proto = if matches.opt_present("cms") {
+main!(|args: Cli| {
+    let proto = if args.cms {
         Protocol::Cms
     } else {
         Protocol::OpenPgp
     };
 
-    let mut ctx = Context::from_protocol(proto).unwrap();
-    let mut input = File::open(&matches.free[0]).unwrap();
+    let mut ctx = Context::from_protocol(proto)?;
+    let mut input = File::open(&args.filename)?;
     let mut output = Vec::new();
     ctx.decrypt(&mut input, &mut output)
-        .expect("decrypting failed");
+        .context("decrypting failed")?;
 
     println!("Begin Output:");
-    io::stdout().write_all(&output).unwrap();
+    io::stdout().write_all(&output)?;
     println!("End Output.");
-}
+});

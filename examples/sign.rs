@@ -1,20 +1,86 @@
-extern crate getopts;
 extern crate gpgme;
+#[macro_use]
+extern crate quicli;
 
-use std::env;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::process::exit;
-
-use getopts::Options;
+use std::path::PathBuf;
 
 use gpgme::{Context, Protocol};
+use quicli::prelude::*;
 
-fn print_usage(program: &str, opts: &Options) {
-    let brief = format!("Usage: {} [options] FILENAME", program);
-    eprintln!("{}", opts.usage(&brief));
+#[derive(Debug, StructOpt)]
+struct Cli {
+    #[structopt(long = "openpgp")]
+    /// Use the OpenPGP protocol
+    openpgp: bool,
+    #[structopt(long = "cms", conflicts_with = "openpgp")]
+    /// Use the CMS protocol
+    cms: bool,
+    #[structopt(long = "uiserver", conflicts_with = "openpgp", conflicts_with = "cms")]
+    /// Use to UI server
+    uiserver: bool,
+    #[structopt(long = "normal")]
+    /// Create a normal signature (default)
+    normal: bool,
+    #[structopt(long = "detach", conflicts_with = "normal")]
+    /// Create a detached signature
+    detach: bool,
+    #[structopt(long = "clear", conflicts_with = "normal", conflicts_with = "detach")]
+    /// Create a clear text signature
+    clear: bool,
+    #[structopt(long = "key")]
+    /// Key to use for signing. Default key is used otherwise
+    key: Option<String>,
+    #[structopt(parse(from_os_str))]
+    /// File to sign
+    filename: PathBuf,
 }
+
+main!(|args: Cli| {
+    let proto = if args.cms {
+        Protocol::Cms
+    } else if args.uiserver {
+        Protocol::UiServer
+    } else {
+        Protocol::OpenPgp
+    };
+
+    let mode = if args.detach {
+        gpgme::SignMode::Detached
+    } else if args.clear {
+        gpgme::SignMode::Clear
+    } else {
+        gpgme::SignMode::Normal
+    };
+
+    let mut ctx = Context::from_protocol(proto)?;
+    ctx.set_armor(true);
+
+    if let Some(key) = args.key {
+        if proto != Protocol::UiServer {
+            let key = ctx.get_secret_key(key).context("unable to find signing key")?;
+            ctx.add_signer(&key).context("add_signer() failed")?;
+        } else {
+            eprintln!("ignoring --key in UI-server mode");
+        }
+    }
+
+    let filename = &args.filename;
+    let mut input = File::open(filename).with_context(|_| {
+        format!("can't open file `{}'", filename.display())
+    })?;
+    let mut output = Vec::new();
+    let result = ctx
+        .sign(mode, &mut input, &mut output)
+        .context("signing failed")?;
+    print_result(&result);
+
+    println!("Begin Output:");
+    io::stdout().write_all(&output)?;
+    println!("End Output.");
+});
 
 fn print_result(result: &gpgme::SigningResult) {
     for sig in result.new_signatures() {
@@ -24,77 +90,4 @@ fn print_result(result: &gpgme::SigningResult) {
         println!("Hash algo .....: {}", sig.hash_algorithm());
         println!("Creation time .: {:?}", sig.creation_time());
     }
-}
-
-fn main() {
-    let args: Vec<_> = env::args().collect();
-    let program = &args[0];
-
-    let mut opts = Options::new();
-    opts.optflag("h", "help", "display this help message");
-    opts.optflag("", "openpgp", "use the OpenPGP protocol (default)");
-    opts.optflag("", "cms", "use the CMS protocol");
-    opts.optflag("", "uiserver", "use the UI server");
-    opts.optflag("", "normal", "create a normal signature (default)");
-    opts.optflag("", "detach", "create a detached signature");
-    opts.optflag("", "clear", "create a clear text signature");
-    opts.optopt("", "key", "use key NAME for signing", "NAME");
-
-    let matches = match opts.parse(&args[1..]) {
-        Ok(matches) => matches,
-        Err(fail) => {
-            print_usage(program, &opts);
-            eprintln!("{}", fail);
-            exit(1);
-        }
-    };
-
-    if matches.opt_present("h") {
-        print_usage(program, &opts);
-        return;
-    }
-
-    if matches.free.len() != 1 {
-        print_usage(program, &opts);
-        exit(1);
-    }
-
-    let proto = if matches.opt_present("cms") {
-        Protocol::Cms
-    } else if matches.opt_present("uiserver") {
-        Protocol::UiServer
-    } else {
-        Protocol::OpenPgp
-    };
-
-    let mode = if matches.opt_present("detach") {
-        gpgme::SignMode::Detached
-    } else if matches.opt_present("clear") {
-        gpgme::SignMode::Clear
-    } else {
-        gpgme::SignMode::Normal
-    };
-
-    let mut ctx = Context::from_protocol(proto).unwrap();
-    ctx.set_armor(true);
-
-    if let Some(key) = matches.opt_str("key") {
-        if proto != Protocol::UiServer {
-            let key = ctx.find_secret_key(key).unwrap();
-            ctx.add_signer(&key).unwrap();
-        } else {
-            eprintln!("ignoring --key in UI-server mode");
-        }
-    }
-
-    let mut input = File::open(&matches.free[0]).unwrap();
-    let mut output = Vec::new();
-    let result = ctx
-        .sign(mode, &mut input, &mut output)
-        .expect("signing failed");
-    print_result(&result);
-
-    println!("Begin Output:");
-    io::stdout().write_all(&output).unwrap();
-    println!("End Output.");
 }

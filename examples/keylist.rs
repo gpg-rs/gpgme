@@ -1,77 +1,70 @@
-extern crate getopts;
 extern crate gpgme;
-
-use std::env;
-use std::process::exit;
-
-use getopts::Options;
+#[macro_use]
+extern crate quicli;
 
 use gpgme::{Context, KeyListMode, Protocol};
+use quicli::prelude::*;
 
-fn print_usage(program: &str, opts: &Options) {
-    let brief = format!("Usage: {} [options] [USERID]+", program);
-    eprintln!("{}", opts.usage(&brief));
+#[derive(Debug, StructOpt)]
+struct Cli {
+    #[structopt(long = "openpgp")]
+    /// Use the OpenPGP protocol
+    openpgp: bool,
+    #[structopt(long = "cms", conflicts_with = "openpgp")]
+    /// Use the CMS protocol
+    cms: bool,
+    #[structopt(long = "local")]
+    /// Use GPGME_KEYLIST_MODE_LOCAL
+    local: bool,
+    #[structopt(long = "extern")]
+    /// Use GPGME_KEYLIST_MODE_EXTERN
+    external: bool,
+    #[structopt(long = "sigs")]
+    /// Use GPGME_KEYLIST_MODE_SIGS
+    sigs: bool,
+    #[structopt(long = "sig-notations")]
+    /// Use GPGME_KEYLIST_MODE_SIG_NOTATIONS
+    notations: bool,
+    #[structopt(long = "ephemeral")]
+    /// Use GPGME_KEYLIST_MODE_EPHEMERAL
+    ephemeral: bool,
+    #[structopt(long = "validate")]
+    /// Use GPGME_KEYLIST_MODE_VALIDATE
+    validate: bool,
+    users: Vec<String>,
 }
 
-fn main() {
-    let args: Vec<_> = env::args().collect();
-    let program = &args[0];
-
-    let mut opts = Options::new();
-    opts.optflag("h", "help", "display this help message");
-    opts.optflag("", "openpgp", "use the OpenPGP protocol (default)");
-    opts.optflag("", "cms", "use the CMS protocol");
-    opts.optflag("", "local", "use GPGME_KEYLIST_MODE_LOCAL");
-    opts.optflag("", "extern", "use GPGME_KEYLIST_MODE_EXTERN");
-    opts.optflag("", "sigs", "use GPGME_KEYLIST_MODE_SIGS");
-    opts.optflag("", "sig-notations", "use GPGME_KEYLIST_MODE_SIG_NOTATIONS");
-    opts.optflag("", "ephemeral", "use GPGME_KEYLIST_MODE_EPHEMERAL");
-    opts.optflag("", "validate", "use GPGME_KEYLIST_MODE_VALIDATE");
-
-    let matches = match opts.parse(&args[1..]) {
-        Ok(matches) => matches,
-        Err(fail) => {
-            print_usage(program, &opts);
-            eprintln!("{}", fail);
-            exit(1);
-        }
-    };
-
-    if matches.opt_present("h") {
-        print_usage(program, &opts);
-        return;
-    }
-
-    let proto = if matches.opt_present("cms") {
+main!(|args: Cli| {
+    let proto = if args.cms {
         Protocol::Cms
     } else {
         Protocol::OpenPgp
     };
 
     let mut mode = KeyListMode::empty();
-    if matches.opt_present("local") {
+    if args.local {
         mode.insert(KeyListMode::LOCAL);
     }
-    if matches.opt_present("extern") {
+    if args.external {
         mode.insert(KeyListMode::EXTERN);
     }
-    if matches.opt_present("sigs") {
+    if args.sigs {
         mode.insert(KeyListMode::SIGS);
     }
-    if matches.opt_present("sig-notations") {
+    if args.notations {
         mode.insert(KeyListMode::SIG_NOTATIONS);
     }
-    if matches.opt_present("ephemeral") {
+    if args.ephemeral {
         mode.insert(KeyListMode::EPHEMERAL);
     }
-    if matches.opt_present("validate") {
+    if args.validate {
         mode.insert(KeyListMode::VALIDATE);
     }
 
-    let mut ctx = Context::from_protocol(proto).unwrap();
-    ctx.set_key_list_mode(mode).unwrap();
-    let mut keys = ctx.find_keys(matches.free).unwrap();
-    for key in keys.by_ref().filter_map(Result::ok) {
+    let mut ctx = Context::from_protocol(proto)?;
+    ctx.set_key_list_mode(mode)?;
+    let mut keys = ctx.find_keys(args.users)?;
+    for key in keys.by_ref().filter_map(|x| x.ok()) {
         println!("keyid   : {}", key.id().unwrap_or("?"));
         println!("fpr     : {}", key.fingerprint().unwrap_or("?"));
         println!(
@@ -97,7 +90,7 @@ fn main() {
         println!("");
     }
 
-    if keys.finish().unwrap().is_truncated() {
-        panic!("key listing unexpectedly truncated");
+    if keys.finish()?.is_truncated() {
+        bail!("key listing unexpectedly truncated");
     }
-}
+});

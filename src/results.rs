@@ -386,7 +386,8 @@ impl DecryptionResult {
 
     #[inline]
     pub fn symmetric_key_algorithm(&self) -> result::Result<&str, Option<Utf8Error>> {
-        self.symmetric_key_algorithm_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+        self.symmetric_key_algorithm_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]

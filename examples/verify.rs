@@ -1,18 +1,46 @@
-extern crate getopts;
 extern crate gpgme;
+#[macro_use]
+extern crate quicli;
 
-use std::env;
 use std::fs::File;
-use std::process::exit;
-
-use getopts::Options;
+use std::path::PathBuf;
 
 use gpgme::{Context, Protocol, SignatureSummary};
+use quicli::prelude::*;
 
-fn print_usage(program: &str, opts: &Options) {
-    let brief = format!("Usage: {} [options] [SIGFILE] FILE", program);
-    eprintln!("{}", opts.usage(&brief));
+#[derive(Debug, StructOpt)]
+struct Cli {
+    #[structopt(long = "openpgp")]
+    /// Use the OpenPGP protocol
+    openpgp: bool,
+    #[structopt(long = "cms", conflicts_with = "openpgp")]
+    /// Use the CMS protocol
+    cms: bool,
+    #[structopt(parse(from_os_str))]
+    sigfile: PathBuf,
+    #[structopt(parse(from_os_str))]
+    filename: Option<PathBuf>,
 }
+
+main!(|args: Cli| {
+    let proto = if args.cms {
+        Protocol::Cms
+    } else {
+        Protocol::OpenPgp
+    };
+
+    let mut ctx = Context::from_protocol(proto)?;
+    let sigfile = &args.sigfile;
+    let signature = File::open(sigfile).with_context(|_| format!("can't open '{}'", sigfile.display()))?;
+    let result = (if let Some(filename) = args.filename.as_ref() {
+        let signed = File::open(filename).with_context(|_| format!("can't open '{}'", filename.display()))?;
+        ctx.verify_detached(signature, signed)
+    } else {
+        ctx.verify_opaque(signature, &mut Vec::new())
+    }).context("verification failed")?;
+
+    print_result(&result);
+});
 
 fn print_summary(summary: SignatureSummary) {
     if summary.contains(SignatureSummary::VALID) {
@@ -83,71 +111,5 @@ fn print_result(result: &gpgme::VerificationResult) {
                 ""
             }
         );
-    }
-}
-
-fn main() {
-    let args: Vec<_> = env::args().collect();
-    let program = &args[0];
-
-    let mut opts = Options::new();
-    opts.optflag("h", "help", "display this help message");
-    opts.optflag("", "openpgp", "use the OpenPGP protocol (default)");
-    opts.optflag("", "cms", "use the CMS protocol");
-
-    let matches = match opts.parse(&args[1..]) {
-        Ok(matches) => matches,
-        Err(fail) => {
-            print_usage(program, &opts);
-            eprintln!("{}", fail);
-            exit(1);
-        }
-    };
-
-    if matches.opt_present("h") {
-        print_usage(program, &opts);
-        return;
-    }
-
-    if matches.free.len() < 1 {
-        print_usage(program, &opts);
-        exit(1);
-    }
-
-    let proto = if matches.opt_present("cms") {
-        Protocol::Cms
-    } else {
-        Protocol::OpenPgp
-    };
-
-    let mut ctx = Context::from_protocol(proto).unwrap();
-
-    let signature = match File::open(&matches.free[0]) {
-        Ok(file) => file,
-        Err(err) => {
-            eprintln!("{}: can't open '{}': {}", program, &matches.free[0], err);
-            exit(1);
-        }
-    };
-
-    let result = if matches.free.len() > 1 {
-        let signed = match File::open(&matches.free[1]) {
-            Ok(file) => file,
-            Err(err) => {
-                eprintln!("{}: can't open '{}': {}", program, &matches.free[1], err);
-                exit(1);
-            }
-        };
-        ctx.verify_detached(signature, signed)
-    } else {
-        ctx.verify_opaque(signature, &mut Vec::new())
-    };
-
-    match result {
-        Ok(result) => print_result(&result),
-        Err(err) => {
-            eprintln!("{}: verification failed: {}", program, err);
-            exit(1);
-        }
     }
 }

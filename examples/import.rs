@@ -1,13 +1,47 @@
-extern crate getopts;
 extern crate gpgme;
+#[macro_use]
+extern crate quicli;
 
-use std::env;
-use std::process::exit;
-
-use getopts::Options;
+use std::fs::File;
+use std::path::PathBuf;
 
 use gpgme::data;
 use gpgme::{Context, Data, ImportFlags};
+use quicli::prelude::*;
+
+#[derive(Debug, StructOpt)]
+struct Cli {
+    #[structopt(long = "url")]
+    /// Import from given URLs
+    url: bool,
+    #[structopt(short = "0")]
+    /// URLS are delimited by a null
+    nul: bool,
+    #[structopt(raw(required = "true"), parse(from_os_str))]
+    filenames: Vec<PathBuf>,
+}
+
+main!(|args: Cli| {
+    let mode = if args.url {
+        if args.nul {
+            Some(data::Encoding::Url0)
+        } else {
+            Some(data::Encoding::Url)
+        }
+    } else {
+        None
+    };
+
+    let mut ctx = Context::from_protocol(gpgme::Protocol::OpenPgp)?;
+    for file in args.filenames {
+        println!("reading file `{}'", &file.display());
+
+        let mut input = File::open(file)?;
+        let mut data = Data::from_seekable_stream(input)?;
+        mode.map(|m| data.set_encoding(m));
+        print_import_result(ctx.import(&mut data).context("import failed")?);
+    }
+});
 
 fn print_import_result(result: gpgme::ImportResult) {
     for import in result.imports() {
@@ -48,57 +82,4 @@ fn print_import_result(result: gpgme::ImportResult) {
     println!("   secret imported: {}", result.secret_imported());
     println!("  secret unchanged: {}", result.secret_unchanged());
     println!("      not imported: {}", result.not_imported());
-}
-
-fn print_usage(program: &str, opts: &Options) {
-    let brief = format!("Usage: {} [options] FILENAME+", program);
-    eprintln!("{}", opts.usage(&brief));
-}
-
-fn main() {
-    let args: Vec<_> = env::args().collect();
-    let program = &args[0];
-
-    let mut opts = Options::new();
-    opts.optflag("h", "help", "display this help message");
-    opts.optflag("", "url", "import from given URLs");
-    opts.optflag("0", "", "URLs are delimited by a nul");
-
-    let matches = match opts.parse(&args[1..]) {
-        Ok(matches) => matches,
-        Err(fail) => {
-            print_usage(program, &opts);
-            eprintln!("{}", fail);
-            exit(1);
-        }
-    };
-
-    if matches.opt_present("h") {
-        print_usage(program, &opts);
-        return;
-    }
-
-    if matches.free.len() < 1 {
-        print_usage(program, &opts);
-        exit(1);
-    }
-
-    let mode = if matches.opt_present("url") {
-        if matches.opt_present("0") {
-            Some(data::Encoding::Url0)
-        } else {
-            Some(data::Encoding::Url)
-        }
-    } else {
-        None
-    };
-
-    let mut ctx = Context::from_protocol(gpgme::Protocol::OpenPgp).unwrap();
-    for file in matches.free {
-        println!("reading file `{}'", &file);
-
-        let mut data = Data::load(file).unwrap();
-        mode.map(|m| data.set_encoding(m));
-        print_import_result(ctx.import(&mut data).expect("import failed"));
-    }
 }

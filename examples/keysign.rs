@@ -1,66 +1,47 @@
-extern crate getopts;
 #[macro_use]
 extern crate gpgme;
-
-use std::env;
-use std::process::exit;
-
-use getopts::Options;
+#[macro_use]
+extern crate quicli;
 
 use gpgme::{Context, Protocol};
+use quicli::prelude::*;
 
-fn print_usage(program: &str, opts: &Options) {
-    let brief = format!("Usage: {} [options] key-id", program);
-    eprintln!("{}", opts.usage(&brief));
+#[derive(Debug, StructOpt)]
+struct Cli {
+    #[structopt(long = "openpgp")]
+    /// Use the OpenPGP protocol
+    openpgp: bool,
+    #[structopt(long = "cms", conflicts_with = "openpgp")]
+    /// Use the CMS protocol
+    cms: bool,
+    #[structopt(long = "uiserver", conflicts_with = "openpgp", conflicts_with = "cms")]
+    /// Use to UI server
+    uiserver: bool,
+    #[structopt(long = "key")]
+    /// Key to use for signing. Default key is used otherwise
+    key: Option<String>,
+    /// Key to sign
+    keyid: String,
 }
 
-fn main() {
+main!(|args: Cli| {
     require_gpgme_ver! {
         (1, 7) => {
-            let args: Vec<_> = env::args().collect();
-            let program = &args[0];
-
-            let mut opts = Options::new();
-            opts.optflag("h", "help", "display this help message");
-            opts.optflag("", "openpgp", "use the OpenPGP protocol (default)");
-            opts.optflag("", "uiserver", "use the UI server");
-            opts.optflag("", "cms", "use the CMS protocol");
-            opts.optopt("", "key", "use key NAME for signing. Default key is used otherwise.", "NAME");
-
-            let matches = match opts.parse(&args[1..]) {
-                Ok(matches) => matches,
-                Err(fail) => {
-                    print_usage(program, &opts);
-                    eprintln!("{}", fail);
-                    exit(1);
-                }
-            };
-
-            if matches.opt_present("h") {
-                print_usage(program, &opts);
-                return;
-            }
-
-            if matches.free.len() != 1 {
-                print_usage(program, &opts);
-                exit(1);
-            }
-
-            let proto = if matches.opt_present("cms") {
+            let proto = if args.cms {
                 Protocol::Cms
-            } else if matches.opt_present("uiserver") {
+            } else if args.uiserver {
                 Protocol::UiServer
             } else {
                 Protocol::OpenPgp
             };
 
-            let mut ctx = Context::from_protocol(proto).unwrap();
-            let key_to_sign = ctx.find_key(&matches.free[0]).expect("no key matched given key-id");
+            let mut ctx = Context::from_protocol(proto)?;
+            let key_to_sign = ctx.get_key(&args.keyid).context("no key matched given key-id")?;
 
-            if let Some(key) = matches.opt_str("key") {
+            if let Some(key) = args.key {
                 if proto != Protocol::UiServer {
-                    let key = ctx.find_secret_key(key).unwrap();
-                    ctx.add_signer(&key).expect("add_signer() failed");
+                    let key = ctx.get_secret_key(key).context("unable to find signing key")?;
+                    ctx.add_signer(&key).context("add_signer() failed")?;
                 } else {
                     eprintln!("ignoring --key in UI-server mode");
                 }
@@ -68,11 +49,11 @@ fn main() {
 
             let users = Vec::<&[u8]>::new();
             ctx.sign_key(&key_to_sign, &users, None)
-                .expect("signing failed");
+                .context("signing failed")?;
 
-            println!("Signed key for {}", matches.free[0]);
+            println!("Signed key for {}", args.keyid);
         } else {
-            eprintln!("This example requires GPGme version 1.7");
+            bail!("This example requires GPGme version 1.7");
         }
     }
-}
+});

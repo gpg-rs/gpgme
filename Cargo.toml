@@ -9,6 +9,7 @@ documentation = "https://docs.rs/gpgme"
 categories = ["api-bindings"]
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 description = "GPGme bindings for Rust"
+autotests = false
 
 [badges]
 travis-ci = { repository = "gpg-rs/gpgme" }
@@ -20,7 +21,7 @@ bundled = ["gpgme-sys/bundled", "gpg-error/bundled"]
 nightly = ["lazy_static/nightly"]
 
 [dev-dependencies]
-getopts = "0.2"
+quicli = "0.3"
 tempdir = "0.3"
 
 [dependencies]
