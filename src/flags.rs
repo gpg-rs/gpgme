@@ -16,6 +16,7 @@ bitflags! {
         const WITH_TOFU = ffi::GPGME_KEYLIST_MODE_WITH_TOFU;
         const EPHEMERAL = ffi::GPGME_KEYLIST_MODE_EPHEMERAL;
         const VALIDATE = ffi::GPGME_KEYLIST_MODE_VALIDATE;
+        const LOCATE = ffi::GPGME_KEYLIST_MODE_LOCATE;
     }
 }
 
@@ -80,6 +81,7 @@ bitflags! {
         const SYMMETRIC = ffi::GPGME_ENCRYPT_SYMMETRIC;
         const THROW_KEYIDS = ffi::GPGME_ENCRYPT_THROW_KEYIDS;
         const WRAP = ffi::GPGME_ENCRYPT_WRAP;
+        const WANT_ADDRESS = ffi::GPGME_ENCRYPT_WANT_ADDRESS;
     }
 }
 

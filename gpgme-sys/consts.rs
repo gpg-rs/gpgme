@@ -113,6 +113,8 @@ pub const GPGME_KEYLIST_MODE_WITH_SECRET: gpgme_keylist_mode_t = 16;
 pub const GPGME_KEYLIST_MODE_WITH_TOFU: gpgme_keylist_mode_t = 32;
 pub const GPGME_KEYLIST_MODE_EPHEMERAL: gpgme_keylist_mode_t = 128;
 pub const GPGME_KEYLIST_MODE_VALIDATE: gpgme_keylist_mode_t = 256;
+pub const GPGME_KEYLIST_MODE_LOCATE: gpgme_keylist_mode_t =
+    GPGME_KEYLIST_MODE_LOCAL | GPGME_KEYLIST_MODE_EXTERN;
 
 pub type gpgme_pinentry_mode_t = libc::c_uint;
 pub const GPGME_PINENTRY_MODE_DEFAULT: gpgme_pinentry_mode_t = 0;
@@ -262,6 +264,7 @@ pub const GPGME_ENCRYPT_NO_COMPRESS: gpgme_encrypt_flags_t = 16;
 pub const GPGME_ENCRYPT_SYMMETRIC: gpgme_encrypt_flags_t = 32;
 pub const GPGME_ENCRYPT_THROW_KEYIDS: gpgme_encrypt_flags_t = 64;
 pub const GPGME_ENCRYPT_WRAP: gpgme_encrypt_flags_t = 128;
+pub const GPGME_ENCRYPT_WANT_ADDRESS: gpgme_encrypt_flags_t = 256;
 
 pub type gpgme_decrypt_flags_t = libc::c_uint;
 pub const GPGME_DECRYPT_VERIFY: gpgme_decrypt_flags_t = 1;

@@ -231,6 +231,17 @@ impl ImportResult {
     }
 
     #[inline]
+    pub fn skipped_v3_keys(&self) -> u32 {
+        require_gpgme_ver! {
+            (1, 11) => {
+                unsafe { (*self.as_raw()).skipped_v3_keys as u32 }
+            } else {
+                0
+            }
+        }
+    }
+
+    #[inline]
     pub fn imports(&self) -> Imports<'_> {
         unsafe { Imports::from_list((*self.as_raw()).imports) }
     }
@@ -347,6 +358,17 @@ impl DecryptionResult {
     }
 
     #[inline]
+    pub fn is_mime(&self) -> bool {
+        require_gpgme_ver! {
+            (1, 11) => {
+                unsafe { (*self.as_raw()).is_mime() }
+            } else {
+                false
+            }
+        }
+    }
+
+    #[inline]
     pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.filename_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
@@ -359,6 +381,24 @@ impl DecryptionResult {
                 .file_name
                 .as_ref()
                 .map(|s| CStr::from_ptr(s))
+        }
+    }
+
+    #[inline]
+    pub fn symmetric_key_algorithm(&self) -> result::Result<&str, Option<Utf8Error>> {
+        self.symmetric_key_algorithm_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    #[inline]
+    pub fn symmetric_key_algorithm_raw(&self) -> Option<&CStr> {
+        require_gpgme_ver! {
+            (1, 11) => {
+                unsafe {
+                    (*self.as_raw()).symkey_algo.as_ref().map(|s| CStr::from_ptr(s))
+                }
+            } else {
+                None
+            }
         }
     }
 
@@ -505,6 +545,17 @@ impl<'a> fmt::Debug for NewSignature<'a> {
 
 impl_result!(VerificationResult: ffi::gpgme_verify_result_t = ffi::gpgme_op_verify_result);
 impl VerificationResult {
+    #[inline]
+    pub fn is_mime(&self) -> bool {
+        require_gpgme_ver! {
+            (1, 11) => {
+                unsafe { (*self.as_raw()).is_mime() }
+            } else {
+                false
+            }
+        }
+    }
+
     #[inline]
     pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.filename_raw()

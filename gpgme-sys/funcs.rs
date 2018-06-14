@@ -198,6 +198,14 @@ extern "C" {
         ctx: gpgme_ctx_t, recp: *mut gpgme_key_t, flags: gpgme_encrypt_flags_t,
         plain: gpgme_data_t, cipher: gpgme_data_t,
     ) -> gpgme_error_t;
+    pub fn gpgme_op_encrypt_ext_start(
+        ctx: gpgme_ctx_t, recp: *mut gpgme_key_t, recpstring: *const c_char,
+        flags: gpgme_encrypt_flags_t, plain: gpgme_data_t, cipher: gpgme_data_t,
+    ) -> gpgme_error_t;
+    pub fn gpgme_op_encrypt_ext(
+        ctx: gpgme_ctx_t, recp: *mut gpgme_key_t, recpstring: *const c_char,
+        flags: gpgme_encrypt_flags_t, plain: gpgme_data_t, cipher: gpgme_data_t,
+    ) -> gpgme_error_t;
     pub fn gpgme_op_encrypt_sign_start(
         ctx: gpgme_ctx_t, recp: *mut gpgme_key_t, flags: gpgme_encrypt_flags_t,
         plain: gpgme_data_t, cipher: gpgme_data_t,
@@ -233,6 +241,14 @@ extern "C" {
     ) -> gpgme_error_t;
     pub fn gpgme_op_sign(
         ctx: gpgme_ctx_t, plain: gpgme_data_t, sig: gpgme_data_t, mode: gpgme_sig_mode_t,
+    ) -> gpgme_error_t;
+    pub fn gpgme_op_encrypt_sign_ext_start(
+        ctx: gpgme_ctx_t, recp: *mut gpgme_key_t, recpstring: *const c_char,
+        flags: gpgme_encrypt_flags_t, plain: gpgme_data_t, cipher: gpgme_data_t,
+    ) -> gpgme_error_t;
+    pub fn gpgme_op_encrypt_sign_ext(
+        ctx: gpgme_ctx_t, recp: *mut gpgme_key_t, recpstring: *const c_char,
+        flags: gpgme_encrypt_flags_t, plain: gpgme_data_t, cipher: gpgme_data_t,
     ) -> gpgme_error_t;
 
     pub fn gpgme_op_verify_result(ctx: gpgme_ctx_t) -> gpgme_verify_result_t;

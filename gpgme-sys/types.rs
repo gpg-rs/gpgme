@@ -399,18 +399,24 @@ pub struct _gpgme_op_decrypt_result {
     pub recipients: gpgme_recipient_t,
     pub file_name: *mut c_char,
     pub session_key: *mut c_char,
+    pub symkey_algo: *mut c_char,
 }
 pub type gpgme_decrypt_result_t = *mut _gpgme_op_decrypt_result;
 
 impl _gpgme_op_decrypt_result {
     #[inline]
     pub fn wrong_key_usage(&self) -> bool {
-        (self.bitfield & 0b01) == 0b01
+        (self.bitfield & 0b0001) == 0b0001
     }
 
     #[inline]
     pub fn is_de_vs(&self) -> bool {
-        (self.bitfield & 0b10) == 0b10
+        (self.bitfield & 0b0010) == 0b0010
+    }
+
+    #[inline]
+    pub fn is_mime(&self) -> bool {
+        (self.bitfield & 0b0100) == 0b0100
     }
 }
 
@@ -484,8 +490,16 @@ impl _gpgme_signature {
 pub struct _gpgme_op_verify_result {
     pub signatures: gpgme_signature_t,
     pub file_name: *mut c_char,
+    pub bitfield: u32,
 }
 pub type gpgme_verify_result_t = *mut _gpgme_op_verify_result;
+
+impl _gpgme_op_verify_result {
+    #[inline]
+    pub fn is_mime(&self) -> bool {
+        (self.bitfield & 0b0001) == 0b0001
+    }
+}
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -515,6 +529,7 @@ pub struct _gpgme_op_import_result {
     pub skipped_new_keys: c_int,
     pub not_imported: c_int,
     pub imports: gpgme_import_status_t,
+    pub skipped_v3_keys: c_int,
 }
 pub type gpgme_import_result_t = *mut _gpgme_op_import_result;
 
