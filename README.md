@@ -29,7 +29,7 @@ Put this in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gpgme = "0.7"
+gpgme = "0.8"
 ```
 
 And this in your crate root:

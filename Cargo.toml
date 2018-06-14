@@ -1,6 +1,6 @@
 [package]
 name = "gpgme"
-version = "0.7.2"
+version = "0.8.0"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
 readme = "README.md"
@@ -35,7 +35,7 @@ gpg-error = { version = "0.4", default-features = false }
 
 [dependencies.gpgme-sys]
 path = "gpgme-sys"
-version = "0.7.0"
+version = "0.8.0"
 default-features = false
 
 [[bin]]
