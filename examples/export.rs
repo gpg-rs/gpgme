@@ -47,7 +47,8 @@ main!(|args: Cli| {
 
     if mode.contains(ExportMode::EXTERN) {
         println!("sending keys to keyserver");
-        ctx.export_keys_extern(&keys, mode).context("export failed")?;
+        ctx.export_keys_extern(&keys, mode)
+            .context("export failed")?;
     } else {
         let mut output = Vec::new();
         ctx.export_keys(&keys, mode, &mut output)

@@ -64,3 +64,4 @@ name = "context"
 name = "keysign"
 
 [workspace]
+members = ["systest"]

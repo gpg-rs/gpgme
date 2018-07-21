@@ -18,7 +18,11 @@ struct Cli {
     #[structopt(long = "cms", conflicts_with = "openpgp")]
     /// Use the CMS protocol
     cms: bool,
-    #[structopt(long = "uiserver", conflicts_with = "openpgp", conflicts_with = "cms")]
+    #[structopt(
+        long = "uiserver",
+        conflicts_with = "openpgp",
+        conflicts_with = "cms"
+    )]
     /// Use to UI server
     uiserver: bool,
     #[structopt(long = "normal")]
@@ -27,7 +31,11 @@ struct Cli {
     #[structopt(long = "detach", conflicts_with = "normal")]
     /// Create a detached signature
     detach: bool,
-    #[structopt(long = "clear", conflicts_with = "normal", conflicts_with = "detach")]
+    #[structopt(
+        long = "clear",
+        conflicts_with = "normal",
+        conflicts_with = "detach"
+    )]
     /// Create a clear text signature
     clear: bool,
     #[structopt(long = "key")]
@@ -60,7 +68,9 @@ main!(|args: Cli| {
 
     if let Some(key) = args.key {
         if proto != Protocol::UiServer {
-            let key = ctx.get_secret_key(key).context("unable to find signing key")?;
+            let key = ctx
+                .get_secret_key(key)
+                .context("unable to find signing key")?;
             ctx.add_signer(&key).context("add_signer() failed")?;
         } else {
             eprintln!("ignoring --key in UI-server mode");
@@ -68,9 +78,8 @@ main!(|args: Cli| {
     }
 
     let filename = &args.filename;
-    let mut input = File::open(filename).with_context(|_| {
-        format!("can't open file `{}'", filename.display())
-    })?;
+    let mut input =
+        File::open(filename).with_context(|_| format!("can't open file `{}'", filename.display()))?;
     let mut output = Vec::new();
     let result = ctx
         .sign(mode, &mut input, &mut output)

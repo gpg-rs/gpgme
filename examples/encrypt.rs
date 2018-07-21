@@ -46,9 +46,8 @@ main!(|args: Cli| {
     };
 
     let filename = &args.filename;
-    let mut input = File::open(&args.filename).with_context(|_| {
-        format!("can't open file `{}'", filename.display())
-    })?;
+    let mut input = File::open(&args.filename)
+        .with_context(|_| format!("can't open file `{}'", filename.display()))?;
     let mut output = Vec::new();
     ctx.encrypt(&keys, &mut input, &mut output)
         .context("encrypting failed")?;

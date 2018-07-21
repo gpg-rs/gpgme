@@ -46,8 +46,7 @@ before_script:
 script:
   - cargo build --verbose --verbose $CARGO_FLAGS
   - cargo test --verbose --no-fail-fast $CARGO_FLAGS
-after_script:
-  - ldd target/debug/examples/encrypt
+  - cargo run -p systest $CARGO_FLAGS
 env:
   global:
     - GPGME_DEBUG=9

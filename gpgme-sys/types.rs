@@ -66,7 +66,7 @@ pub struct _gpgme_engine_info {
     pub protocol: gpgme_protocol_t,
     pub file_name: *mut c_char,
     pub version: *mut c_char,
-    pub req_version: *mut c_char,
+    pub req_version: *const c_char,
     pub home_dir: *mut c_char,
 }
 pub type gpgme_engine_info_t = *mut _gpgme_engine_info;
@@ -424,7 +424,7 @@ impl _gpgme_op_decrypt_result {
 #[derive(Copy, Clone)]
 pub struct _gpgme_new_signature {
     pub next: gpgme_new_signature_t,
-    pub sig_type: gpgme_sig_mode_t,
+    pub typ: gpgme_sig_mode_t,
     pub pubkey_algo: gpgme_pubkey_algo_t,
     pub hash_algo: gpgme_hash_algo_t,
     _class1: c_ulong,
@@ -580,7 +580,7 @@ pub struct _gpgme_trust_item {
     _refs: c_uint,
     pub keyid: *mut c_char,
     _keyid: [c_char; 17],
-    pub trust_type: c_int,
+    pub typ: c_int,
     pub level: c_int,
     pub owner_trust: *mut c_char,
     _owner_trust: [c_char; 2],
@@ -610,7 +610,7 @@ pub type gpgme_vfs_mount_result_t = *mut _gpgme_op_vfs_mount_result;
 pub struct gpgme_conf_arg {
     pub next: gpgme_conf_arg_t,
     pub no_arg: c_uint,
-    pub union: libc::uintptr_t,
+    pub value: libc::uintptr_t,
 }
 pub type gpgme_conf_arg_t = *mut gpgme_conf_arg;
 
@@ -622,7 +622,7 @@ pub struct gpgme_conf_opt {
     pub flags: c_uint,
     pub level: gpgme_conf_level_t,
     pub description: *mut c_char,
-    pub opt_type: gpgme_conf_type_t,
+    pub typ: gpgme_conf_type_t,
     pub alt_type: gpgme_conf_type_t,
     pub argname: *mut c_char,
     pub default_value: gpgme_conf_arg_t,

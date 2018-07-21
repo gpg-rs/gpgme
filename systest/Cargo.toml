@@ -1,0 +1,16 @@
+[package]
+name = "systest"
+version = "0.1.0"
+authors = ["John Schug <john.ips.schug@gmail.com>"]
+publish = false
+
+[features]
+default = ["bundled"]
+bundled = ["gpgme-sys/bundled"]
+
+[build-dependencies]
+ctest = "0.1"
+
+[dependencies]
+libc = "0.2"
+gpgme-sys = { path = "../gpgme-sys", default-features = false }

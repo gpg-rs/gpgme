@@ -31,9 +31,11 @@ main!(|args: Cli| {
 
     let mut ctx = Context::from_protocol(proto)?;
     let sigfile = &args.sigfile;
-    let signature = File::open(sigfile).with_context(|_| format!("can't open '{}'", sigfile.display()))?;
+    let signature =
+        File::open(sigfile).with_context(|_| format!("can't open '{}'", sigfile.display()))?;
     let result = (if let Some(filename) = args.filename.as_ref() {
-        let signed = File::open(filename).with_context(|_| format!("can't open '{}'", filename.display()))?;
+        let signed =
+            File::open(filename).with_context(|_| format!("can't open '{}'", filename.display()))?;
         ctx.verify_detached(signature, signed)
     } else {
         ctx.verify_opaque(signature, &mut Vec::new())
