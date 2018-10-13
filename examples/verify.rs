@@ -33,15 +33,14 @@ main!(|args: Cli| {
     let sigfile = &args.sigfile;
     let signature =
         File::open(sigfile).with_context(|_| format!("can't open '{}'", sigfile.display()))?;
-    let result = (if let Some(filename) = args.filename.as_ref() {
-        let signed =
-            File::open(filename).with_context(|_| format!("can't open '{}'", filename.display()))?;
+    let result = if let Some(filename) = args.filename.as_ref() {
+        let signed = File::open(filename)
+            .with_context(|_| format!("can't open '{}'", filename.display()))?;
         ctx.verify_detached(signature, signed)
     } else {
         ctx.verify_opaque(signature, &mut Vec::new())
-    }).context("verification failed")?;
-
-    print_result(&result);
+    };
+    print_result(&result.context("verification failed")?);
 });
 
 fn print_summary(summary: SignatureSummary) {

@@ -368,6 +368,15 @@ impl DecryptionResult {
         }
     }
 
+    require_gpgme_ver! {
+        (1, 12) => {
+            #[inline]
+            pub fn is_legacy_cipher_no_mdc(&self) -> bool {
+                unsafe { (*self.as_raw()).legacy_cipher_nomdc() }
+            }
+        }
+    }
+
     #[inline]
     pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.filename_raw()
@@ -511,7 +520,7 @@ impl<'a> NewSignature<'a> {
 
     #[inline]
     pub fn mode(&self) -> SignMode {
-        unsafe { SignMode::from_raw((*self.as_raw()).sig_type) }
+        unsafe { SignMode::from_raw((*self.as_raw()).typ) }
     }
 
     #[inline]

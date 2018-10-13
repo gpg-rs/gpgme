@@ -315,9 +315,10 @@ pub extern "C" fn edit_cb<E: EditInteractor>(
             interactor.interact(status, None::<&mut io::Write>)
         } else {
             interactor.interact(status, Some(FdWriter::new(fd)))
-        }).err()
-            .map(|err| err.raw())
-            .unwrap_or(0);
+        })
+        .err()
+        .map(|err| err.raw())
+        .unwrap_or(0);
         (interactor, result)
     }) {
         Ok((interactor, result)) => {
@@ -400,9 +401,10 @@ pub extern "C" fn interact_cb<I: Interactor>(
             interactor.interact(status, None::<&mut io::Write>)
         } else {
             interactor.interact(status, Some(FdWriter::new(fd)))
-        }).err()
-            .map(|err| err.raw())
-            .unwrap_or(0);
+        })
+        .err()
+        .map(|err| err.raw())
+        .unwrap_or(0);
         (interactor, result)
     }) {
         Ok((interactor, result)) => {

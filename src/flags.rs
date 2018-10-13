@@ -118,7 +118,9 @@ bitflags! {
 
 bitflags! {
     pub struct AuditLogFlags: libc::c_uint {
+        const DEFAULT = ffi::GPGME_AUDITLOG_DEFAULT;
         const HTML = ffi::GPGME_AUDITLOG_HTML;
+        const DIAG = ffi::GPGME_AUDITLOG_DIAG;
         const WITH_HELP = ffi::GPGME_AUDITLOG_WITH_HELP;
     }
 }

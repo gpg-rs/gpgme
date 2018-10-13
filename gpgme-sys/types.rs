@@ -418,6 +418,11 @@ impl _gpgme_op_decrypt_result {
     pub fn is_mime(&self) -> bool {
         (self.bitfield & 0b0100) == 0b0100
     }
+
+    #[inline]
+    pub fn legacy_cipher_nomdc(&self) -> bool {
+        (self.bitfield & 0b1000) == 0b1000
+    }
 }
 
 #[repr(C)]

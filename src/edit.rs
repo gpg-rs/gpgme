@@ -186,7 +186,8 @@ impl<E: Editor> EditInteractor for EditorWrapper<E> {
                     self.editor
                         .action(state, &mut out)
                         .and_then(|_| out.write_all(b"\n").map_err(Error::from))
-                }).and(Ok(state))
+                })
+                .and(Ok(state))
             });
         self.state.and(Ok(()))
     }

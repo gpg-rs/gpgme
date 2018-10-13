@@ -78,8 +78,8 @@ main!(|args: Cli| {
     }
 
     let filename = &args.filename;
-    let mut input =
-        File::open(filename).with_context(|_| format!("can't open file `{}'", filename.display()))?;
+    let mut input = File::open(filename)
+        .with_context(|_| format!("can't open file `{}'", filename.display()))?;
     let mut output = Vec::new();
     let result = ctx
         .sign(mode, &mut input, &mut output)

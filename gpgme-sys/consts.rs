@@ -130,7 +130,9 @@ pub const GPGME_EXPORT_MODE_SECRET: gpgme_export_mode_t = 16;
 pub const GPGME_EXPORT_MODE_RAW: gpgme_export_mode_t = 32;
 pub const GPGME_EXPORT_MODE_PKCS12: gpgme_export_mode_t = 64;
 
+pub const GPGME_AUDITLOG_DEFAULT: libc::c_uint = 0;
 pub const GPGME_AUDITLOG_HTML: libc::c_uint = 1;
+pub const GPGME_AUDITLOG_DIAG: libc::c_uint = 2;
 pub const GPGME_AUDITLOG_WITH_HELP: libc::c_uint = 128;
 
 pub type gpgme_sig_notation_flags_t = libc::c_uint;
