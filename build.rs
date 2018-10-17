@@ -1,8 +1,4 @@
-use std::env;
-use std::error::Error;
-use std::fs::File;
-use std::io::prelude::*;
-use std::path::PathBuf;
+use std::{env, error::Error, fs::File, io::prelude::*, path::PathBuf};
 
 fn main() -> Result<(), Box<Error>> {
     let (major, minor) = env::var("DEP_GPGME_VERSION")

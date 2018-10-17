@@ -1,8 +1,10 @@
-use std::ffi::CStr;
-use std::fmt;
-use std::marker::PhantomData;
-use std::str::Utf8Error;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{
+    ffi::CStr,
+    fmt,
+    marker::PhantomData,
+    str::Utf8Error,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use ffi;
 

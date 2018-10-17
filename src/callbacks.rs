@@ -1,16 +1,15 @@
-use std::ffi::CStr;
-use std::io;
-use std::io::prelude::*;
-use std::panic::{self, UnwindSafe};
-use std::str::Utf8Error;
-use std::thread;
+use std::{
+    ffi::CStr,
+    io::{self, prelude::*},
+    panic::{self, UnwindSafe},
+    str::Utf8Error,
+    thread,
+};
 
 use ffi;
 use libc;
 
-use edit;
-use utils::FdWriter;
-use {Data, Error};
+use {edit, utils::FdWriter, Data, Error};
 
 #[derive(Debug, Copy, Clone)]
 pub struct PassphraseRequest<'a> {

@@ -1,24 +1,23 @@
-use std::borrow::BorrowMut;
-use std::error::Error as StdError;
-use std::ffi::CStr;
-use std::fmt;
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::{self, Cursor};
-use std::marker::PhantomData;
 #[cfg(unix)]
 use std::os::unix::io::AsRawFd;
-use std::ptr;
-use std::result;
-use std::slice;
-use std::str::Utf8Error;
+use std::{
+    borrow::BorrowMut,
+    error::Error as StdError,
+    ffi::CStr,
+    fmt,
+    fs::File,
+    io::prelude::*,
+    io::{self, Cursor},
+    marker::PhantomData,
+    ptr, result, slice,
+    str::Utf8Error,
+};
 
 use conv::{UnwrapOrSaturate, ValueInto};
 use ffi;
 use libc;
 
-use utils::CStrArgument;
-use {Error, NonNull, Result};
+use {utils::CStrArgument, Error, NonNull, Result};
 
 ffi_enum_wrapper! {
     pub enum Encoding: ffi::gpgme_data_encoding_t {

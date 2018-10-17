@@ -1,5 +1,4 @@
-use std::io;
-use std::io::prelude::*;
+use std::io::{self, prelude::*};
 
 use ffi;
 use libc;

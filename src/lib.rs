@@ -12,35 +12,34 @@ extern crate lazy_static;
 extern crate libc;
 extern crate smallvec;
 
-use std::ffi::CStr;
-use std::fmt;
-use std::mem;
-use std::ptr;
-use std::result;
-use std::str::Utf8Error;
-use std::sync::{Mutex, Once, RwLock};
-
-use self::engine::EngineInfoGuard;
-use self::utils::CStrArgument;
-
-pub use self::callbacks::{
-    EditInteractionStatus, EditInteractor, InteractionStatus, Interactor, PassphraseProvider,
-    PassphraseRequest, ProgressHandler, ProgressInfo, StatusHandler,
+use self::{engine::EngineInfoGuard, utils::CStrArgument};
+use std::{
+    ffi::CStr,
+    fmt, mem, ptr, result,
+    str::Utf8Error,
+    sync::{Mutex, Once, RwLock},
 };
-pub use self::context::Context;
-pub use self::data::{Data, IntoData};
-pub use self::engine::EngineInfo;
-pub use self::error::{Error, Result};
-pub use self::flags::*;
-pub use self::keys::{Key, Subkey, UserId, UserIdSignature};
-pub use self::notation::SignatureNotation;
-pub use self::results::{
-    DecryptionResult, EncryptionResult, Import, ImportResult, InvalidKey, KeyGenerationResult,
-    KeyListResult, NewSignature, PkaTrust, QuerySwdbResult, Recipient, Signature, SigningResult,
-    VerificationResult,
+
+pub use self::{
+    callbacks::{
+        EditInteractionStatus, EditInteractor, InteractionStatus, Interactor, PassphraseProvider,
+        PassphraseRequest, ProgressHandler, ProgressInfo, StatusHandler,
+    },
+    context::Context,
+    data::{Data, IntoData},
+    engine::EngineInfo,
+    error::{Error, Result},
+    flags::*,
+    keys::{Key, Subkey, UserId, UserIdSignature},
+    notation::SignatureNotation,
+    results::{
+        DecryptionResult, EncryptionResult, Import, ImportResult, InvalidKey, KeyGenerationResult,
+        KeyListResult, NewSignature, PkaTrust, QuerySwdbResult, Recipient, Signature,
+        SigningResult, VerificationResult,
+    },
+    tofu::{TofuInfo, TofuPolicy},
+    trust::TrustItem,
 };
-pub use self::tofu::{TofuInfo, TofuPolicy};
-pub use self::trust::TrustItem;
 
 #[macro_use]
 mod utils;

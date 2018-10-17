@@ -1,10 +1,11 @@
-use std::ffi::CStr;
-use std::fmt;
-use std::marker::PhantomData;
-use std::ptr;
-use std::result;
-use std::str::Utf8Error;
-use std::sync::{RwLock, RwLockReadGuard};
+use std::{
+    ffi::CStr,
+    fmt,
+    marker::PhantomData,
+    ptr, result,
+    str::Utf8Error,
+    sync::{RwLock, RwLockReadGuard},
+};
 
 use ffi;
 

@@ -1,20 +1,23 @@
-use std::borrow::BorrowMut;
-use std::ffi::CStr;
-use std::fmt;
-use std::iter::FusedIterator;
-use std::str::Utf8Error;
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::{mem, ptr, result};
+use std::{
+    borrow::BorrowMut,
+    ffi::CStr,
+    fmt,
+    iter::FusedIterator,
+    str::Utf8Error,
+    time::{SystemTime, UNIX_EPOCH},
+    {mem, ptr, result},
+};
 
 use conv::{UnwrapOrSaturate, ValueInto};
 use ffi;
 use libc;
 
-use engine::EngineInfo;
-use notation::SignatureNotations;
-use utils::{CStrArgument, SmallVec};
-use {callbacks, edit, results};
 use {
+    callbacks, edit,
+    engine::EngineInfo,
+    notation::SignatureNotations,
+    results,
+    utils::{CStrArgument, SmallVec},
     Data, EditInteractor, Error, ExportMode, IntoData, Key, KeyListMode, NonNull,
     PassphraseProvider, ProgressHandler, Protocol, Result, SignMode, TrustItem,
 };

@@ -1,7 +1,5 @@
 #![allow(trivial_numeric_casts)]
-use std::ffi::CStr;
-use std::fmt;
-use std::str::Utf8Error;
+use std::{ffi::CStr, fmt, str::Utf8Error};
 
 use ffi;
 use libc;

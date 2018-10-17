@@ -6,7 +6,10 @@ use libc::{
 
 use consts::*;
 
-pub use libgpg_error_sys::gpg_error_t as gpgme_error_t;
+pub use libgpg_error_sys::{
+    gpg_err_code_t as gpgme_err_code_t, gpg_err_source_t as gpgme_err_source_t,
+    gpg_error_t as gpgme_error_t,
+};
 
 #[cfg(all(target_os = "windows", target_arch = "x86"))]
 pub type gpgme_off_t = i32;

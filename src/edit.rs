@@ -1,7 +1,5 @@
 #![allow(non_camel_case_types)]
-use std::fmt;
-use std::io::prelude::*;
-use std::panic::UnwindSafe;
+use std::{fmt, io::prelude::*, panic::UnwindSafe};
 
 use ffi;
 

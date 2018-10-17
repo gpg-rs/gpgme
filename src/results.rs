@@ -1,18 +1,19 @@
 #![allow(trivial_numeric_casts)]
-use std::ffi::CStr;
-use std::fmt;
-use std::marker::PhantomData;
-use std::result;
-use std::str::Utf8Error;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{
+    ffi::CStr,
+    fmt,
+    marker::PhantomData,
+    result,
+    str::Utf8Error,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use ffi;
 use libc;
 
-use notation::SignatureNotations;
 use {
-    Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm, NonNull, OpResult, Result, SignMode,
-    SignatureSummary, Validity,
+    notation::SignatureNotations, Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm,
+    NonNull, OpResult, Result, SignMode, SignatureSummary, Validity,
 };
 
 macro_rules! impl_result {

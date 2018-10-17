@@ -1,13 +1,10 @@
 extern crate cc;
 
-use std::env;
-use std::ffi::OsString;
-use std::path::PathBuf;
-use std::process::Command;
+use std::{env, ffi::OsString, path::PathBuf, process::Command};
 
 mod build_helper;
 
-use build_helper::*;
+use self::build_helper::*;
 
 fn main() {
     Project::default().configure(|proj| {

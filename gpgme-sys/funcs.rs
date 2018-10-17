@@ -4,19 +4,15 @@ use libc::{
     c_char, c_int, c_long, c_short, c_uchar, c_uint, c_ulong, c_ushort, c_void, size_t, ssize_t,
 };
 
-pub use libgpg_error_sys::gpg_err_code as gpgme_err_code;
-pub use libgpg_error_sys::gpg_err_code_from_errno as gpgme_err_code_from_errno;
-pub use libgpg_error_sys::gpg_err_code_from_syserror as gpgme_err_code_from_syserror;
-pub use libgpg_error_sys::gpg_err_code_to_errno as gpgme_err_code_to_errno;
-pub use libgpg_error_sys::gpg_err_make as gpgme_err_make;
-pub use libgpg_error_sys::gpg_err_make_from_errno as gpgme_err_make_from_errno;
-pub use libgpg_error_sys::gpg_err_set_errno as gpgme_err_set_errno;
-pub use libgpg_error_sys::gpg_err_source as gpgme_err_source;
-pub use libgpg_error_sys::gpg_error_from_errno as gpgme_error_from_errno;
-pub use libgpg_error_sys::gpg_error_from_syserror as gpgme_error_from_syserror;
-pub use libgpg_error_sys::gpg_strerror as gpgme_strerror;
-pub use libgpg_error_sys::gpg_strerror_r as gpgme_strerror_r;
-pub use libgpg_error_sys::gpg_strsource as gpgme_strsource;
+pub use libgpg_error_sys::{
+    gpg_err_code as gpgme_err_code, gpg_err_code_from_errno as gpgme_err_code_from_errno,
+    gpg_err_code_from_syserror as gpgme_err_code_from_syserror,
+    gpg_err_code_to_errno as gpgme_err_code_to_errno, gpg_err_make as gpgme_err_make,
+    gpg_err_make_from_errno as gpgme_err_make_from_errno, gpg_err_set_errno as gpgme_err_set_errno,
+    gpg_err_source as gpgme_err_source, gpg_error_from_errno as gpgme_error_from_errno,
+    gpg_error_from_syserror as gpgme_error_from_syserror, gpg_strerror as gpgme_strerror,
+    gpg_strerror_r as gpgme_strerror_r, gpg_strsource as gpgme_strsource,
+};
 
 use consts::*;
 use types::*;

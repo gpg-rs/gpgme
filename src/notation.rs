@@ -1,13 +1,9 @@
 #![allow(trivial_numeric_casts)]
-use std::ffi::CStr;
-use std::fmt;
-use std::marker::PhantomData;
-use std::str::Utf8Error;
+use std::{ffi::CStr, fmt, marker::PhantomData, str::Utf8Error};
 
 use ffi;
 
-use NonNull;
-use SignatureNotationFlags;
+use {NonNull, SignatureNotationFlags};
 
 #[derive(Copy, Clone)]
 pub struct SignatureNotation<'a>(NonNull<ffi::gpgme_sig_notation_t>, PhantomData<&'a ()>);
