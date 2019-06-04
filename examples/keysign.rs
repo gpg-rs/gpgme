@@ -14,11 +14,7 @@ struct Cli {
     #[structopt(long = "cms", conflicts_with = "openpgp")]
     /// Use the CMS protocol
     cms: bool,
-    #[structopt(
-        long = "uiserver",
-        conflicts_with = "openpgp",
-        conflicts_with = "cms"
-    )]
+    #[structopt(long = "uiserver", conflicts_with = "openpgp", conflicts_with = "cms")]
     /// Use to UI server
     uiserver: bool,
     #[structopt(long = "key")]

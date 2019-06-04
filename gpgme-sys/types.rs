@@ -324,8 +324,14 @@ pub type gpgme_edit_cb_t =
 
 pub type gpgme_io_cb_t = Option<extern "C" fn(*mut c_void, c_int) -> gpgme_error_t>;
 pub type gpgme_register_io_cb_t = Option<
-    extern "C" fn(*mut c_void, c_int, c_int, gpgme_io_cb_t, *mut c_void, *mut *mut c_void)
-        -> gpgme_error_t,
+    extern "C" fn(
+        *mut c_void,
+        c_int,
+        c_int,
+        gpgme_io_cb_t,
+        *mut c_void,
+        *mut *mut c_void,
+    ) -> gpgme_error_t,
 >;
 pub type gpgme_remove_io_cb_t = Option<extern "C" fn(*mut c_void)>;
 

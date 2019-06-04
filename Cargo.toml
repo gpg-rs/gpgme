@@ -16,8 +16,6 @@ travis-ci = { repository = "gpg-rs/gpgme" }
 maintenance = { status = "experimental" }
 
 [features]
-default = ["bundled"]
-bundled = ["gpgme-sys/bundled", "gpg-error/bundled"]
 nightly = ["lazy_static/nightly"]
 
 [dev-dependencies]
@@ -31,12 +29,16 @@ lazy_static = "1"
 conv = "0.3"
 smallvec = "0.6"
 cstr-argument = "0.1"
-gpg-error = { version = "0.4", default-features = false }
+gpg-error = "0.4"
 
 [dependencies.gpgme-sys]
 path = "gpgme-sys"
 version = "0.8.0"
 default-features = false
+
+[patch.crates-io]
+gpg-error = { path = "../libgpg-error" }
+libgpg-error-sys = { path = "../libgpg-error/libgpg-error-sys" }
 
 [[bin]]
 name = "pinentry"

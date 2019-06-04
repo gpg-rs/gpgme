@@ -12,13 +12,11 @@ fn main() {
     cfg.header("gpgme.h");
     cfg.cfg("ctest", None);
 
-    cfg.flag("-Wno-deprecated-declarations");
     cfg.skip_struct(|s| match s {
         // Opaque structs
         "gpgme_context" | "gpgme_data" => true,
         _ => false,
     });
-    cfg.skip_signededness(|s| s.ends_with("_t"));
     cfg.skip_field(|s, f| match (s, f) {
         ("gpgme_conf_arg", "value") => true,
         (_, "bitfield") => true,

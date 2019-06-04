@@ -18,11 +18,7 @@ struct Cli {
     #[structopt(long = "cms", conflicts_with = "openpgp")]
     /// Use the CMS protocol
     cms: bool,
-    #[structopt(
-        long = "uiserver",
-        conflicts_with = "openpgp",
-        conflicts_with = "cms"
-    )]
+    #[structopt(long = "uiserver", conflicts_with = "openpgp", conflicts_with = "cms")]
     /// Use to UI server
     uiserver: bool,
     #[structopt(long = "normal")]
@@ -31,11 +27,7 @@ struct Cli {
     #[structopt(long = "detach", conflicts_with = "normal")]
     /// Create a detached signature
     detach: bool,
-    #[structopt(
-        long = "clear",
-        conflicts_with = "normal",
-        conflicts_with = "detach"
-    )]
+    #[structopt(long = "clear", conflicts_with = "normal", conflicts_with = "detach")]
     /// Create a clear text signature
     clear: bool,
     #[structopt(long = "key")]
