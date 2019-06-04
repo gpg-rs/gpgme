@@ -1,14 +1,14 @@
-extern crate gpgme;
-#[macro_use]
-extern crate quicli;
-
-use std::fs::File;
-use std::io;
-use std::io::prelude::*;
-use std::path::PathBuf;
+use gpgme;
+use structopt;
 
 use gpgme::{Context, Protocol};
-use quicli::prelude::*;
+use std::{
+    error::Error,
+    fs::File,
+    io::{self, prelude::*},
+    path::PathBuf,
+};
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct Cli {
@@ -38,7 +38,8 @@ struct Cli {
     filename: PathBuf,
 }
 
-main!(|args: Cli| {
+fn main() -> Result<(), Box<dyn Error>> {
+    let args = Cli::from_args();
     let proto = if args.cms {
         Protocol::Cms
     } else if args.uiserver {
@@ -62,8 +63,9 @@ main!(|args: Cli| {
         if proto != Protocol::UiServer {
             let key = ctx
                 .get_secret_key(key)
-                .context("unable to find signing key")?;
-            ctx.add_signer(&key).context("add_signer() failed")?;
+                .map_err(|e| format!("unable to find signing key: {:?}", e))?;
+            ctx.add_signer(&key)
+                .map_err(|e| format!("add_signer() failed: {:?}", e))?;
         } else {
             eprintln!("ignoring --key in UI-server mode");
         }
@@ -71,17 +73,18 @@ main!(|args: Cli| {
 
     let filename = &args.filename;
     let mut input = File::open(filename)
-        .with_context(|_| format!("can't open file `{}'", filename.display()))?;
+        .map_err(|e| format!("can't open file `{}': {:?}", filename.display(), e))?;
     let mut output = Vec::new();
     let result = ctx
         .sign(mode, &mut input, &mut output)
-        .context("signing failed")?;
+        .map_err(|e| format!("signing failed {:?}", e))?;
     print_result(&result);
 
     println!("Begin Output:");
     io::stdout().write_all(&output)?;
     println!("End Output.");
-});
+    Ok(())
+}
 
 fn print_result(result: &gpgme::SigningResult) {
     for sig in result.new_signatures() {

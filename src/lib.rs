@@ -1,18 +1,7 @@
 #![warn(trivial_numeric_casts)]
 #![deny(missing_debug_implementations)]
-#[macro_use]
-extern crate bitflags;
-extern crate conv;
-extern crate cstr_argument;
-#[macro_use]
-pub extern crate gpg_error as error;
-extern crate gpgme_sys as ffi;
-#[macro_use]
-extern crate lazy_static;
-extern crate libc;
-extern crate smallvec;
-
-use self::{engine::EngineInfoGuard, utils::CStrArgument};
+use self::{engine::EngineInfoGuard, error::return_err, utils::CStrArgument};
+use lazy_static::lazy_static;
 use std::{
     ffi::CStr,
     fmt, mem, ptr, result,
@@ -40,6 +29,8 @@ pub use self::{
     tofu::{TofuInfo, TofuPolicy},
     trust::TrustItem,
 };
+pub use gpg_error as error;
+pub use ffi::require_gpgme_ver;
 
 #[macro_use]
 mod utils;
@@ -157,7 +148,7 @@ pub fn init() -> Gpgme {
             let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
 
             let result =
-                ffi::gpgme_check_version_internal(utils::MIN_VERSION.as_ptr() as *const _, offset);
+                ffi::gpgme_check_version_internal(ffi::MIN_GPGME_VERSION.as_ptr() as *const _, offset);
             assert!(!result.is_null(), "gpgme library could not be initialized");
             CStr::from_ptr(result)
                 .to_str()

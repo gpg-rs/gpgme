@@ -9,7 +9,7 @@ use std::{
 use ffi;
 use libc;
 
-use {edit, utils::FdWriter, Data, Error};
+use crate::{edit, utils::FdWriter, Data, Error};
 
 #[derive(Debug, Copy, Clone)]
 pub struct PassphraseRequest<'a> {
@@ -39,15 +39,15 @@ impl<'a> PassphraseRequest<'a> {
 
 pub trait PassphraseProvider: UnwindSafe + Send {
     fn get_passphrase<W: io::Write>(
-        &mut self, request: PassphraseRequest, out: W,
+        &mut self, request: PassphraseRequest<'_>, out: W,
     ) -> Result<(), Error>;
 }
 
 impl<T: UnwindSafe + Send> PassphraseProvider for T
-where T: FnMut(PassphraseRequest, &mut io::Write) -> Result<(), Error>
+where T: FnMut(PassphraseRequest<'_>, &mut dyn io::Write) -> Result<(), Error>
 {
     fn get_passphrase<W: io::Write>(
-        &mut self, request: PassphraseRequest, mut out: W,
+        &mut self, request: PassphraseRequest<'_>, mut out: W,
     ) -> Result<(), Error> {
         (*self)(request, &mut out)
     }
@@ -129,13 +129,13 @@ impl<'a> ProgressInfo<'a> {
 }
 
 pub trait ProgressHandler: UnwindSafe + Send {
-    fn handle(&mut self, info: ProgressInfo);
+    fn handle(&mut self, info: ProgressInfo<'_>);
 }
 
 impl<T: UnwindSafe + Send> ProgressHandler for T
-where T: FnMut(ProgressInfo)
+where T: FnMut(ProgressInfo<'_>)
 {
-    fn handle(&mut self, info: ProgressInfo) {
+    fn handle(&mut self, info: ProgressInfo<'_>) {
         (*self)(info);
     }
 }
@@ -272,7 +272,7 @@ impl<'a> EditInteractionStatus<'a> {
 
 pub trait EditInteractor: UnwindSafe + Send {
     fn interact<W: io::Write>(
-        &mut self, status: EditInteractionStatus, out: Option<W>,
+        &mut self, status: EditInteractionStatus<'_>, out: Option<W>,
     ) -> Result<(), Error>;
 }
 
@@ -294,7 +294,7 @@ pub extern "C" fn edit_cb<E: EditInteractor>(
     fd: libc::c_int,
 ) -> ffi::gpgme_error_t
 {
-    let wrapper = unsafe { &mut *(hook as *mut EditInteractorWrapper<E>) };
+    let wrapper = unsafe { &mut *(hook as *mut EditInteractorWrapper<'_, E>) };
     let response = wrapper.response;
     let mut interactor = match wrapper.state.take() {
         Some(Ok(interactor)) => interactor,
@@ -311,7 +311,7 @@ pub extern "C" fn edit_cb<E: EditInteractor>(
             response: &mut *response,
         };
         let result = (if fd < 0 {
-            interactor.interact(status, None::<&mut io::Write>)
+            interactor.interact(status, None::<&mut dyn io::Write>)
         } else {
             interactor.interact(status, Some(FdWriter::new(fd)))
         })
@@ -358,7 +358,7 @@ impl<'a> InteractionStatus<'a> {
 
 pub trait Interactor: UnwindSafe + Send + 'static {
     fn interact<W: io::Write>(
-        &mut self, status: InteractionStatus, out: Option<W>,
+        &mut self, status: InteractionStatus<'_>, out: Option<W>,
     ) -> Result<(), Error>;
 }
 
@@ -380,7 +380,7 @@ pub extern "C" fn interact_cb<I: Interactor>(
     fd: libc::c_int,
 ) -> ffi::gpgme_error_t
 {
-    let wrapper = unsafe { &mut *(hook as *mut InteractorWrapper<I>) };
+    let wrapper = unsafe { &mut *(hook as *mut InteractorWrapper<'_, I>) };
     let response = wrapper.response;
     let mut interactor = match wrapper.state.take() {
         Some(Ok(interactor)) => interactor,
@@ -397,7 +397,7 @@ pub extern "C" fn interact_cb<I: Interactor>(
             response: &mut *response,
         };
         let result = (if fd < 0 {
-            interactor.interact(status, None::<&mut io::Write>)
+            interactor.interact(status, None::<&mut dyn io::Write>)
         } else {
             interactor.interact(status, Some(FdWriter::new(fd)))
         })

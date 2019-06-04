@@ -1,8 +1,4 @@
-extern crate libc;
-
-use libc::{
-    c_char, c_int, c_long, c_short, c_uchar, c_uint, c_ulong, c_ushort, c_void, size_t, ssize_t,
-};
+use libc::{c_char, c_int, c_uint, c_ulong, c_void, size_t, ssize_t};
 
 pub use libgpg_error_sys::{
     gpg_err_code as gpgme_err_code, gpg_err_code_from_errno as gpgme_err_code_from_errno,
@@ -14,8 +10,8 @@ pub use libgpg_error_sys::{
     gpg_strerror_r as gpgme_strerror_r, gpg_strsource as gpgme_strsource,
 };
 
-use consts::*;
-use types::*;
+use crate::consts::*;
+use crate::types::*;
 
 extern "C" {
     pub fn gpgme_set_global_flag(name: *const c_char, value: *const c_char) -> c_int;

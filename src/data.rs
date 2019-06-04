@@ -17,7 +17,7 @@ use conv::{UnwrapOrSaturate, ValueInto};
 use ffi;
 use libc;
 
-use {utils::CStrArgument, Error, NonNull, Result};
+use crate::{error::return_err, utils::CStrArgument, Error, NonNull, Result};
 
 ffi_enum_wrapper! {
     pub enum Encoding: ffi::gpgme_data_encoding_t {
@@ -79,8 +79,56 @@ impl<S> StdError for WrappedError<S> {
         StdError::description(&self.0)
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         Some(&self.0)
+    }
+}
+
+#[derive(Copy, Clone)]
+struct DataBuilder<S> {
+    cbs: ffi::gpgme_data_cbs,
+    stream: S,
+}
+
+impl<S> DataBuilder<S> {
+    fn new(stream: S) -> Self {
+        Self {
+            cbs: ffi::gpgme_data_cbs {
+                read: None,
+                write: None,
+                seek: None,
+                release: Some(release_callback::<S>),
+            },
+            stream,
+        }
+    }
+
+    pub fn from_reader(stream: S) -> Self
+    where S: Read {
+        Self::new(stream).with_read()
+    }
+
+    pub fn from_writer(stream: S) -> Self
+    where S: Write {
+        Self::new(stream).with_write()
+    }
+
+    pub fn with_read(mut self) -> Self
+    where S: Read {
+        self.cbs.read = Some(read_callback::<S>);
+        self
+    }
+
+    pub fn with_write(mut self) -> Self
+    where S: Write {
+        self.cbs.write = Some(write_callback::<S>);
+        self
+    }
+
+    pub fn with_seek(mut self) -> Self
+    where S: Seek {
+        self.cbs.seek = Some(seek_callback::<S>);
+        self
     }
 }
 
@@ -119,7 +167,7 @@ impl<'data> Data<'data> {
     /// Constructs an empty data object.
     #[inline]
     pub fn new() -> Result<Data<'static>> {
-        ::init();
+        crate::init();
         unsafe {
             let mut data = ptr::null_mut();
             return_err!(ffi::gpgme_data_new(&mut data));
@@ -131,7 +179,7 @@ impl<'data> Data<'data> {
     /// referenced by `path`.
     #[inline]
     pub fn load(path: impl CStrArgument) -> Result<Data<'static>> {
-        ::init();
+        crate::init();
         let path = path.into_cstr();
         unsafe {
             let mut data = ptr::null_mut();
@@ -147,7 +195,7 @@ impl<'data> Data<'data> {
     /// Constructs a data object and fills it with a copy of `bytes`.
     #[inline]
     pub fn from_bytes(bytes: impl AsRef<[u8]>) -> Result<Data<'static>> {
-        ::init();
+        crate::init();
         let bytes = bytes.as_ref();
         unsafe {
             let (buf, len) = (bytes.as_ptr() as *const _, bytes.len().into());
@@ -160,7 +208,7 @@ impl<'data> Data<'data> {
     /// Constructs a data object which copies from `buf` as needed.
     #[inline]
     pub fn from_buffer(buf: &'data (impl AsRef<[u8]> + ?Sized)) -> Result<Self> {
-        ::init();
+        crate::init();
         let buf = buf.as_ref();
         unsafe {
             let (buf, len) = (buf.as_ptr() as *const _, buf.len().into());
@@ -173,7 +221,7 @@ impl<'data> Data<'data> {
     #[inline]
     #[cfg(unix)]
     pub fn from_fd(file: &'data (impl AsRawFd + ?Sized)) -> Result<Self> {
-        ::init();
+        crate::init();
         unsafe {
             let mut data = ptr::null_mut();
             return_err!(ffi::gpgme_data_new_from_fd(&mut data, file.as_raw_fd()));
@@ -183,7 +231,7 @@ impl<'data> Data<'data> {
 
     #[inline]
     pub unsafe fn from_raw_file(file: *mut libc::FILE) -> Result<Self> {
-        ::init();
+        crate::init();
         let mut data = ptr::null_mut();
         return_err!(ffi::gpgme_data_new_from_stream(&mut data, file));
         Ok(Data::from_raw(data))
@@ -193,7 +241,7 @@ impl<'data> Data<'data> {
         cbs: ffi::gpgme_data_cbs, src: S,
     ) -> result::Result<Self, WrappedError<S>>
     where S: Send + 'data {
-        ::init();
+        crate::init();
         let src = Box::into_raw(Box::new(CallbackWrapper { inner: src, cbs }));
         let cbs = &mut (*src).cbs as *mut _;
         let mut data = ptr::null_mut();

@@ -1,4 +1,4 @@
-extern crate libc;
+use libc;
 
 pub mod errors {
     pub use libgpg_error_sys::consts::*;

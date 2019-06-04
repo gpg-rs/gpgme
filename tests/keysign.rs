@@ -2,7 +2,6 @@
 extern crate gpgme;
 #[macro_use]
 extern crate lazy_static;
-extern crate tempdir;
 
 use gpgme::KeyListMode;
 

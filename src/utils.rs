@@ -3,18 +3,15 @@ use std::io::{self, prelude::*};
 use ffi;
 use libc;
 
-use Error;
+use crate::Error;
 
 pub use cstr_argument::CStrArgument;
-
 pub type SmallVec<T> = ::smallvec::SmallVec<[T; 4]>;
 
-include!(concat!(env!("OUT_DIR"), "/version.rs"));
-
 macro_rules! impl_list_iterator {
-    ($Name:ident, $Item:ident, $Raw:ty) => {
+    ($Vis:vis struct $Name:ident($Item:ident: $Raw:ty)) => {
         #[derive(Clone)]
-        pub struct $Name<'a>(Option<$Item<'a>>);
+        $Vis struct $Name<'a>(Option<$Item<'a>>);
 
         impl<'a> $Name<'a> {
             #[inline]
@@ -69,12 +66,12 @@ macro_rules! impl_wrapper {
 }
 
 macro_rules! ffi_enum_wrapper {
-    ($(#[$Attr:meta])* pub enum $Name:ident($Default:ident): $T:ty {
+    ($(#[$Attr:meta])* $Vis:vis enum $Name:ident($Default:ident): $T:ty {
         $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr),+
     }) => {
         #[derive(Copy, Clone, Eq, PartialEq, Hash)]
         $(#[$Attr])*
-        pub enum $Name {
+        $Vis enum $Name {
             $($(#[$ItemAttr])* $Item,)+
         }
 
@@ -107,22 +104,22 @@ macro_rules! ffi_enum_wrapper {
             }
         }
     };
-    ($(#[$Attr:meta])* pub enum $Name:ident($Default:ident): $T:ty {
+    ($(#[$Attr:meta])* $Vis:vis enum $Name:ident($Default:ident): $T:ty {
         $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr,)+
     }) => {
         ffi_enum_wrapper! {
             $(#[$Attr])*
-            pub enum $Name($Default): $T {
+            $Vis enum $Name($Default): $T {
                 $($(#[$ItemAttr])* $Item = $Value),+
             }
         }
     };
-    ($(#[$Attr:meta])* pub enum $Name:ident: $T:ty {
+    ($(#[$Attr:meta])* $Vis:vis enum $Name:ident: $T:ty {
         $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr),+
     }) => {
         #[derive(Copy, Clone, Eq, PartialEq, Hash)]
         $(#[$Attr])*
-        pub enum $Name {
+        $Vis enum $Name {
             $($(#[$ItemAttr])* $Item,)+
             Other($T),
         }
@@ -158,12 +155,12 @@ macro_rules! ffi_enum_wrapper {
             }
         }
     };
-    ($(#[$Attr:meta])* pub enum $Name:ident: $T:ty {
+    ($(#[$Attr:meta])* $Vis:vis enum $Name:ident: $T:ty {
         $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr,)+
     }) => {
         ffi_enum_wrapper! {
             $(#[$Attr])*
-            pub enum $Name: $T {
+            $Vis enum $Name: $T {
                 $($(#[$ItemAttr])* $Item = $Value),+
             }
         }
@@ -176,7 +173,7 @@ pub struct FdWriter {
 
 impl FdWriter {
     pub unsafe fn new(fd: libc::c_int) -> FdWriter {
-        FdWriter { fd }
+        Self { fd }
     }
 }
 

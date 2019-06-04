@@ -2,7 +2,7 @@ use std::{ffi::CStr, fmt, str::Utf8Error};
 
 use ffi;
 
-use NonNull;
+use crate::NonNull;
 
 pub struct TrustItem(NonNull<ffi::gpgme_trust_item_t>);
 

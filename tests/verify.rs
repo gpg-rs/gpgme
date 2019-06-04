@@ -1,7 +1,5 @@
-extern crate gpgme;
 #[macro_use]
 extern crate lazy_static;
-extern crate tempdir;
 
 #[macro_use]
 mod support;

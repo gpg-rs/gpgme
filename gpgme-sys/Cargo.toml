@@ -1,6 +1,7 @@
 [package]
 name = "gpgme-sys"
 version = "0.8.0"
+edition = "2018"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
 repository = "https://github.com/gpg-rs/gpgme/gpgme-sys"
@@ -18,9 +19,6 @@ maintenance = { status = "experimental" }
 [lib]
 name = "gpgme_sys"
 path = "lib.rs"
-
-[build-dependencies]
-cc = "1.0.2"
 
 [dependencies]
 libc = "0.2"

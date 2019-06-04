@@ -9,12 +9,13 @@ use std::{
 };
 
 use conv::{UnwrapOrSaturate, ValueInto};
-use ffi;
+use ffi::{self, require_gpgme_ver};
 use libc;
 
-use {
+use crate::{
     callbacks, edit,
     engine::EngineInfo,
+    error::return_err,
     notation::SignatureNotations,
     results,
     utils::{CStrArgument, SmallVec},
@@ -38,7 +39,7 @@ impl Context {
 
     #[inline]
     fn new() -> Result<Self> {
-        ::init();
+        crate::init();
         unsafe {
             let mut ctx = ptr::null_mut();
             return_err!(ffi::gpgme_new(&mut ctx));
@@ -195,13 +196,13 @@ impl Context {
     }
 
     #[inline]
-    pub fn pinentry_mode(&self) -> ::PinentryMode {
-        unsafe { ::PinentryMode::from_raw(ffi::gpgme_get_pinentry_mode(self.as_raw())) }
+    pub fn pinentry_mode(&self) -> crate::PinentryMode {
+        unsafe { crate::PinentryMode::from_raw(ffi::gpgme_get_pinentry_mode(self.as_raw())) }
     }
 
     #[inline]
-    pub fn set_pinentry_mode(&mut self, mode: ::PinentryMode) -> Result<()> {
-        if (mode != ::PinentryMode::Default)
+    pub fn set_pinentry_mode(&mut self, mode: crate::PinentryMode) -> Result<()> {
+        if (mode != crate::PinentryMode::Default)
             && (self.protocol() == Protocol::OpenPgp)
             && !self.engine_info().check_version("2.1")
         {
@@ -225,7 +226,7 @@ impl Context {
     ///
     /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
     /// ctx.with_passphrase_provider(|_: PassphraseRequest, out: &mut Write| {
-    ///     try!(out.write_all(b"some passphrase"));
+    ///     out.write_all(b"some passphrase")?;
     ///     Ok(())
     /// }, |mut ctx| {
     ///     // Do something with ctx requiring a passphrase, for example decryption
@@ -276,7 +277,7 @@ impl Context {
     pub fn with_status_handler<R, H>(
         &mut self, handler: H, f: impl FnOnce(&mut Context) -> R,
     ) -> R
-    where H: ::StatusHandler {
+    where H: crate::StatusHandler {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_status_cb(self.as_raw(), &mut old.0, &mut old.1);
@@ -311,7 +312,9 @@ impl Context {
 
     #[inline]
     pub fn key_list_mode(&self) -> KeyListMode {
-        unsafe { ::KeyListMode::from_bits_truncate(ffi::gpgme_get_keylist_mode(self.as_raw())) }
+        unsafe {
+            crate::KeyListMode::from_bits_truncate(ffi::gpgme_get_keylist_mode(self.as_raw()))
+        }
     }
 
     #[inline]
@@ -506,13 +509,13 @@ impl Context {
     pub fn create_key(
         &mut self, userid: impl CStrArgument, algo: impl CStrArgument, expires: Option<SystemTime>,
     ) -> Result<results::KeyGenerationResult> {
-        self.create_key_with_flags(userid, algo, expires, ::CreateKeyFlags::empty())
+        self.create_key_with_flags(userid, algo, expires, crate::CreateKeyFlags::empty())
     }
 
     #[inline]
     pub fn create_key_with_flags(
         &mut self, userid: impl CStrArgument, algo: impl CStrArgument, expires: Option<SystemTime>,
-        flags: ::CreateKeyFlags,
+        flags: crate::CreateKeyFlags,
     ) -> Result<results::KeyGenerationResult>
     {
         require_gpgme_ver! {
@@ -545,13 +548,13 @@ impl Context {
     pub fn create_subkey(
         &mut self, key: &Key, algo: impl CStrArgument, expires: Option<SystemTime>,
     ) -> Result<results::KeyGenerationResult> {
-        self.create_subkey_with_flags(key, algo, expires, ::CreateKeyFlags::empty())
+        self.create_subkey_with_flags(key, algo, expires, crate::CreateKeyFlags::empty())
     }
 
     #[inline]
     pub fn create_subkey_with_flags(
         &mut self, key: &Key, algo: impl CStrArgument, expires: Option<SystemTime>,
-        flags: ::CreateKeyFlags,
+        flags: crate::CreateKeyFlags,
     ) -> Result<results::KeyGenerationResult>
     {
         require_gpgme_ver! {
@@ -650,15 +653,17 @@ impl Context {
     where
         I: IntoIterator,
         I::Item: AsRef<[u8]>, {
-        self.sign_key_with_flags(key, userids, expires, ::KeySigningFlags::empty())
+        self.sign_key_with_flags(key, userids, expires, crate::KeySigningFlags::empty())
     }
 
     pub fn sign_key_with_flags<I>(
-        &mut self, key: &Key, userids: I, expires: Option<SystemTime>, flags: ::KeySigningFlags,
+        &mut self, key: &Key, userids: I, expires: Option<SystemTime>,
+        flags: crate::KeySigningFlags,
     ) -> Result<()>
     where
         I: IntoIterator,
-        I::Item: AsRef<[u8]>, {
+        I::Item: AsRef<[u8]>,
+    {
         require_gpgme_ver! {
             (1, 7) => {
                 let mut userids = userids.into_iter().fuse();
@@ -668,7 +673,7 @@ impl Context {
                             acc.push(b'\n');
                             acc.extend_from_slice(x.as_ref());
                             acc
-                        }).into_cstr()), ::KeySigningFlags::LFSEP | flags),
+                        }).into_cstr()), crate::KeySigningFlags::LFSEP | flags),
                     (Some(first), None) => (Some(first.as_ref().to_owned().into_cstr()), flags),
                     _ => (None, flags),
                 };
@@ -692,7 +697,7 @@ impl Context {
     }
 
     #[inline]
-    pub fn change_key_tofu_policy(&mut self, key: &Key, policy: ::TofuPolicy) -> Result<()> {
+    pub fn change_key_tofu_policy(&mut self, key: &Key, policy: crate::TofuPolicy) -> Result<()> {
         require_gpgme_ver! {
             (1, 7) => {
                 unsafe {
@@ -781,7 +786,7 @@ impl Context {
     #[inline]
     pub fn interact<'a, I, D>(&mut self, key: &Key, interactor: I, data: D) -> Result<()>
     where
-        I: ::Interactor,
+        I: crate::Interactor,
         D: IntoData<'a>, {
         let mut data = data.into_data()?;
         let mut wrapper = callbacks::InteractorWrapper {
@@ -806,7 +811,7 @@ impl Context {
         &mut self, key: &Key, interactor: I, data: D,
     ) -> Result<()>
     where
-        I: ::Interactor,
+        I: crate::Interactor,
         D: IntoData<'a>, {
         let mut data = data.into_data()?;
         let mut wrapper = callbacks::InteractorWrapper {
@@ -843,7 +848,7 @@ impl Context {
     }
 
     #[inline]
-    pub fn delete_key_with_flags(&mut self, key: &Key, flags: ::DeleteKeyFlags) -> Result<()> {
+    pub fn delete_key_with_flags(&mut self, key: &Key, flags: crate::DeleteKeyFlags) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_op_delete_ext(
                 self.as_raw(),
@@ -917,7 +922,9 @@ impl Context {
         self.export_(&patterns, mode, Some(dst.borrow_mut()))
     }
 
-    fn export_<I>(&mut self, patterns: I, mode: ExportMode, dst: Option<&mut Data>) -> Result<()>
+    fn export_<I>(
+        &mut self, patterns: I, mode: ExportMode, dst: Option<&mut Data<'_>>,
+    ) -> Result<()>
     where
         I: IntoIterator,
         I::Item: AsRef<CStr>, {
@@ -956,7 +963,7 @@ impl Context {
     }
 
     fn export_keys_<'k, I>(
-        &mut self, keys: I, mode: ExportMode, dst: Option<&mut Data>,
+        &mut self, keys: I, mode: ExportMode, dst: Option<&mut Data<'_>>,
     ) -> Result<()>
     where I: IntoIterator<Item = &'k Key> {
         let dst = dst.map_or(ptr::null_mut(), |d| d.as_raw());
@@ -1044,7 +1051,7 @@ impl Context {
     #[inline]
     pub fn add_signature_notation(
         &mut self, name: impl CStrArgument, value: impl CStrArgument,
-        flags: ::SignatureNotationFlags,
+        flags: crate::SignatureNotationFlags,
     ) -> Result<()>
     {
         let name = name.into_cstr();
@@ -1138,7 +1145,7 @@ impl Context {
 
     #[inline]
     pub fn sign<'p, 's, P, S>(
-        &mut self, mode: ::SignMode, plaintext: P, signature: S,
+        &mut self, mode: crate::SignMode, plaintext: P, signature: S,
     ) -> Result<results::SigningResult>
     where
         P: IntoData<'p>,
@@ -1181,8 +1188,8 @@ impl Context {
     }
 
     fn verify(
-        &mut self, signature: &mut Data, signedtext: Option<&mut Data>,
-        plaintext: Option<&mut Data>,
+        &mut self, signature: &mut Data<'_>, signedtext: Option<&mut Data<'_>>,
+        plaintext: Option<&mut Data<'_>>,
     ) -> Result<results::VerificationResult>
     {
         unsafe {
@@ -1218,11 +1225,11 @@ impl Context {
         I: IntoIterator<Item = &'k Key>,
         P: IntoData<'p>,
         C: IntoData<'c>, {
-        self.encrypt_with_flags(recp, plaintext, ciphertext, ::EncryptFlags::empty())
+        self.encrypt_with_flags(recp, plaintext, ciphertext, crate::EncryptFlags::empty())
     }
 
     pub fn encrypt_with_flags<'k, 'p, 'c, I, P, C>(
-        &mut self, recp: I, plaintext: P, ciphertext: C, flags: ::EncryptFlags,
+        &mut self, recp: I, plaintext: P, ciphertext: C, flags: crate::EncryptFlags,
     ) -> Result<results::EncryptionResult>
     where
         I: IntoIterator<Item = &'k Key>,
@@ -1255,12 +1262,12 @@ impl Context {
     where
         P: IntoData<'p>,
         C: IntoData<'c>, {
-        self.encrypt_symmetric_with_flags(plaintext, ciphertext, ::EncryptFlags::empty())
+        self.encrypt_symmetric_with_flags(plaintext, ciphertext, crate::EncryptFlags::empty())
     }
 
     #[inline]
     pub fn encrypt_symmetric_with_flags<'p, 'c, P, C>(
-        &mut self, plaintext: P, ciphertext: C, flags: ::EncryptFlags,
+        &mut self, plaintext: P, ciphertext: C, flags: crate::EncryptFlags,
     ) -> Result<()>
     where
         P: IntoData<'p>,
@@ -1289,11 +1296,11 @@ impl Context {
         I: IntoIterator<Item = &'k Key>,
         P: IntoData<'p>,
         C: IntoData<'c>, {
-        self.sign_and_encrypt_with_flags(recp, plaintext, ciphertext, ::EncryptFlags::empty())
+        self.sign_and_encrypt_with_flags(recp, plaintext, ciphertext, crate::EncryptFlags::empty())
     }
 
     pub fn sign_and_encrypt_with_flags<'k, 'p, 'c, I, P, C>(
-        &mut self, recp: I, plaintext: P, ciphertext: C, flags: ::EncryptFlags,
+        &mut self, recp: I, plaintext: P, ciphertext: C, flags: crate::EncryptFlags,
     ) -> Result<(results::EncryptionResult, results::SigningResult)>
     where
         I: IntoIterator<Item = &'k Key>,
@@ -1354,7 +1361,7 @@ impl Context {
 
     #[inline]
     pub fn decrypt_with_flags<'c, 'p, C, P>(
-        &mut self, ciphertext: C, plaintext: P, flags: ::DecryptFlags,
+        &mut self, ciphertext: C, plaintext: P, flags: crate::DecryptFlags,
     ) -> Result<results::DecryptionResult>
     where
         C: IntoData<'c>,
@@ -1405,7 +1412,7 @@ impl Context {
 
     #[inline]
     pub fn decrypt_and_verify_with_flags<'c, 'p, C, P>(
-        &mut self, ciphertext: C, plaintext: P, flags: ::DecryptFlags,
+        &mut self, ciphertext: C, plaintext: P, flags: crate::DecryptFlags,
     ) -> Result<(results::DecryptionResult, results::VerificationResult)>
     where
         C: IntoData<'c>,
@@ -1431,7 +1438,7 @@ impl Context {
     }
 
     #[inline]
-    pub fn get_audit_log<'a, D>(&mut self, dst: D, flags: ::AuditLogFlags) -> Result<()>
+    pub fn get_audit_log<'a, D>(&mut self, dst: D, flags: crate::AuditLogFlags) -> Result<()>
     where D: IntoData<'a> {
         let mut dst = dst.into_data()?;
         unsafe {
@@ -1444,7 +1451,7 @@ impl Context {
         Ok(())
     }
 
-    fn get_result<R: ::OpResult>(&self) -> Option<R> {
+    fn get_result<R: crate::OpResult>(&self) -> Option<R> {
         R::from_context(self)
     }
 }

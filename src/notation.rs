@@ -3,7 +3,7 @@ use std::{ffi::CStr, fmt, marker::PhantomData, str::Utf8Error};
 
 use ffi;
 
-use {NonNull, SignatureNotationFlags};
+use crate::{NonNull, SignatureNotationFlags};
 
 #[derive(Copy, Clone)]
 pub struct SignatureNotation<'a>(NonNull<ffi::gpgme_sig_notation_t>, PhantomData<&'a ()>);
@@ -64,8 +64,4 @@ impl<'a> fmt::Debug for SignatureNotation<'a> {
     }
 }
 
-impl_list_iterator!(
-    SignatureNotations,
-    SignatureNotation,
-    ffi::gpgme_sig_notation_t
-);
+impl_list_iterator!(pub struct SignatureNotations(SignatureNotation: ffi::gpgme_sig_notation_t));

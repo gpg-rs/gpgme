@@ -8,12 +8,12 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use ffi;
+use ffi::{self, require_gpgme_ver};
 use libc;
 
-use {
-    notation::SignatureNotations, Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm,
-    NonNull, OpResult, Result, SignMode, SignatureSummary, Validity,
+use crate::{
+    error::return_err, notation::SignatureNotations, Context, Error, HashAlgorithm, ImportFlags,
+    KeyAlgorithm, NonNull, OpResult, Result, SignMode, SignatureSummary, Validity,
 };
 
 macro_rules! impl_result {
@@ -71,7 +71,7 @@ macro_rules! impl_subresult {
             impl_wrapper!($Name($T), PhantomData);
         }
 
-        impl_list_iterator!($IterName, $Name, $T);
+        impl_list_iterator!(pub struct $IterName($Name: $T));
     };
 }
 
@@ -414,7 +414,7 @@ impl DecryptionResult {
     }
 
     #[inline]
-    pub fn recipients(&self) -> Recipients {
+    pub fn recipients(&self) -> Recipients<'_> {
         unsafe { Recipients::from_list((*self.as_raw()).recipients) }
     }
 }
@@ -755,13 +755,13 @@ impl<'a> Signature<'a> {
     }
 
     #[inline]
-    pub fn key(&self) -> Option<::Key> {
+    pub fn key(&self) -> Option<crate::Key> {
         require_gpgme_ver! {
             (1, 7) => {
                 unsafe {
                     (*self.as_raw()).key.as_mut().map(|k| {
                         ffi::gpgme_key_ref(k);
-                        ::Key::from_raw(k)
+                        crate::Key::from_raw(k)
                     })
                 }
             } else {

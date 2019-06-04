@@ -51,7 +51,7 @@ macro_rules! test_case {
     };
 }
 
-pub fn passphrase_cb(_req: PassphraseRequest, out: &mut Write) -> gpgme::Result<()> {
+pub fn passphrase_cb(_req: PassphraseRequest<'_>, out: &mut dyn Write) -> gpgme::Result<()> {
     out.write_all(b"abc")?;
     Ok(())
 }
@@ -123,7 +123,7 @@ impl TestCase {
         }
     }
 
-    pub fn new_test(&self) -> Test {
+    pub fn new_test(&self) -> Test<'_> {
         Test { parent: self }
     }
 

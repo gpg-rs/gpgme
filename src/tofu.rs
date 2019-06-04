@@ -8,7 +8,7 @@ use std::{
 
 use ffi;
 
-use NonNull;
+use crate::NonNull;
 
 ffi_enum_wrapper! {
     pub enum TofuPolicy: ffi::gpgme_tofu_policy_t {

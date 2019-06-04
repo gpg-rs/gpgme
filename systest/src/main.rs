@@ -1,7 +1,4 @@
 #![allow(bad_style, unused_imports, unused_macros)]
-extern crate gpgme_sys;
-extern crate libc;
-
 use gpgme_sys::*;
 use libc::*;
 

@@ -1,12 +1,9 @@
-extern crate gpgme;
-#[macro_use]
-extern crate quicli;
-
-use std::fs::File;
-use std::path::PathBuf;
+use gpgme;
+use structopt;
 
 use gpgme::{Context, Protocol, SignatureSummary};
-use quicli::prelude::*;
+use std::{error::Error, fs::File, path::PathBuf};
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct Cli {
@@ -22,7 +19,8 @@ struct Cli {
     filename: Option<PathBuf>,
 }
 
-main!(|args: Cli| {
+fn main() -> Result<(), Box<dyn Error>> {
+    let args = Cli::from_args();
     let proto = if args.cms {
         Protocol::Cms
     } else {
@@ -32,16 +30,17 @@ main!(|args: Cli| {
     let mut ctx = Context::from_protocol(proto)?;
     let sigfile = &args.sigfile;
     let signature =
-        File::open(sigfile).with_context(|_| format!("can't open '{}'", sigfile.display()))?;
+        File::open(sigfile).map_err(|e| format!("can't open '{}': {:?}", sigfile.display(), e))?;
     let result = if let Some(filename) = args.filename.as_ref() {
         let signed = File::open(filename)
-            .with_context(|_| format!("can't open '{}'", filename.display()))?;
+            .map_err(|e| format!("can't open '{}': {:?}", filename.display(), e))?;
         ctx.verify_detached(signature, signed)
     } else {
         ctx.verify_opaque(signature, &mut Vec::new())
     };
-    print_result(&result.context("verification failed")?);
-});
+    print_result(&result.map_err(|e| format!("verification failed: {:?}", e))?);
+    Ok(())
+}
 
 fn print_summary(summary: SignatureSummary) {
     if summary.contains(SignatureSummary::VALID) {

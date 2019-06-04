@@ -37,8 +37,9 @@ fn try_config<S: Into<OsString>>(proj: &Project, path: S) -> Result<Config> {
     if cfg!(unix) {
         cmd.push(" --thread=pthread");
     }
-    proj.try_config(Command::new("sh").arg("-c").arg(cmd)).map(|mut cfg| {
-        cfg.version = Some(version.trim().into());
-        cfg
-    })
+    proj.try_config(Command::new("sh").arg("-c").arg(cmd))
+        .map(|mut cfg| {
+            cfg.version = Some(version.trim().into());
+            cfg
+        })
 }

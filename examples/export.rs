@@ -1,13 +1,11 @@
-extern crate gpgme;
-#[macro_use]
-extern crate quicli;
-
-use std::io;
-use std::io::prelude::*;
-use std::result::Result as StdResult;
+use structopt;
 
 use gpgme::{Context, ExportMode, Protocol};
-use quicli::prelude::*;
+use std::{
+    error::Error,
+    io::{self, prelude::*},
+};
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct Cli {
@@ -19,7 +17,8 @@ struct Cli {
     users: Vec<String>,
 }
 
-main!(|args: Cli| {
+fn main() -> Result<(), Box<dyn Error>> {
+    let args = Cli::from_args();
     let mode = if args.external {
         ExportMode::EXTERN
     } else {
@@ -31,7 +30,7 @@ main!(|args: Cli| {
 
     let keys = {
         let mut key_iter = ctx.find_keys(args.users)?;
-        let keys: Vec<_> = key_iter.by_ref().collect::<StdResult<_, _>>()?;
+        let keys: Vec<_> = key_iter.by_ref().collect::<Result<_, _>>()?;
         for key in &keys {
             println!(
                 "keyid: {}  (fpr: {})",
@@ -40,7 +39,7 @@ main!(|args: Cli| {
             );
         }
         if key_iter.finish()?.is_truncated() {
-            bail!("key listing unexpectedly truncated");
+            Err("key listing unexpectedly truncated")?;
         }
         keys
     };
@@ -48,14 +47,15 @@ main!(|args: Cli| {
     if mode.contains(ExportMode::EXTERN) {
         println!("sending keys to keyserver");
         ctx.export_keys_extern(&keys, mode)
-            .context("export failed")?;
+            .map_err(|e| format!("export failed: {:?}", e))?;
     } else {
         let mut output = Vec::new();
         ctx.export_keys(&keys, mode, &mut output)
-            .context("export failed")?;
+            .map_err(|e| format!("export failed: {:?}", e))?;
 
         println!("Begin Result:");
         io::stdout().write_all(&output)?;
         println!("End Result.");
     }
-});
+    Ok(())
+}

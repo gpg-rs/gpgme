@@ -6,9 +6,11 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use ffi;
+use ffi::{self, require_gpgme_ver};
 
-use {notation::SignatureNotations, Error, KeyAlgorithm, KeyListMode, NonNull, Protocol, Validity};
+use crate::{
+    notation::SignatureNotations, Error, KeyAlgorithm, KeyListMode, NonNull, Protocol, Validity,
+};
 
 pub struct Key(NonNull<ffi::gpgme_key_t>);
 
@@ -93,8 +95,8 @@ impl Key {
     }
 
     #[inline]
-    pub fn origin(&self) -> ::KeyOrigin {
-        unsafe { ::KeyOrigin::from_raw((*self.as_raw()).origin()) }
+    pub fn origin(&self) -> crate::KeyOrigin {
+        unsafe { crate::KeyOrigin::from_raw((*self.as_raw()).origin()) }
     }
 
     #[inline]
@@ -237,14 +239,14 @@ impl Key {
     }
 
     #[inline]
-    pub fn update(&mut self) -> ::Result<()> {
+    pub fn update(&mut self) -> crate::Result<()> {
         *self = self.updated()?;
         Ok(())
     }
 
     #[inline]
-    pub fn updated(&self) -> ::Result<Key> {
-        let mut ctx = ::Context::from_protocol(self.protocol())?;
+    pub fn updated(&self) -> crate::Result<Key> {
+        let mut ctx = crate::Context::from_protocol(self.protocol())?;
         let _ = ctx.set_key_list_mode(self.key_list_mode());
         ctx.refresh_key(self)
     }
@@ -397,7 +399,7 @@ impl<'key> Subkey<'key> {
     }
 
     #[inline]
-    pub fn algorithm_name(&self) -> ::Result<String> {
+    pub fn algorithm_name(&self) -> crate::Result<String> {
         unsafe {
             match ffi::gpgme_pubkey_algo_string(self.as_raw()).as_mut() {
                 Some(raw) => {
@@ -494,7 +496,7 @@ impl<'key> fmt::Debug for Subkey<'key> {
     }
 }
 
-impl_list_iterator!(Subkeys, Subkey, ffi::gpgme_subkey_t);
+impl_list_iterator!(pub struct Subkeys(Subkey: ffi::gpgme_subkey_t));
 
 #[derive(Copy, Clone)]
 pub struct UserId<'key>(NonNull<ffi::gpgme_user_id_t>, PhantomData<&'key Key>);
@@ -576,8 +578,8 @@ impl<'key> UserId<'key> {
     }
 
     #[inline]
-    pub fn origin(&self) -> ::KeyOrigin {
-        unsafe { ::KeyOrigin::from_raw((*self.as_raw()).origin()) }
+    pub fn origin(&self) -> crate::KeyOrigin {
+        unsafe { crate::KeyOrigin::from_raw((*self.as_raw()).origin()) }
     }
 
     #[inline]
@@ -586,14 +588,14 @@ impl<'key> UserId<'key> {
     }
 
     #[inline]
-    pub fn tofu_info(&self) -> Option<::TofuInfo<'key>> {
+    pub fn tofu_info(&self) -> Option<crate::TofuInfo<'key>> {
         require_gpgme_ver! {
             (1,7) => {
                 unsafe {
                     (*self.as_raw())
                         .tofu
                         .as_mut()
-                        .map(|t| ::TofuInfo::from_raw(t))
+                        .map(|t| crate::TofuInfo::from_raw(t))
                 }
             } else {
                 None
@@ -630,7 +632,7 @@ impl<'key> fmt::Display for UserId<'key> {
     }
 }
 
-impl_list_iterator!(UserIds, UserId, ffi::gpgme_user_id_t);
+impl_list_iterator!(pub struct UserIds(UserId: ffi::gpgme_user_id_t));
 
 #[derive(Copy, Clone)]
 pub struct UserIdSignature<'key>(NonNull<ffi::gpgme_key_sig_t>, PhantomData<&'key Key>);
@@ -801,4 +803,4 @@ impl<'key> fmt::Debug for UserIdSignature<'key> {
     }
 }
 
-impl_list_iterator!(UserIdSignatures, UserIdSignature, ffi::gpgme_key_sig_t);
+impl_list_iterator!(pub struct UserIdSignatures(UserIdSignature: ffi::gpgme_key_sig_t));

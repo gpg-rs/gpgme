@@ -1,14 +1,13 @@
-extern crate gpgme;
-#[macro_use]
-extern crate quicli;
-
-use std::fs::File;
-use std::io;
-use std::io::prelude::*;
-use std::path::PathBuf;
+use structopt;
 
 use gpgme::{Context, Protocol};
-use quicli::prelude::*;
+use std::{
+    error::Error,
+    fs::File,
+    io::{self, prelude::*},
+    path::PathBuf,
+};
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct Cli {
@@ -26,7 +25,8 @@ struct Cli {
     filename: PathBuf,
 }
 
-main!(|args: Cli| {
+fn main() -> Result<(), Box<dyn Error>> {
+    let args = Cli::from_args();
     let proto = if args.cms {
         Protocol::Cms
     } else {
@@ -47,12 +47,13 @@ main!(|args: Cli| {
 
     let filename = &args.filename;
     let mut input = File::open(&args.filename)
-        .with_context(|_| format!("can't open file `{}'", filename.display()))?;
+        .map_err(|e| format!("can't open file `{}': {:?}", filename.display(), e))?;
     let mut output = Vec::new();
     ctx.encrypt(&keys, &mut input, &mut output)
-        .context("encrypting failed")?;
+        .map_err(|e| format!("encrypting failed: {:?}", e))?;
 
     println!("Begin Output:");
     io::stdout().write_all(&output)?;
     println!("End Output.");
-});
+    Ok(())
+}

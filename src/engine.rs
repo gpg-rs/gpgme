@@ -9,7 +9,7 @@ use std::{
 
 use ffi;
 
-use {NonNull, Protocol, Result};
+use crate::{error::return_err, NonNull, Protocol, Result};
 
 #[derive(Copy, Clone)]
 pub struct EngineInfo<'a>(NonNull<ffi::gpgme_engine_info_t>, PhantomData<&'a ()>);
@@ -110,7 +110,7 @@ impl<'a> fmt::Debug for EngineInfo<'a> {
     }
 }
 
-impl_list_iterator!(EngineInfos, EngineInfo, ffi::gpgme_engine_info_t);
+impl_list_iterator!(pub struct EngineInfos(EngineInfo: ffi::gpgme_engine_info_t));
 
 pub struct EngineInfoGuard(RwLockReadGuard<'static, ()>);
 

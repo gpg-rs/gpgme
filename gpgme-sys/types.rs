@@ -1,10 +1,6 @@
-extern crate libc;
+use libc::{c_char, c_int, c_long, c_uint, c_ulong, c_ushort, c_void, size_t, ssize_t};
 
-use libc::{
-    c_char, c_int, c_long, c_short, c_uchar, c_uint, c_ulong, c_ushort, c_void, size_t, ssize_t,
-};
-
-use consts::*;
+use crate::consts::*;
 
 pub use libgpg_error_sys::{
     gpg_err_code_t as gpgme_err_code_t, gpg_err_source_t as gpgme_err_source_t,

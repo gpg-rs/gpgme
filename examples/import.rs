@@ -1,13 +1,9 @@
-extern crate gpgme;
-#[macro_use]
-extern crate quicli;
+use gpgme;
+use structopt;
 
-use std::fs::File;
-use std::path::PathBuf;
-
-use gpgme::data;
-use gpgme::{Context, Data, ImportFlags};
-use quicli::prelude::*;
+use gpgme::{data, Context, Data, ImportFlags};
+use std::{error::Error, fs::File, path::PathBuf};
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct Cli {
@@ -21,7 +17,8 @@ struct Cli {
     filenames: Vec<PathBuf>,
 }
 
-main!(|args: Cli| {
+fn main() -> Result<(), Box<dyn Error>> {
+    let args = Cli::from_args();
     let mode = if args.url {
         if args.nul {
             Some(data::Encoding::Url0)
@@ -36,12 +33,16 @@ main!(|args: Cli| {
     for file in args.filenames {
         println!("reading file `{}'", &file.display());
 
-        let mut input = File::open(file)?;
+        let input = File::open(file)?;
         let mut data = Data::from_seekable_stream(input)?;
         mode.map(|m| data.set_encoding(m));
-        print_import_result(ctx.import(&mut data).context("import failed")?);
+        print_import_result(
+            ctx.import(&mut data)
+                .map_err(|e| format!("import failed {:?}", e))?,
+        );
     }
-});
+    Ok(())
+}
 
 fn print_import_result(result: gpgme::ImportResult) {
     for import in result.imports() {

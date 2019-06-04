@@ -1,9 +1,8 @@
-extern crate gpgme;
-#[macro_use]
-extern crate quicli;
+use structopt;
 
 use gpgme::{Context, KeyListMode, Protocol};
-use quicli::prelude::*;
+use std::error::Error;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct Cli {
@@ -34,7 +33,8 @@ struct Cli {
     users: Vec<String>,
 }
 
-main!(|args: Cli| {
+fn main() -> Result<(), Box<dyn Error>> {
+    let args = Cli::from_args();
     let proto = if args.cms {
         Protocol::Cms
     } else {
@@ -91,6 +91,7 @@ main!(|args: Cli| {
     }
 
     if keys.finish()?.is_truncated() {
-        bail!("key listing unexpectedly truncated");
+        Err("key listing unexpectedly truncated")?;
     }
-});
+    Ok(())
+}

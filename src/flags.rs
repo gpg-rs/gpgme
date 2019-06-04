@@ -1,6 +1,7 @@
 #![allow(trivial_numeric_casts)]
 use std::{ffi::CStr, fmt, str::Utf8Error};
 
+use bitflags::bitflags;
 use ffi;
 use libc;
 

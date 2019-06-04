@@ -1,7 +1,4 @@
-#![allow(non_upper_case_globals, non_camel_case_types, unused_imports)]
-extern crate libc;
-extern crate libgpg_error_sys;
-
+#![allow(non_upper_case_globals, non_camel_case_types)]
 #[cfg(not(ctest))]
 include!(concat!(env!("OUT_DIR"), "/version.rs"));
 
