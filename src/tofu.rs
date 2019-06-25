@@ -28,7 +28,7 @@ unsafe impl<'a> Send for TofuInfo<'a> {}
 unsafe impl<'a> Sync for TofuInfo<'a> {}
 
 impl<'a> TofuInfo<'a> {
-    impl_wrapper!(TofuInfo(ffi::gpgme_tofu_info_t), PhantomData);
+    impl_wrapper!(ffi::gpgme_tofu_info_t, PhantomData);
 
     #[inline]
     pub fn validity(&self) -> u32 {

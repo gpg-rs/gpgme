@@ -54,7 +54,7 @@ macro_rules! impl_result {
         }
 
         impl $Name {
-            impl_wrapper!($Name($T));
+            impl_wrapper!($T);
         }
     };
 }
@@ -68,7 +68,7 @@ macro_rules! impl_subresult {
         unsafe impl<'a> Sync for $Name<'a> {}
 
         impl<'a> $Name<'a> {
-            impl_wrapper!($Name($T), PhantomData);
+            impl_wrapper!($T, PhantomData);
         }
 
         impl_list_iterator!(pub struct $IterName($Name: $T));

@@ -84,54 +84,6 @@ impl<S> StdError for WrappedError<S> {
     }
 }
 
-#[derive(Copy, Clone)]
-struct DataBuilder<S> {
-    cbs: ffi::gpgme_data_cbs,
-    stream: S,
-}
-
-impl<S> DataBuilder<S> {
-    fn new(stream: S) -> Self {
-        Self {
-            cbs: ffi::gpgme_data_cbs {
-                read: None,
-                write: None,
-                seek: None,
-                release: Some(release_callback::<S>),
-            },
-            stream,
-        }
-    }
-
-    pub fn from_reader(stream: S) -> Self
-    where S: Read {
-        Self::new(stream).with_read()
-    }
-
-    pub fn from_writer(stream: S) -> Self
-    where S: Write {
-        Self::new(stream).with_write()
-    }
-
-    pub fn with_read(mut self) -> Self
-    where S: Read {
-        self.cbs.read = Some(read_callback::<S>);
-        self
-    }
-
-    pub fn with_write(mut self) -> Self
-    where S: Write {
-        self.cbs.write = Some(write_callback::<S>);
-        self
-    }
-
-    pub fn with_seek(mut self) -> Self
-    where S: Seek {
-        self.cbs.seek = Some(seek_callback::<S>);
-        self
-    }
-}
-
 #[derive(Debug)]
 pub struct Data<'data>(NonNull<ffi::gpgme_data_t>, PhantomData<&'data mut ()>);
 
@@ -147,7 +99,7 @@ impl<'data> Drop for Data<'data> {
 }
 
 impl<'data> Data<'data> {
-    impl_wrapper!(Data(ffi::gpgme_data_t), PhantomData);
+    impl_wrapper!(ffi::gpgme_data_t, PhantomData);
 
     #[inline]
     pub fn stdin() -> Result<Data<'static>> {

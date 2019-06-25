@@ -8,35 +8,31 @@
 
 [Documentation][docs]
 
-## Requirements
+## Building
+These crates require the gpgme library and its development files (e.g.,
+headers, gpgme-config) to be installed. The buildscript will attempt to detect
+the necessary information using the `gpgme-config` script distributed with
+gpgme. If for whatever reason this does not work, the required information can
+also be specified using one or more environment variables:
+- `GPGME_INCLUDE` specifies the path(s) where header files can be found.
+- `GPGME_LIB_DIR` specifies the path(s) where library files (e.g., *.so, *.a,
+  *.dll, etc.) can be found.
+- `GPGME_LIBS` specifies the name(s) of all required libraries.
+- `GPGME_STATIC` controls whether libraries are linked to statically or
+  dynamically by default. Individual libraries can have their linkage
+  overridden by prefixing their names with either `static=` or `dynamic=` in
+  `GPGME_LIBS`.
+- `GPGME_CONFIG` specifies the path to the `gpgme-config` script.
 
-The wrapper is usable with GPGME 1.2.0 or later. Some features may require
-a more recent version.
+Each environment variable, with the exceptions of `GPGME_STATIC` and
+`GPGME_CONFIG`, can take multiple values separated by the platform's path
+separator.
 
-By default, the gpgme-sys crate will attempt to build the bundled version of
-the library from source using autoconf, automake and various C build tools. The
-`bundled` feature flag controls this functionality and can be disabled by using
-`default-features = false` in dependent crates and/or overridden by setting the
-environment variable `GPGME_USE_BUNDLED` to the empty string, `no`, `off`, or
-`false` to disable or anything else to enable. An existing installation may be
-specified using `GPGME_LIB_DIR`, `GPGME_LIBS`, `GPGME_STATIC` (optional) and
-`GPGME_INCLUDE`. Alternatively the path to the gpgme configuration program
-(`gpgme-config`) may be specified using `GPGME_CONFIG`.
+**NOTE**: These crates also depend on the gpg-error crate which has its own
+[requirements](https://github.com/gpg-rs/libgpg-error).
 
-## Usage
-
-Put this in your `Cargo.toml`:
-
-```toml
-[dependencies]
-gpgme = "0.8"
-```
-
-And this in your crate root:
-
-```rust
-extern crate gpgme;
-```
+**NOTE**: Previous versions of these crates bundled the sources of the gpgme library and attempted
+to build them via the buildscript. This is no longer supported.
 
 ## Examples
 

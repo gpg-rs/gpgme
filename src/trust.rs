@@ -27,7 +27,7 @@ impl Clone for TrustItem {
 }
 
 impl TrustItem {
-    impl_wrapper!(TrustItem(ffi::gpgme_trust_item_t));
+    impl_wrapper!(ffi::gpgme_trust_item_t);
 
     #[inline]
     pub fn trust_level(&self) -> i32 {

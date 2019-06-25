@@ -18,7 +18,7 @@ unsafe impl<'a> Send for EngineInfo<'a> {}
 unsafe impl<'a> Sync for EngineInfo<'a> {}
 
 impl<'a> EngineInfo<'a> {
-    impl_wrapper!(EngineInfo(ffi::gpgme_engine_info_t), PhantomData);
+    impl_wrapper!(ffi::gpgme_engine_info_t, PhantomData);
 
     /// Returns the `Protocol` implemented by the engine.
     #[inline]

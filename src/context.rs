@@ -35,7 +35,7 @@ impl Drop for Context {
 }
 
 impl Context {
-    impl_wrapper!(Context(ffi::gpgme_ctx_t));
+    impl_wrapper!(ffi::gpgme_ctx_t);
 
     #[inline]
     fn new() -> Result<Self> {

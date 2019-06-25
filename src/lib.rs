@@ -1,13 +1,14 @@
 #![warn(trivial_numeric_casts)]
 #![deny(missing_debug_implementations)]
-use self::{engine::EngineInfoGuard, error::return_err, utils::CStrArgument};
-use lazy_static::lazy_static;
 use std::{
     ffi::CStr,
     fmt, mem, ptr, result,
     str::Utf8Error,
-    sync::{Mutex, Once, RwLock},
+    sync::{Mutex, RwLock},
 };
+
+use once_cell::sync::Lazy;
+use self::{engine::EngineInfoGuard, error::return_err, utils::CStrArgument};
 
 pub use self::{
     callbacks::{
@@ -111,9 +112,7 @@ impl fmt::Display for Validity {
     }
 }
 
-lazy_static! {
-    static ref FLAG_LOCK: Mutex<()> = Mutex::default();
-}
+static FLAG_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::default());
 
 pub fn set_flag(name: impl CStrArgument, val: impl CStrArgument) -> Result<()> {
     let name = name.into_cstr();
@@ -130,7 +129,6 @@ pub fn set_flag(name: impl CStrArgument, val: impl CStrArgument) -> Result<()> {
 
 /// Initializes the gpgme library.
 ///
-///
 /// # Examples
 ///
 /// ```no_run
@@ -138,29 +136,20 @@ pub fn set_flag(name: impl CStrArgument, val: impl CStrArgument) -> Result<()> {
 /// ```
 #[inline]
 pub fn init() -> Gpgme {
-    static INIT: Once = Once::new();
-    static mut VERSION: Option<&str> = None;
-    static mut ENGINE_LOCK: Option<mem::ManuallyDrop<RwLock<()>>> = None;
+    static TOKEN: Lazy<(&str, RwLock<()>)> = Lazy::new(|| unsafe {
+        let base: ffi::_gpgme_signature = mem::zeroed();
+        let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
 
-    INIT.call_once(|| unsafe {
-        VERSION = Some({
-            let base: ffi::_gpgme_signature = mem::zeroed();
-            let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
-
-            let result =
-                ffi::gpgme_check_version_internal(ffi::MIN_GPGME_VERSION.as_ptr() as *const _, offset);
-            assert!(!result.is_null(), "gpgme library could not be initialized");
-            CStr::from_ptr(result)
-                .to_str()
-                .expect("gpgme version string is not valid utf-8")
-        });
-        ENGINE_LOCK = Some(mem::ManuallyDrop::new(RwLock::default()));
+        let result =
+            ffi::gpgme_check_version_internal(ffi::MIN_GPGME_VERSION.as_ptr() as *const _, offset);
+        assert!(!result.is_null(), "gpgme library could not be initialized");
+        (CStr::from_ptr(result)
+            .to_str()
+            .expect("gpgme version string is not valid utf-8"), RwLock::default())
     });
-    unsafe {
-        Gpgme {
-            version: VERSION.as_ref().unwrap(),
-            engine_lock: ENGINE_LOCK.as_ref().unwrap(),
-        }
+    Gpgme {
+        version: TOKEN.0,
+        engine_lock: &TOKEN.1,
     }
 }
 

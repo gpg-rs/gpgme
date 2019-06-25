@@ -12,7 +12,7 @@ unsafe impl<'a> Send for SignatureNotation<'a> {}
 unsafe impl<'a> Sync for SignatureNotation<'a> {}
 
 impl<'a> SignatureNotation<'a> {
-    impl_wrapper!(SignatureNotation(ffi::gpgme_sig_notation_t), PhantomData);
+    impl_wrapper!(ffi::gpgme_sig_notation_t, PhantomData);
 
     #[inline]
     pub fn is_human_readable(&self) -> bool {

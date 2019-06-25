@@ -45,10 +45,10 @@ macro_rules! impl_list_iterator {
 }
 
 macro_rules! impl_wrapper {
-    ($Name:ident($T:ty)$(, $Args:expr)*) => {
+    ($T:ty$(, $Args:expr)*) => {
         #[inline]
         pub unsafe fn from_raw(raw: $T) -> Self {
-            $Name(NonNull::<$T>::new(raw).unwrap()$(, $Args)*)
+            Self(NonNull::<$T>::new(raw).unwrap()$(, $Args)*)
         }
 
         #[inline]
@@ -167,20 +167,18 @@ macro_rules! ffi_enum_wrapper {
     };
 }
 
-pub struct FdWriter {
-    fd: libc::c_int,
-}
+pub(crate) struct FdWriter(libc::c_int);
 
 impl FdWriter {
     pub unsafe fn new(fd: libc::c_int) -> FdWriter {
-        Self { fd }
+        Self(fd)
     }
 }
 
 impl Write for FdWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let result =
-            unsafe { ffi::gpgme_io_write(self.fd, buf.as_ptr() as *const _, buf.len().into()) };
+            unsafe { ffi::gpgme_io_write(self.0, buf.as_ptr() as *const _, buf.len().into()) };
         if result >= 0 {
             Ok(result as usize)
         } else {

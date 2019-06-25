@@ -123,26 +123,26 @@ impl StatusCode {
 }
 
 // Actions
-pub const QUIT: &'static str = "quit";
-pub const SAVE: &'static str = "save";
-pub const YES: &'static str = "Y";
-pub const NO: &'static str = "N";
+pub const QUIT: &str = "quit";
+pub const SAVE: &str = "save";
+pub const YES: &str = "Y";
+pub const NO: &str = "N";
 
 // Keywords
-pub const PROMPT: &'static str = "keyedit.prompt";
-pub const CONFIRM_SAVE: &'static str = "keyedit.save.okay";
-pub const CONFIRM_CANCEL: &'static str = "keyedit.cancel.okay";
-pub const CONFIRM_KEY_VALID: &'static str = "keygen.valid.okay";
-pub const CONFIRM_CREATE_KEY: &'static str = "keygen.sub.okay";
-pub const KEY_NAME: &'static str = "keygen.name";
-pub const KEY_EMAIL: &'static str = "keygen.email";
-pub const KEY_COMMENT: &'static str = "keygen.comment";
-pub const KEY_VALID: &'static str = "keygen.valid";
-pub const KEY_FLAGS: &'static str = "keygen.flags";
-pub const KEY_SIZE: &'static str = "keygen.size";
-pub const KEY_ALGORITHM: &'static str = "keygen.algo";
-pub const KEY_UID_COMMAND: &'static str = "keygen.userid.cmd";
-pub const KEY_CURVE: &'static str = "keygen.curve";
+pub const PROMPT: &str = "keyedit.prompt";
+pub const CONFIRM_SAVE: &str = "keyedit.save.okay";
+pub const CONFIRM_CANCEL: &str = "keyedit.cancel.okay";
+pub const CONFIRM_KEY_VALID: &str = "keygen.valid.okay";
+pub const CONFIRM_CREATE_KEY: &str = "keygen.sub.okay";
+pub const KEY_NAME: &str = "keygen.name";
+pub const KEY_EMAIL: &str = "keygen.email";
+pub const KEY_COMMENT: &str = "keygen.comment";
+pub const KEY_VALID: &str = "keygen.valid";
+pub const KEY_FLAGS: &str = "keygen.flags";
+pub const KEY_SIZE: &str = "keygen.size";
+pub const KEY_ALGORITHM: &str = "keygen.algo";
+pub const KEY_UID_COMMAND: &str = "keygen.userid.cmd";
+pub const KEY_CURVE: &str = "keygen.curve";
 
 pub trait Editor: UnwindSafe + Send {
     type State: fmt::Debug + Default + Eq + Copy + UnwindSafe + Send;

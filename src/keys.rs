@@ -37,7 +37,7 @@ impl Clone for Key {
 }
 
 impl Key {
-    impl_wrapper!(Key(ffi::gpgme_key_t));
+    impl_wrapper!(ffi::gpgme_key_t);
 
     #[inline]
     pub fn is_revoked(&self) -> bool {
@@ -284,7 +284,7 @@ unsafe impl<'key> Send for Subkey<'key> {}
 unsafe impl<'key> Sync for Subkey<'key> {}
 
 impl<'key> Subkey<'key> {
-    impl_wrapper!(Subkey(ffi::gpgme_subkey_t), PhantomData);
+    impl_wrapper!(ffi::gpgme_subkey_t, PhantomData);
 
     #[inline]
     pub fn id(&self) -> Result<&'key str, Option<Utf8Error>> {
@@ -505,7 +505,7 @@ unsafe impl<'key> Send for UserId<'key> {}
 unsafe impl<'key> Sync for UserId<'key> {}
 
 impl<'key> UserId<'key> {
-    impl_wrapper!(UserId(ffi::gpgme_user_id_t), PhantomData);
+    impl_wrapper!(ffi::gpgme_user_id_t, PhantomData);
 
     #[inline]
     pub fn id(&self) -> Result<&'key str, Option<Utf8Error>> {
@@ -641,7 +641,7 @@ unsafe impl<'key> Send for UserIdSignature<'key> {}
 unsafe impl<'key> Sync for UserIdSignature<'key> {}
 
 impl<'key> UserIdSignature<'key> {
-    impl_wrapper!(UserIdSignature(ffi::gpgme_key_sig_t), PhantomData);
+    impl_wrapper!(ffi::gpgme_key_sig_t, PhantomData);
 
     #[inline]
     pub fn signer_key_id(&self) -> Result<&'key str, Option<Utf8Error>> {
