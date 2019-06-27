@@ -8,19 +8,24 @@ matrix:
     - addons:
         apt:
           packages:
+            - libgpg-error-dev
             - libgpgme11-dev
     - rust: nightly
       addons:
         apt:
           packages:
+            - libgpg-error-dev
             - libgpgme11-dev
       env:
         - CARGO_FLAGS="--features nightly"
     - os: osx
       addons:
         homebrew:
+          update: true
           packages:
             - gpgme
+      env:
+
   allow_failures:
     - rust: nightly
   fast_finish: true
