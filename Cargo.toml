@@ -1,6 +1,6 @@
 [package]
 name = "gpgme"
-version = "0.8.0"
+version = "0.9.0"
 edition = "2018"
 authors = ["John Schug <john.ips.schug@gmail.com>"]
 license = "LGPL-2.1"
@@ -26,20 +26,16 @@ tempdir = "0.3"
 [dependencies]
 libc = "0.2"
 bitflags = "1"
-once_cell = "0.2"
+once_cell = { version = "0.2", default-features = false }
 conv = "0.3"
 smallvec = "0.6"
 cstr-argument = "0.1"
-gpg-error = "0.4"
+gpg-error = "0.5"
 
 [dependencies.ffi]
 package = "gpgme-sys"
 path = "gpgme-sys"
-version = "0.8.0"
-
-[patch.crates-io]
-gpg-error = { git = "https://github.com/gpg-rs/libgpg-error" }
-libgpg-error-sys = { git = "https://github.com/gpg-rs/libgpg-error" }
+version = "0.9.0"
 
 [[bin]]
 name = "pinentry"
