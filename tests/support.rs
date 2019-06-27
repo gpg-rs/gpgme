@@ -1,11 +1,12 @@
 #![allow(dead_code)]
-use std::env;
-use std::fs::File;
-use std::io::prelude::*;
-use std::path::Path;
-use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::RwLock;
+use std::{
+    env,
+    fs::File,
+    io::prelude::*,
+    path::Path,
+    process::{Command, Stdio},
+    sync::{RwLock, atomic::{AtomicUsize, Ordering}},
+};
 
 use tempdir::TempDir;
 
@@ -40,10 +41,8 @@ macro_rules! test_case {
         test_case!(@impl $($rest_name($rest_tester) $rest_body,)+);
     };
     ($($name:ident($tester:ident) $body:block,)+) => {
-        lazy_static! {
-            static ref TEST_CASE: $crate::support::TestCase =
-                $crate::support::TestCase::new(count!($($name)+));
-        }
+        static TEST_CASE: ::once_cell::sync::Lazy<$crate::support::TestCase>
+            = ::once_cell::sync::Lazy::new(|| $crate::support::TestCase::new(count!($($name)+)));
         test_case!(@impl $($name($tester) $body,)+);
     };
     ($($name:ident($tester:ident) $body:block),+) => {

@@ -1,9 +1,4 @@
-#[macro_use]
-extern crate gpgme;
-#[macro_use]
-extern crate lazy_static;
-
-use gpgme::{Context, Error, PinentryMode};
+use gpgme::{Context, Error, PinentryMode, require_gpgme_ver};
 
 #[macro_use]
 mod support;

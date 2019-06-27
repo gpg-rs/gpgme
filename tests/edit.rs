@@ -1,11 +1,11 @@
 use gpgme;
-#[macro_use]
-extern crate lazy_static;
 
 use std::io::prelude::*;
 
-use gpgme::edit::{self, EditInteractionStatus, Editor};
-use gpgme::{Error, Result};
+use gpgme::{
+    edit::{self, EditInteractionStatus, Editor},
+    Error, Result,
+};
 
 use self::support::passphrase_cb;
 

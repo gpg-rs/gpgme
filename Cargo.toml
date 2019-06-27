@@ -38,8 +38,8 @@ path = "gpgme-sys"
 version = "0.8.0"
 
 [patch.crates-io]
-gpg-error = { path = "../libgpg-error" }
-libgpg-error-sys = { path = "../libgpg-error/libgpg-error-sys" }
+gpg-error = { git = "https://github.com/gpg-rs/libgpg-error" }
+libgpg-error-sys = { git = "https://github.com/gpg-rs/libgpg-error" }
 
 [[bin]]
 name = "pinentry"

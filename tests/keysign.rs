@@ -1,9 +1,4 @@
-#[macro_use]
-extern crate gpgme;
-#[macro_use]
-extern crate lazy_static;
-
-use gpgme::KeyListMode;
+use gpgme::{KeyListMode, require_gpgme_ver};
 
 use self::support::passphrase_cb;
 

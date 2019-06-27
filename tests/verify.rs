@@ -1,7 +1,4 @@
 #[macro_use]
-extern crate lazy_static;
-
-#[macro_use]
 mod support;
 
 const TEST_MSG1: &'static [u8] = b"-----BEGIN PGP MESSAGE-----\n\
