@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut ctx = Context::from_protocol(gpgme::Protocol::OpenPgp)?;
     for file in args.filenames {
-        println!("reading file `{}'", &file.display());
+        println!("reading file '{}'", &file.display());
 
         let input = File::open(file)?;
         let mut data = Data::from_seekable_stream(input)?;
