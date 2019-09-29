@@ -14,10 +14,10 @@ use crate::{error::return_err, NonNull, Protocol, Result};
 #[derive(Copy, Clone)]
 pub struct EngineInfo<'a>(NonNull<ffi::gpgme_engine_info_t>, PhantomData<&'a ()>);
 
-unsafe impl<'a> Send for EngineInfo<'a> {}
-unsafe impl<'a> Sync for EngineInfo<'a> {}
+unsafe impl Send for EngineInfo<'_> {}
+unsafe impl Sync for EngineInfo<'_> {}
 
-impl<'a> EngineInfo<'a> {
+impl EngineInfo<'_> {
     impl_wrapper!(ffi::gpgme_engine_info_t, PhantomData);
 
     /// Returns the `Protocol` implemented by the engine.
@@ -97,7 +97,7 @@ impl<'a> EngineInfo<'a> {
     }
 }
 
-impl<'a> fmt::Debug for EngineInfo<'a> {
+impl fmt::Debug for EngineInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("EngineInfo")
             .field("raw", &self.as_raw())

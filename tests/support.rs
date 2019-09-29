@@ -5,7 +5,10 @@ use std::{
     io::prelude::*,
     path::Path,
     process::{Command, Stdio},
-    sync::{RwLock, atomic::{AtomicUsize, Ordering}},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        RwLock,
+    },
 };
 
 use tempdir::TempDir;

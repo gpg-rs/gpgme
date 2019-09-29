@@ -7,8 +7,8 @@ use std::{
     sync::{Mutex, RwLock},
 };
 
-use once_cell::sync::Lazy;
 use self::{engine::EngineInfoGuard, error::return_err, utils::CStrArgument};
+use once_cell::sync::Lazy;
 
 pub use self::{
     callbacks::{
@@ -30,8 +30,8 @@ pub use self::{
     tofu::{TofuInfo, TofuPolicy},
     trust::TrustItem,
 };
-pub use gpg_error as error;
 pub use ffi::require_gpgme_ver;
+pub use gpg_error as error;
 
 #[macro_use]
 mod utils;
@@ -141,11 +141,14 @@ pub fn init() -> Gpgme {
         let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
 
         let result =
-            ffi::gpgme_check_version_internal(ffi::MIN_GPGME_VERSION.as_ptr() as *const _, offset);
+            ffi::gpgme_check_version_internal(ffi::MIN_GPGME_VERSION.as_ptr() as _, offset);
         assert!(!result.is_null(), "gpgme library could not be initialized");
-        (CStr::from_ptr(result)
-            .to_str()
-            .expect("gpgme version string is not valid utf-8"), RwLock::default())
+        (
+            CStr::from_ptr(result)
+                .to_str()
+                .expect("gpgme version string is not valid utf-8"),
+            RwLock::default(),
+        )
     });
     Gpgme {
         version: TOKEN.0,
@@ -229,6 +232,7 @@ impl Gpgme {
         EngineInfoGuard::new(self.engine_lock)
     }
 
+    // Requires the engine_lock to be held by the current thread when called
     unsafe fn get_engine_info(&self, proto: Protocol) -> ffi::gpgme_engine_info_t {
         let mut info = ptr::null_mut();
         assert_eq!(ffi::gpgme_get_engine_info(&mut info), 0);

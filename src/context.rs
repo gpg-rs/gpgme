@@ -3,9 +3,9 @@ use std::{
     ffi::CStr,
     fmt,
     iter::FusedIterator,
+    mem, ptr, result,
     str::Utf8Error,
     time::{SystemTime, UNIX_EPOCH},
-    {mem, ptr, result},
 };
 
 use conv::{UnwrapOrSaturate, ValueInto};

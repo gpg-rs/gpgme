@@ -1,4 +1,4 @@
-use gpgme::{Context, Error, PinentryMode, require_gpgme_ver};
+use gpgme::{require_gpgme_ver, Context, Error, PinentryMode};
 
 #[macro_use]
 mod support;

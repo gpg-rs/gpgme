@@ -8,12 +8,33 @@ use crate::Error;
 pub use cstr_argument::CStrArgument;
 pub type SmallVec<T> = ::smallvec::SmallVec<[T; 4]>;
 
+macro_rules! impl_wrapper {
+    ($T:ty$(, $Args:expr)*) => {
+        #[inline]
+        pub unsafe fn from_raw(raw: $T) -> Self {
+            Self(NonNull::<$T>::new(raw).unwrap()$(, $Args)*)
+        }
+
+        #[inline]
+        pub fn as_raw(&self) -> $T {
+            self.0.as_ptr()
+        }
+
+        #[inline]
+        pub fn into_raw(self) -> $T {
+            let raw = self.as_raw();
+            ::std::mem::forget(self);
+            raw
+        }
+    };
+}
+
 macro_rules! impl_list_iterator {
     ($Vis:vis struct $Name:ident($Item:ident: $Raw:ty)) => {
         #[derive(Clone)]
         $Vis struct $Name<'a>(Option<$Item<'a>>);
 
-        impl<'a> $Name<'a> {
+        impl $Name<'_> {
             #[inline]
             pub unsafe fn from_list(first: $Raw) -> Self {
                 $Name(first.as_mut().map(|r| $Item::from_raw(r)))
@@ -34,33 +55,12 @@ macro_rules! impl_list_iterator {
             }
         }
 
-        impl<'a> ::std::iter::FusedIterator for $Name<'a> {}
+        impl ::std::iter::FusedIterator for $Name<'_> {}
 
-        impl<'a> ::std::fmt::Debug for $Name<'a> {
+        impl ::std::fmt::Debug for $Name<'_> {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 f.debug_list().entries(self.clone()).finish()
             }
-        }
-    };
-}
-
-macro_rules! impl_wrapper {
-    ($T:ty$(, $Args:expr)*) => {
-        #[inline]
-        pub unsafe fn from_raw(raw: $T) -> Self {
-            Self(NonNull::<$T>::new(raw).unwrap()$(, $Args)*)
-        }
-
-        #[inline]
-        pub fn as_raw(&self) -> $T {
-            self.0.as_ptr()
-        }
-
-        #[inline]
-        pub fn into_raw(self) -> $T {
-            let raw = self.as_raw();
-            ::std::mem::forget(self);
-            raw
         }
     };
 }

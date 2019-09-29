@@ -1,5 +1,4 @@
-use std::io;
-use std::io::prelude::*;
+use std::{io, io::prelude::*};
 
 #[allow(dead_code)]
 fn main() {
