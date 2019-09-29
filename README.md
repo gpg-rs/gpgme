@@ -1,8 +1,9 @@
 # gpgme-rs
 
-[![Build Status](https://travis-ci.org/gpg-rs/gpgme.svg?branch=master)](https://travis-ci.org/gpg-rs/gpgme)
-[![LGPL-2.1 licensed](https://img.shields.io/crates/l/gpgme.svg)](./COPYING)
-[![Crates.io](https://img.shields.io/crates/v/gpgme.svg)](https://crates.io/crates/gpgme)
+[![Build Status][build]][ci]
+[![crates.io version][version]][crate]
+[![LGPL-2.1 licensed][license]](./COPYING)
+[![downloads][downloads]][crate]
 
 [GPGME][upstream] bindings for Rust.
 
@@ -49,6 +50,12 @@ flags   :
 userid 0: Example <example@example.org>
 valid  0: Unknown
 ```
+[crate]: https://crates.io/crates/gpgme
+[ci]: https://travis-ci.org/gpg-rs/gpgme
+[build]: https://img.shields.io/travis/gpg-rs/gpgme/master?style=flat-square
+[version]: https://img.shields.io/crates/v/gpgme?style=flat-square
+[license]: https://img.shields.io/crates/l/gpgme?style=flat-square
+[downloads]: https://img.shields.io/crates/d/gpgme?style=flat-square
 
 [upstream]: https://www.gnupg.org/\(it\)/related_software/gpgme/index.html
 [docs]: https://docs.rs/gpgme
