@@ -1,4 +1,3 @@
-#![warn(trivial_numeric_casts)]
 #![deny(missing_debug_implementations)]
 use std::{
     ffi::CStr,

@@ -224,13 +224,14 @@ impl Context {
     ///
     /// use gpgme::{Context, PassphraseRequest, Protocol};
     ///
-    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
+    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp)?;
     /// ctx.with_passphrase_provider(|_: PassphraseRequest, out: &mut dyn Write| {
     ///     out.write_all(b"some passphrase")?;
     ///     Ok(())
     /// }, |mut ctx| {
     ///     // Do something with ctx requiring a passphrase, for example decryption
     /// });
+    /// # Ok::<(), gpgme::Error>(())
     /// ```
     pub fn with_passphrase_provider<R, P>(
         &mut self, provider: P, f: impl FnOnce(&mut Context) -> R,
@@ -457,11 +458,12 @@ impl Context {
     /// ```no_run
     /// use gpgme::{Context, Data, Protocol};
     ///
-    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
-    /// let mut keyring = Data::load("somefile").unwrap();
-    /// for key in ctx.read_keys(&mut keyring).unwrap() {
+    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp)?;
+    /// let mut keyring = Data::load("somefile")?;
+    /// for key in ctx.read_keys(&mut keyring)? {
     ///     println!("{:?}", key);
     /// }
+    /// # Ok::<(), gpgme::Error>(())
     /// ```
     #[inline]
     pub fn read_keys<'d, D>(&mut self, src: D) -> Result<Keys<'_, D::Output>>
@@ -501,9 +503,10 @@ impl Context {
     /// ```no_run
     /// use gpgme::{Context, Data, Protocol};
     ///
-    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
-    /// let result = ctx.create_key("Example User <example@example.com>", "default", None).unwrap();
+    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp)?;
+    /// let result = ctx.create_key("Example User <example@example.com>", "default", None)?;
     /// println!("Key Fingerprint: {}", result.fingerprint().unwrap());
+    /// # Ok::<(), gpgme::Error>(())
     /// ```
     #[inline]
     pub fn create_key(
@@ -1218,10 +1221,11 @@ impl Context {
     /// ```no_run
     /// use gpgme::{Context, Data, Protocol};
     ///
-    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
-    /// let key = ctx.find_key("[some key fingerprint]").unwrap();
+    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp)?;
+    /// let key = ctx.find_key("[some key fingerprint]")?;
     /// let (plaintext, mut ciphertext) = ("Hello, World!", Vec::new());
-    /// ctx.encrypt(Some(&key), plaintext, &mut ciphertext).unwrap();
+    /// ctx.encrypt(Some(&key), plaintext, &mut ciphertext)?;
+    /// # Ok::<(), gpgme::Error>(())
     /// ```
     #[inline]
     pub fn encrypt<'k, 'p, 'c, I, P, C>(
@@ -1289,10 +1293,11 @@ impl Context {
     /// ```no_run
     /// use gpgme::{Context, Protocol};
     ///
-    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
-    /// let key = ctx.find_key("[some key fingerprint]").unwrap();
+    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp)?;
+    /// let key = ctx.find_key("[some key fingerprint]")?;
     /// let (plaintext, mut ciphertext) = ("Hello, World!", Vec::new());
-    /// ctx.sign_and_encrypt(Some(&key), plaintext, &mut ciphertext).unwrap();
+    /// ctx.sign_and_encrypt(Some(&key), plaintext, &mut ciphertext)?;
+    /// # Ok::<(), gpgme::Error>(())
     /// ```
     #[inline]
     pub fn sign_and_encrypt<'k, 'p, 'c, I, P, C>(
@@ -1341,10 +1346,11 @@ impl Context {
     /// ```no_run
     /// use gpgme::{Context, Data, Protocol};
     ///
-    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
-    /// let mut cipher = Data::load("some file").unwrap();
+    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp)?;
+    /// let mut cipher = Data::load("some file")?;
     /// let mut plain = Vec::new();
-    /// ctx.decrypt(&mut cipher, &mut plain).unwrap();
+    /// ctx.decrypt(&mut cipher, &mut plain)?;
+    /// # Ok::<(), gpgme::Error>(())
     /// ```
     #[inline]
     pub fn decrypt<'c, 'p, C, P>(
@@ -1392,10 +1398,11 @@ impl Context {
     /// ```no_run
     /// use gpgme::{Context, Data, Protocol};
     ///
-    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
-    /// let mut cipher = Data::load("some file").unwrap();
+    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp)?;
+    /// let mut cipher = Data::load("some file")?;
     /// let mut plain = Vec::new();
-    /// ctx.decrypt_and_verify(&mut cipher, &mut plain).unwrap();
+    /// ctx.decrypt_and_verify(&mut cipher, &mut plain)?;
+    /// # Ok::<(), gpgme::Error>(())
     /// ```
     #[inline]
     pub fn decrypt_and_verify<'c, 'p, C, P>(
