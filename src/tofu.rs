@@ -11,6 +11,8 @@ use ffi;
 use crate::NonNull;
 
 ffi_enum_wrapper! {
+    /// Upstream documentation:
+    /// [`gpgme_tofu_policy_t`](https://www.gnupg.org/documentation/manuals/gpgme/Changing-TOFU-Data.html#index-gpgme_005ftofu_005fpolicy_005ft)
     pub enum TofuPolicy: ffi::gpgme_tofu_policy_t {
         None = ffi::GPGME_TOFU_POLICY_NONE,
         Auto = ffi::GPGME_TOFU_POLICY_AUTO,
@@ -21,11 +23,13 @@ ffi_enum_wrapper! {
     }
 }
 
+/// Upstream documentation:
+/// [`gpgme_tofu_info_t`](https://www.gnupg.org/documentation/manuals/gpgme/Key-objects.html#index-gpgme_005ftofu_005finfo_005ft)
 #[derive(Copy, Clone)]
 pub struct TofuInfo<'a>(NonNull<ffi::gpgme_tofu_info_t>, PhantomData<&'a ()>);
 
-unsafe impl<'a> Send for TofuInfo<'a> {}
-unsafe impl<'a> Sync for TofuInfo<'a> {}
+unsafe impl Send for TofuInfo<'_> {}
+unsafe impl Sync for TofuInfo<'_> {}
 
 impl<'a> TofuInfo<'a> {
     impl_wrapper!(ffi::gpgme_tofu_info_t, PhantomData);
@@ -107,7 +111,7 @@ impl<'a> TofuInfo<'a> {
     }
 }
 
-impl<'a> fmt::Debug for TofuInfo<'a> {
+impl fmt::Debug for TofuInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TofuInfo")
             .field("raw", &self.as_raw())

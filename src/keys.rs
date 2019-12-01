@@ -12,6 +12,8 @@ use crate::{
     notation::SignatureNotations, Error, KeyAlgorithm, KeyListMode, NonNull, Protocol, Validity,
 };
 
+/// Upstream documentation:
+/// [`gpgme_key_t`](https://www.gnupg.org/documentation/manuals/gpgme/Key-objects.html#index-gpgme_005fkey_005ft)
 pub struct Key(NonNull<ffi::gpgme_key_t>);
 
 unsafe impl Send for Key {}
@@ -277,11 +279,12 @@ impl fmt::Debug for Key {
     }
 }
 
+/// Upstream documentation: [`gpgme_subkey_t`](https://www.gnupg.org/documentation/manuals/gpgme/Key-objects.html#index-gpgme_005fsubkey_005ft)
 #[derive(Copy, Clone)]
 pub struct Subkey<'key>(NonNull<ffi::gpgme_subkey_t>, PhantomData<&'key Key>);
 
-unsafe impl<'key> Send for Subkey<'key> {}
-unsafe impl<'key> Sync for Subkey<'key> {}
+unsafe impl Send for Subkey<'_> {}
+unsafe impl Sync for Subkey<'_> {}
 
 impl<'key> Subkey<'key> {
     impl_wrapper!(ffi::gpgme_subkey_t, PhantomData);
@@ -398,6 +401,7 @@ impl<'key> Subkey<'key> {
         unsafe { KeyAlgorithm::from_raw((*self.as_raw()).pubkey_algo) }
     }
 
+    /// Upstream documentation: [`gpgme_pubkey_algo_string`](https://www.gnupg.org/documentation/manuals/gpgme/Public-Key-Algorithms.html#index-gpgme_005fpubkey_005falgo_005fstring)
     #[inline]
     pub fn algorithm_name(&self) -> crate::Result<String> {
         unsafe {
@@ -471,7 +475,7 @@ impl<'key> Subkey<'key> {
     }
 }
 
-impl<'key> fmt::Debug for Subkey<'key> {
+impl fmt::Debug for Subkey<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Subkey")
             .field("raw", &self.as_raw())
@@ -498,11 +502,12 @@ impl<'key> fmt::Debug for Subkey<'key> {
 
 impl_list_iterator!(pub struct Subkeys(Subkey: ffi::gpgme_subkey_t));
 
+/// Upstream documentation: [`gpgme_user_id_t`](https://www.gnupg.org/documentation/manuals/gpgme/Key-objects.html#index-gpgme_005fuser_005fid_005ft)
 #[derive(Copy, Clone)]
 pub struct UserId<'key>(NonNull<ffi::gpgme_user_id_t>, PhantomData<&'key Key>);
 
-unsafe impl<'key> Send for UserId<'key> {}
-unsafe impl<'key> Sync for UserId<'key> {}
+unsafe impl Send for UserId<'_> {}
+unsafe impl Sync for UserId<'_> {}
 
 impl<'key> UserId<'key> {
     impl_wrapper!(ffi::gpgme_user_id_t, PhantomData);
@@ -604,7 +609,7 @@ impl<'key> UserId<'key> {
     }
 }
 
-impl<'key> fmt::Debug for UserId<'key> {
+impl fmt::Debug for UserId<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("UserId")
             .field("raw", &self.as_raw())
@@ -621,7 +626,7 @@ impl<'key> fmt::Debug for UserId<'key> {
     }
 }
 
-impl<'key> fmt::Display for UserId<'key> {
+impl fmt::Display for UserId<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(
             &*self
@@ -634,11 +639,12 @@ impl<'key> fmt::Display for UserId<'key> {
 
 impl_list_iterator!(pub struct UserIds(UserId: ffi::gpgme_user_id_t));
 
+/// Upstream documentation: [`gpgme_key_sig_t`](https://www.gnupg.org/documentation/manuals/gpgme/Key-objects.html#index-gpgme_005fkey_005fsig_005ft)
 #[derive(Copy, Clone)]
 pub struct UserIdSignature<'key>(NonNull<ffi::gpgme_key_sig_t>, PhantomData<&'key Key>);
 
-unsafe impl<'key> Send for UserIdSignature<'key> {}
-unsafe impl<'key> Sync for UserIdSignature<'key> {}
+unsafe impl Send for UserIdSignature<'_> {}
+unsafe impl Sync for UserIdSignature<'_> {}
 
 impl<'key> UserIdSignature<'key> {
     impl_wrapper!(ffi::gpgme_key_sig_t, PhantomData);
@@ -784,7 +790,7 @@ impl<'key> UserIdSignature<'key> {
     }
 }
 
-impl<'key> fmt::Debug for UserIdSignature<'key> {
+impl fmt::Debug for UserIdSignature<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("UserIdSignature")
             .field("raw", &self.as_raw())

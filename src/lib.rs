@@ -9,6 +9,7 @@ use std::{
 use self::{engine::EngineInfoGuard, error::return_err, utils::CStrArgument};
 use once_cell::sync::Lazy;
 
+#[doc(inline)]
 pub use self::{
     callbacks::{
         EditInteractionStatus, EditInteractor, InteractionStatus, Interactor, PassphraseProvider,
@@ -47,10 +48,13 @@ pub mod tofu;
 pub mod trust;
 
 ffi_enum_wrapper! {
-    #[doc="A cryptographic protocol that may be used with the library."]
-    #[doc=""]
-    #[doc="Each protocol is implemented by an engine that the library communicates with"]
-    #[doc="to perform various operations."]
+    /// A cryptographic protocol that may be used with the library.
+    ///
+    /// Each protocol is implemented by an engine that the library communicates with
+    /// to perform various operations.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_protocol_t`](https://www.gnupg.org/documentation/manuals/gpgme/Protocols-and-Engines.html#index-enum-gpgme_005fprotocol_005ft)
     pub enum Protocol: ffi::gpgme_protocol_t {
         OpenPgp = ffi::GPGME_PROTOCOL_OpenPGP,
         Cms = ffi::GPGME_PROTOCOL_CMS,
@@ -65,12 +69,16 @@ ffi_enum_wrapper! {
 }
 
 impl Protocol {
+    /// Upstream documentation:
+    /// [`gpgme_get_protocol_name`](https://www.gnupg.org/documentation/manuals/gpgme/Protocols-and-Engines.html#index-gpgme_005fget_005fprotocol_005fname)
     #[inline]
     pub fn name(&self) -> result::Result<&'static str, Option<Utf8Error>> {
         self.name_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_get_protocol_name`](https://www.gnupg.org/documentation/manuals/gpgme/Protocols-and-Engines.html#index-gpgme_005fget_005fprotocol_005fname)
     #[inline]
     pub fn name_raw(&self) -> Option<&'static CStr> {
         unsafe {
@@ -88,6 +96,8 @@ impl fmt::Display for Protocol {
 }
 
 ffi_enum_wrapper! {
+    /// Upstream documentation:
+    /// [`gpgme_validity_t`](https://www.gnupg.org/documentation/manuals/gpgme/Information-About-Keys.html#index-gpgme_005fvalidity_005ft)
     pub enum Validity(Unknown): ffi::gpgme_validity_t {
         Unknown = ffi::GPGME_VALIDITY_UNKNOWN,
         Undefined = ffi::GPGME_VALIDITY_UNDEFINED,
@@ -113,6 +123,8 @@ impl fmt::Display for Validity {
 
 static FLAG_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::default());
 
+/// Upstream documentation:
+/// [`gpgme_set_global_flag`](https://www.gnupg.org/documentation/manuals/gpgme/Library-Version-Check.html#index-gpgme_005fset_005fglobal_005fflag)
 pub fn set_flag(name: impl CStrArgument, val: impl CStrArgument) -> Result<()> {
     let name = name.into_cstr();
     let val = val.into_cstr();
@@ -200,6 +212,9 @@ impl Gpgme {
     /// Returns the default value for specified configuration option.
     ///
     /// Commonly supported values for `what` are provided as associated constants.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_get_dirinfo`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Version-Check.html#index-gpgme_005fget_005fdirinfo)
     #[inline]
     pub fn get_dir_info(
         &self, what: impl CStrArgument,
@@ -211,6 +226,9 @@ impl Gpgme {
     /// Returns the default value for specified configuration option.
     ///
     /// Commonly supported values for `what` are provided as associated constants.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_get_dirinfo`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Version-Check.html#index-gpgme_005fget_005fdirinfo)
     #[inline]
     pub fn get_dir_info_raw(&self, what: impl CStrArgument) -> Option<&'static CStr> {
         let what = what.into_cstr();
@@ -222,6 +240,9 @@ impl Gpgme {
     }
 
     /// Checks that the engine implementing the specified protocol is supported by the library.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_engine_check_version`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Version-Check.html#index-gpgme_005fengine_005fcheck_005fversion)
     pub fn check_engine_version(&self, proto: Protocol) -> Result<()> {
         unsafe {
             return_err!(ffi::gpgme_engine_check_version(proto.raw()));
@@ -229,6 +250,10 @@ impl Gpgme {
         Ok(())
     }
 
+    /// Returns an iterator yielding information on each of the globally configured engines.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_get_engine_info`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Information.html#index-gpgme_005fget_005fengine_005finfo)
     #[inline]
     pub fn engine_info(&self) -> Result<EngineInfoGuard> {
         EngineInfoGuard::new(self.engine_lock)
@@ -286,6 +311,8 @@ impl Gpgme {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_engine_info`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Configuration.html#index-gpgme_005fset_005fengine_005finfo)
     #[inline]
     pub fn set_engine_info(
         &self, proto: Protocol, path: Option<impl CStrArgument>,

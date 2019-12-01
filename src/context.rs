@@ -24,6 +24,9 @@ use crate::{
 };
 
 /// A context for cryptographic operations
+///
+/// Upstream documentation:
+/// [`gpgme_ctx_t`](https://www.gnupg.org/documentation/manuals/gpgme/Contexts.html#Contexts)
 #[must_use]
 pub struct Context(NonNull<ffi::gpgme_ctx_t>);
 
@@ -47,6 +50,12 @@ impl Context {
         }
     }
 
+    /// Creates a new context and initializes it to work with the specified protocol.
+    ///
+    /// Upstream documentation: [`gpgme_new`] and [`gpgme_set_protocol`]
+    ///
+    /// [`gpgme_new`]: https://www.gnupg.org/documentation/manuals/gpgme/Creating-Contexts.html#Creating-Contexts
+    /// [`gpgme_set_protocol`]: https://www.gnupg.org/documentation/manuals/gpgme/Protocol-Selection.html#index-gpgme_005fset_005fprotocol
     #[inline]
     pub fn from_protocol(proto: Protocol) -> Result<Self> {
         let ctx = Context::new()?;
@@ -56,16 +65,22 @@ impl Context {
         Ok(ctx)
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_get_protocol`](https://www.gnupg.org/documentation/manuals/gpgme/Protocol-Selection.html#index-gpgme_005fget_005fprotocol)
     #[inline]
     pub fn protocol(&self) -> Protocol {
         unsafe { Protocol::from_raw(ffi::gpgme_get_protocol(self.as_raw())) }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_get_armor`](https://www.gnupg.org/documentation/manuals/gpgme/ASCII-Armor.html#index-gpgme_005fget_005farmor)
     #[inline]
     pub fn armor(&self) -> bool {
         unsafe { ffi::gpgme_get_armor(self.as_raw()) != 0 }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_armor`](https://www.gnupg.org/documentation/manuals/gpgme/ASCII-Armor.html#index-gpgme_005fset_005farmor)
     #[inline]
     pub fn set_armor(&mut self, enabled: bool) {
         unsafe {
@@ -73,11 +88,15 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_get_textmode`](https://www.gnupg.org/documentation/manuals/gpgme/Text-Mode.html#index-gpgme_005fget_005ftextmode)
     #[inline]
     pub fn text_mode(&self) -> bool {
         unsafe { ffi::gpgme_get_textmode(self.as_raw()) != 0 }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_textmode`](https://www.gnupg.org/documentation/manuals/gpgme/Text-Mode.html#index-gpgme_005fset_005ftextmode)
     #[inline]
     pub fn set_text_mode(&mut self, enabled: bool) {
         unsafe {

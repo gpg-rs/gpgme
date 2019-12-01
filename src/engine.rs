@@ -11,6 +11,8 @@ use ffi;
 
 use crate::{error::return_err, NonNull, Protocol, Result};
 
+/// Upstream documentation:
+/// [`gpgme_engine_info_t`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Information.html#index-gpgme_005fengine_005finfo_005ft)
 #[derive(Copy, Clone)]
 pub struct EngineInfo<'a>(NonNull<ffi::gpgme_engine_info_t>, PhantomData<&'a ()>);
 
@@ -112,6 +114,8 @@ impl fmt::Debug for EngineInfo<'_> {
 
 impl_list_iterator!(pub struct EngineInfos(EngineInfo: ffi::gpgme_engine_info_t));
 
+/// A RAII guard type that ensures the global engine information list is not modified
+/// while it is being iterated.
 pub struct EngineInfoGuard(RwLockReadGuard<'static, ()>);
 
 impl EngineInfoGuard {
@@ -126,16 +130,12 @@ impl EngineInfoGuard {
 
     #[inline]
     pub fn get(&self, proto: Protocol) -> Option<EngineInfo<'_>> {
-        self.iter().find(|info| info.protocol() == proto)
+        self.into_iter().find(|info| info.protocol() == proto)
     }
 
     #[inline]
     pub fn iter(&self) -> EngineInfos<'_> {
-        unsafe {
-            let mut first = ptr::null_mut();
-            assert_eq!(ffi::gpgme_get_engine_info(&mut first), 0);
-            EngineInfos::from_list(first)
-        }
+        self.into_iter()
     }
 }
 
@@ -145,7 +145,11 @@ impl<'a> IntoIterator for &'a EngineInfoGuard {
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        self.iter()
+        unsafe {
+            let mut first = ptr::null_mut();
+            assert_eq!(ffi::gpgme_get_engine_info(&mut first), 0);
+            EngineInfos::from_list(first)
+        }
     }
 }
 

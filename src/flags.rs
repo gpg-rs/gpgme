@@ -6,6 +6,8 @@ use ffi;
 use libc;
 
 bitflags! {
+    /// Upstream documentation:
+    /// [`gpgme_keylist_mode_t`](https://www.gnupg.org/documentation/manuals/gpgme/Key-Listing-Mode.html#Key-Listing-Mode)
     pub struct KeyListMode: ffi::gpgme_keylist_mode_t {
         const LOCAL = ffi::GPGME_KEYLIST_MODE_LOCAL;
         const EXTERN = ffi::GPGME_KEYLIST_MODE_EXTERN;
@@ -20,6 +22,8 @@ bitflags! {
 }
 
 bitflags! {
+    /// Upstream documentation:
+    /// [`gpgme_op_createkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fcreatekey)
     pub struct CreateKeyFlags: libc::c_uint {
         const SIGN = ffi::GPGME_CREATE_SIGN;
         const ENCR = ffi::GPGME_CREATE_ENCR;
@@ -36,6 +40,8 @@ bitflags! {
 }
 
 bitflags! {
+    /// Upstream documentation:
+    /// [`gpgme_op_delete_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Deleting-Keys.html#index-gpgme_005fop_005fdelete_005fext)
     pub struct DeleteKeyFlags: libc::c_uint {
         const ALLOW_SECRET = ffi::GPGME_DELETE_ALLOW_SECRET;
         const FORCE = ffi::GPGME_DELETE_FORCE;
@@ -43,6 +49,8 @@ bitflags! {
 }
 
 bitflags! {
+    /// Upstream documentation:
+    /// [`gpgme_op_keysign`](https://www.gnupg.org/documentation/manuals/gpgme/Signing-Keys.html#index-gpgme_005fop_005fkeysign)
     pub struct KeySigningFlags: libc::c_uint {
         const LOCAL = ffi::GPGME_KEYSIGN_LOCAL;
         const LFSEP = ffi::GPGME_KEYSIGN_LFSEP;
@@ -51,6 +59,8 @@ bitflags! {
 }
 
 bitflags! {
+    /// Upstream documentation:
+    /// [`gpgme_import_status_t`](https://www.gnupg.org/documentation/manuals/gpgme/Importing-Keys.html#index-gpgme_005fimport_005fstatus_005ft)
     pub struct ImportFlags: libc::c_uint {
         const NEW = ffi::GPGME_IMPORT_NEW;
         const UID = ffi::GPGME_IMPORT_UID;
@@ -61,6 +71,8 @@ bitflags! {
 }
 
 bitflags! {
+    /// Upstream documentation:
+    /// [`gpgme_export_mode_t`](https://www.gnupg.org/documentation/manuals/gpgme/Exporting-Keys.html)
     pub struct ExportMode: ffi::gpgme_export_mode_t {
         const EXTERN = ffi::GPGME_EXPORT_MODE_EXTERN;
         const MINIMAL = ffi::GPGME_EXPORT_MODE_MINIMAL;
@@ -71,6 +83,8 @@ bitflags! {
 }
 
 bitflags! {
+    /// Upstream documentation:
+    /// [`gpgme_op_encrypt`](https://www.gnupg.org/documentation/manuals/gpgme/Encrypting-a-Plaintext.html#index-gpgme_005fop_005fencrypt)
     pub struct EncryptFlags: ffi::gpgme_encrypt_flags_t {
         const ALWAYS_TRUST = ffi::GPGME_ENCRYPT_ALWAYS_TRUST;
         const NO_ENCRYPT_TO = ffi::GPGME_ENCRYPT_NO_ENCRYPT_TO;
@@ -85,6 +99,8 @@ bitflags! {
 }
 
 bitflags! {
+    /// Upstream documentation:
+    /// [`gpgme_op_decrypt_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Decrypt.html#index-gpgme_005fop_005fdecrypt_005fext)
     pub struct DecryptFlags: ffi::gpgme_decrypt_flags_t {
         const VERIFY = ffi::GPGME_DECRYPT_VERIFY;
         const UNWRAP = ffi::GPGME_DECRYPT_UNWRAP;
@@ -92,6 +108,8 @@ bitflags! {
 }
 
 bitflags! {
+    /// Upstream documentation:
+    /// [`gpgme_sigsum_t`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fsignature_005ft)
     pub struct SignatureSummary: ffi::gpgme_sigsum_t {
         const VALID = ffi::GPGME_SIGSUM_VALID;
         const GREEN = ffi::GPGME_SIGSUM_GREEN;
@@ -109,6 +127,8 @@ bitflags! {
 }
 
 bitflags! {
+    /// Upstream documentation:
+    /// [`gpgme_sig_notation_flags_t`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fsig_005fnotation_005ft)
     pub struct SignatureNotationFlags: ffi::gpgme_sig_notation_flags_t {
         const HUMAN_READABLE = ffi::GPGME_SIG_NOTATION_HUMAN_READABLE;
         const CRITICAL = ffi::GPGME_SIG_NOTATION_CRITICAL;
@@ -116,6 +136,8 @@ bitflags! {
 }
 
 bitflags! {
+    /// Upstream documentation:
+    /// [`gpgme_op_getauditlog`](https://www.gnupg.org/documentation/manuals/gpgme/Additional-Logs.html#index-gpgme_005fop_005fgetauditlog)
     pub struct AuditLogFlags: libc::c_uint {
         const DEFAULT = ffi::GPGME_AUDITLOG_DEFAULT;
         const HTML = ffi::GPGME_AUDITLOG_HTML;
@@ -125,6 +147,8 @@ bitflags! {
 }
 
 ffi_enum_wrapper! {
+    /// Upstream documentation:
+    /// [`gpgme_keyorg_t`](https://www.gnupg.org/documentation/manuals/gpgme/Key-objects.html#index-gpgme_005fuser_005fid_005ft)
     pub enum KeyOrigin: ffi::gpgme_keyorg_t {
         Unknown = ffi::GPGME_KEYORG_UNKNOWN,
         KeyServer = ffi::GPGME_KEYORG_KS,
@@ -137,6 +161,8 @@ ffi_enum_wrapper! {
 }
 
 ffi_enum_wrapper! {
+    /// Upstream documentation:
+    /// [`gpgme_sig_mode_t`](https://www.gnupg.org/documentation/manuals/gpgme/Creating-a-Signature.html#index-enum-gpgme_005fsig_005fmode_005ft)
     pub enum SignMode: ffi::gpgme_sig_mode_t {
         Normal = ffi::GPGME_SIG_MODE_NORMAL,
         Detached = ffi::GPGME_SIG_MODE_DETACH,
@@ -145,6 +171,8 @@ ffi_enum_wrapper! {
 }
 
 ffi_enum_wrapper! {
+    /// Upstream documentation:
+    /// [`gpgme_pubkey_algo_t`](https://www.gnupg.org/documentation/manuals/gpgme/Public-Key-Algorithms.html#index-gpgme_005fpubkey_005falgo_005ft)
     pub enum KeyAlgorithm: ffi::gpgme_pubkey_algo_t {
         Rsa = ffi::GPGME_PK_RSA,
         RsaEncrypt = ffi::GPGME_PK_RSA_E,
@@ -160,12 +188,16 @@ ffi_enum_wrapper! {
 }
 
 impl KeyAlgorithm {
+    /// Upstream documentation:
+    /// [`gpgme_pubkey_algo_name`](https://www.gnupg.org/documentation/manuals/gpgme/Public-Key-Algorithms.html#index-gpgme_005fpubkey_005falgo_005fname)
     #[inline]
     pub fn name(&self) -> Result<&'static str, Option<Utf8Error>> {
         self.name_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_pubkey_algo_name`](https://www.gnupg.org/documentation/manuals/gpgme/Public-Key-Algorithms.html#index-gpgme_005fpubkey_005falgo_005fname)
     #[inline]
     pub fn name_raw(&self) -> Option<&'static CStr> {
         unsafe {
@@ -184,6 +216,8 @@ impl fmt::Display for KeyAlgorithm {
 }
 
 ffi_enum_wrapper! {
+    /// Upstream documentation:
+    /// [`gpgme_hash_algo_t`](https://www.gnupg.org/documentation/manuals/gpgme/Hash-Algorithms.html#index-enum-gpgme_005fhash_005falgo_005ft)
     pub enum HashAlgorithm: ffi::gpgme_hash_algo_t {
         None = ffi::GPGME_MD_NONE,
         Md2 = ffi::GPGME_MD_MD2,
@@ -204,12 +238,16 @@ ffi_enum_wrapper! {
 }
 
 impl HashAlgorithm {
+    /// Upstream documentation:
+    /// [`gpgme_hash_algo_name`](https://www.gnupg.org/documentation/manuals/gpgme/Hash-Algorithms.html#index-gpgme_005fhash_005falgo_005fname)
     #[inline]
     pub fn name(&self) -> Result<&'static str, Option<Utf8Error>> {
         self.name_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_hash_algo_name`](https://www.gnupg.org/documentation/manuals/gpgme/Hash-Algorithms.html#index-gpgme_005fhash_005falgo_005fname)
     #[inline]
     pub fn name_raw(&self) -> Option<&'static CStr> {
         unsafe {
@@ -228,6 +266,8 @@ impl fmt::Display for HashAlgorithm {
 }
 
 ffi_enum_wrapper! {
+    /// Upstream documentation:
+    /// [`gpgme_pinentry_mode_t`](https://www.gnupg.org/documentation/manuals/gpgme/Pinentry-Mode.html#index-gpgme_005fpinentry_005fmode_005ft)
     pub enum PinentryMode: ffi::gpgme_pinentry_mode_t {
         Default = ffi::GPGME_PINENTRY_MODE_DEFAULT,
         Ask = ffi::GPGME_PINENTRY_MODE_ASK,

@@ -4,6 +4,8 @@ use ffi;
 
 use crate::NonNull;
 
+/// Upstream documentation:
+/// [`gpgme_trust_item_t`](https://www.gnupg.org/documentation/manuals/gpgme/Trust-Item-Management.html#index-gpgme_005ftrust_005fitem_005ft)
 pub struct TrustItem(NonNull<ffi::gpgme_trust_item_t>);
 
 unsafe impl Send for TrustItem {}

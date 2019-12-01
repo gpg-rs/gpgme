@@ -34,20 +34,20 @@ macro_rules! impl_result {
 
         impl Clone for $Name {
             #[inline]
-            fn clone(&self) -> $Name {
+            fn clone(&self) -> Self {
                 unsafe {
                     ffi::gpgme_result_ref(self.as_raw() as *mut libc::c_void);
-                    $Name(self.0)
+                    Self::from_raw(self.as_raw())
                 }
             }
         }
 
         unsafe impl OpResult for $Name {
-            fn from_context(ctx: &Context) -> Option<$Name> {
+            fn from_context(ctx: &Context) -> Option<Self> {
                 unsafe {
                     $Constructor(ctx.as_raw()).as_mut().map(|r| {
                         ffi::gpgme_result_ref(r as *mut _ as *mut libc::c_void);
-                        $Name::from_raw(r)
+                        Self::from_raw(r)
                     })
                 }
             }
@@ -64,8 +64,8 @@ macro_rules! impl_subresult {
         #[derive(Copy, Clone)]
         pub struct $Name<'a>(NonNull<$T>, PhantomData<&'a $Owner>);
 
-        unsafe impl<'a> Send for $Name<'a> {}
-        unsafe impl<'a> Sync for $Name<'a> {}
+        unsafe impl Send for $Name<'_> {}
+        unsafe impl Sync for $Name<'_> {}
 
         impl<'a> $Name<'a> {
             impl_wrapper!($T, PhantomData);
@@ -296,7 +296,7 @@ impl<'a> Import<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Import<'a> {
+impl fmt::Debug for Import<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Import")
             .field("raw", &self.as_raw())
@@ -462,7 +462,7 @@ impl<'a> Recipient<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Recipient<'a> {
+impl fmt::Debug for Recipient<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Recipient")
             .field("raw", &self.as_raw())
@@ -540,7 +540,7 @@ impl<'a> NewSignature<'a> {
     }
 }
 
-impl<'a> fmt::Debug for NewSignature<'a> {
+impl fmt::Debug for NewSignature<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("NewSignature")
             .field("raw", &self.as_raw())
@@ -771,7 +771,7 @@ impl<'a> Signature<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Signature<'a> {
+impl fmt::Debug for Signature<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Signature")
             .field("raw", &self.as_raw())

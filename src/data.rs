@@ -19,6 +19,8 @@ use libc;
 use crate::{error::return_err, utils::CStrArgument, Error, NonNull, Result};
 
 ffi_enum_wrapper! {
+    /// Upstream documentation:
+    /// [`gpgme_data_encoding_t`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-enum-gpgme_005fdata_005fencoding_005ft)
     pub enum Encoding: ffi::gpgme_data_encoding_t {
         None = ffi::GPGME_DATA_ENCODING_NONE,
         Binary = ffi::GPGME_DATA_ENCODING_BINARY,
@@ -32,6 +34,8 @@ ffi_enum_wrapper! {
 }
 
 ffi_enum_wrapper! {
+    /// Upstream documentation:
+    /// [`gpgme_data_type_t`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Convenience.html#index-enum-gpgme_005fdata_005ftype_005ft)
     pub enum Type: ffi::gpgme_data_type_t {
         Unknown = ffi::GPGME_DATA_TYPE_UNKNOWN,
         Invalid = ffi::GPGME_DATA_TYPE_INVALID,
@@ -83,12 +87,14 @@ impl<S> StdError for WrappedError<S> {
     }
 }
 
+/// Upstream documentation:
+/// [`gpgme_data_t`](https://www.gnupg.org/documentation/manuals/gpgme/Exchanging-Data.html#Exchanging-Data)
 #[derive(Debug)]
 pub struct Data<'data>(NonNull<ffi::gpgme_data_t>, PhantomData<&'data mut ()>);
 
-unsafe impl<'data> Send for Data<'data> {}
+unsafe impl Send for Data<'_> {}
 
-impl<'data> Drop for Data<'data> {
+impl Drop for Data<'_> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -116,6 +122,9 @@ impl<'data> Data<'data> {
     }
 
     /// Constructs an empty data object.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_data_new`](https://www.gnupg.org/documentation/manuals/gpgme/Memory-Based-Data-Buffers.html#index-gpgme_005fdata_005fnew)
     #[inline]
     pub fn new() -> Result<Data<'static>> {
         crate::init();
@@ -128,6 +137,9 @@ impl<'data> Data<'data> {
 
     /// Constructs a data object and fills it with the contents of the file
     /// referenced by `path`.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_data_new_from_file`](https://www.gnupg.org/documentation/manuals/gpgme/Memory-Based-Data-Buffers.html#index-gpgme_005fdata_005fnew_005ffrom_005ffile)
     #[inline]
     pub fn load(path: impl CStrArgument) -> Result<Data<'static>> {
         crate::init();
@@ -144,6 +156,9 @@ impl<'data> Data<'data> {
     }
 
     /// Constructs a data object and fills it with a copy of `bytes`.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_data_new_from_mem`](https://www.gnupg.org/documentation/manuals/gpgme/Memory-Based-Data-Buffers.html#index-gpgme_005fdata_005fnew_005ffrom_005fmem)
     #[inline]
     pub fn from_bytes(bytes: impl AsRef<[u8]>) -> Result<Data<'static>> {
         crate::init();
@@ -157,6 +172,9 @@ impl<'data> Data<'data> {
     }
 
     /// Constructs a data object which copies from `buf` as needed.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_data_new_from_mem`](https://www.gnupg.org/documentation/manuals/gpgme/Memory-Based-Data-Buffers.html#index-gpgme_005fdata_005fnew_005ffrom_005fmem)
     #[inline]
     pub fn from_buffer(buf: &'data (impl AsRef<[u8]> + ?Sized)) -> Result<Self> {
         crate::init();
@@ -169,6 +187,8 @@ impl<'data> Data<'data> {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_data_new_from_fd`](https://www.gnupg.org/documentation/manuals/gpgme/File-Based-Data-Buffers.html#index-gpgme_005fdata_005fnew_005ffrom_005ffd)
     #[inline]
     #[cfg(unix)]
     pub fn from_fd(file: &'data (impl AsRawFd + ?Sized)) -> Result<Self> {
@@ -180,6 +200,8 @@ impl<'data> Data<'data> {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_data_new_from_stream`](https://www.gnupg.org/documentation/manuals/gpgme/File-Based-Data-Buffers.html#index-gpgme_005fdata_005fnew_005ffrom_005fstream)
     #[inline]
     pub unsafe fn from_raw_file(file: *mut libc::FILE) -> Result<Self> {
         crate::init();
@@ -276,12 +298,16 @@ impl<'data> Data<'data> {
         unsafe { Data::from_callbacks(cbs, s) }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_data_get_file_name`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-gpgme_005fdata_005fget_005ffile_005fname)
     #[inline]
     pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.filename_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_data_get_file_name`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-gpgme_005fdata_005fget_005ffile_005fname)
     #[inline]
     pub fn filename_raw(&self) -> Option<&CStr> {
         unsafe {
@@ -291,6 +317,8 @@ impl<'data> Data<'data> {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_data_set_file_name`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-gpgme_005fdata_005fset_005ffile_005fname)
     #[inline]
     pub fn clear_filename(&mut self) -> Result<()> {
         unsafe {
@@ -299,6 +327,8 @@ impl<'data> Data<'data> {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_data_set_file_name`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-gpgme_005fdata_005fset_005ffile_005fname)
     #[inline]
     pub fn set_filename(&mut self, name: impl CStrArgument) -> Result<()> {
         let name = name.into_cstr();
@@ -311,17 +341,23 @@ impl<'data> Data<'data> {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_data_get_encoding`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-gpgme_005fdata_005fget_005fencoding)
     #[inline]
     pub fn encoding(&self) -> Encoding {
         unsafe { Encoding::from_raw(ffi::gpgme_data_get_encoding(self.as_raw())) }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_data_set_encoding`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-gpgme_005fdata_005fset_005fencoding)
     #[inline]
     pub fn set_encoding(&mut self, enc: Encoding) -> Result<()> {
         unsafe { return_err!(ffi::gpgme_data_set_encoding(self.as_raw(), enc.raw())) }
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_data_set_flag`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-gpgme_005fdata_005fset_005fflag)
     #[inline]
     pub fn set_flag(&mut self, name: impl CStrArgument, value: impl CStrArgument) -> Result<()> {
         let name = name.into_cstr();
@@ -336,11 +372,15 @@ impl<'data> Data<'data> {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_data_identify`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Convenience.html#index-gpgme_005fdata_005fidentify)
     #[inline]
     pub fn identify(&mut self) -> Type {
         unsafe { Type::from_raw(ffi::gpgme_data_identify(self.as_raw(), 0)) }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_data_release_and_get_mem`](https://www.gnupg.org/documentation/manuals/gpgme/Destroying-Data-Buffers.html#index-gpgme_005fdata_005frelease_005fand_005fget_005fmem)
     #[inline]
     pub fn try_into_bytes(self) -> Option<Vec<u8>> {
         unsafe {
@@ -356,7 +396,7 @@ impl<'data> Data<'data> {
     }
 }
 
-impl<'data> Read for Data<'data> {
+impl Read for Data<'_> {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let result = unsafe {
@@ -371,7 +411,7 @@ impl<'data> Read for Data<'data> {
     }
 }
 
-impl<'data> Write for Data<'data> {
+impl Write for Data<'_> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let result = unsafe {
@@ -391,7 +431,7 @@ impl<'data> Write for Data<'data> {
     }
 }
 
-impl<'data> Seek for Data<'data> {
+impl Seek for Data<'_> {
     #[inline]
     fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
         let (off, whence) = match pos {
@@ -475,34 +515,6 @@ extern "C" fn seek_callback<S: Seek>(
 extern "C" fn release_callback<S>(handle: *mut libc::c_void) {
     unsafe {
         drop(Box::from_raw(handle as *mut CallbackWrapper<S>));
-    }
-}
-
-trait DataSource<'a> {
-    type Output: BorrowMut<Data<'a>>;
-
-    fn into_source(self) -> Result<Self::Output>;
-}
-
-impl<'a, T: Read + Send + 'a> DataSource<'a> for T {
-    type Output = Data<'a>;
-
-    fn into_source(self) -> Result<Self::Output> {
-        Data::from_reader(self).map_err(|e| e.error())
-    }
-}
-
-trait DataSink<'a> {
-    type Output: BorrowMut<Data<'a>>;
-
-    fn into_sink(self) -> Result<Self::Output>;
-}
-
-impl<'a, T: Write + Send + 'a> DataSink<'a> for T {
-    type Output = Data<'a>;
-
-    fn into_sink(self) -> Result<Self::Output> {
-        Data::from_writer(self).map_err(|e| e.error())
     }
 }
 

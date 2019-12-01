@@ -1,15 +1,16 @@
-#![allow(trivial_numeric_casts)]
 use std::{ffi::CStr, fmt, marker::PhantomData, str::Utf8Error};
 
 use ffi;
 
 use crate::{NonNull, SignatureNotationFlags};
 
+/// Upstream documentation:
+/// [`gpgme_sig_notation_t`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fsig_005fnotation_005ft)
 #[derive(Copy, Clone)]
 pub struct SignatureNotation<'a>(NonNull<ffi::gpgme_sig_notation_t>, PhantomData<&'a ()>);
 
-unsafe impl<'a> Send for SignatureNotation<'a> {}
-unsafe impl<'a> Sync for SignatureNotation<'a> {}
+unsafe impl Send for SignatureNotation<'_> {}
+unsafe impl Sync for SignatureNotation<'_> {}
 
 impl<'a> SignatureNotation<'a> {
     impl_wrapper!(ffi::gpgme_sig_notation_t, PhantomData);
@@ -52,7 +53,7 @@ impl<'a> SignatureNotation<'a> {
     }
 }
 
-impl<'a> fmt::Debug for SignatureNotation<'a> {
+impl fmt::Debug for SignatureNotation<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SignatureNotation")
             .field("raw", &self.as_raw())
