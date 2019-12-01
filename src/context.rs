@@ -214,6 +214,12 @@ impl Context {
         Ok(())
     }
 
+    pub fn clear_passphrase_provider(&mut self) {
+        unsafe {
+            ffi::gpgme_set_passphrase_cb(self.as_raw(), None, ptr::null_mut());
+        }
+    }
+
     /// Uses the specified provider to handle passphrase requests for the duration of the
     /// closure.
     ///
@@ -254,6 +260,12 @@ impl Context {
         }
     }
 
+    pub fn clear_progress_handler(&mut self) {
+        unsafe {
+            ffi::gpgme_set_progress_cb(self.as_raw(), None, ptr::null_mut());
+        }
+    }
+
     pub fn with_progress_handler<R, H>(
         &mut self, handler: H, f: impl FnOnce(&mut Context) -> R,
     ) -> R
@@ -272,6 +284,12 @@ impl Context {
                 (&mut wrapper as *mut _) as *mut _,
             );
             f(self)
+        }
+    }
+
+    pub fn clear_status_handler(&mut self) {
+        unsafe {
+            ffi::gpgme_set_status_cb(self.as_raw(), None, ptr::null_mut());
         }
     }
 

@@ -37,6 +37,7 @@ impl<'a> PassphraseRequest<'a> {
     }
 }
 
+// TODO: make object safe for next major release
 pub trait PassphraseProvider: UnwindSafe + Send {
     fn get_passphrase<W: io::Write>(
         &mut self, request: PassphraseRequest<'_>, out: W,
@@ -270,6 +271,7 @@ impl<'a> EditInteractionStatus<'a> {
     }
 }
 
+// TODO: make object safe for next major release
 pub trait EditInteractor: UnwindSafe + Send {
     fn interact<W: io::Write>(
         &mut self, status: EditInteractionStatus<'_>, out: Option<W>,
@@ -356,6 +358,7 @@ impl<'a> InteractionStatus<'a> {
     }
 }
 
+// TODO: make object safe for next major release
 pub trait Interactor: UnwindSafe + Send + 'static {
     fn interact<W: io::Write>(
         &mut self, status: InteractionStatus<'_>, out: Option<W>,
