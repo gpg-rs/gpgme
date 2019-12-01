@@ -6,28 +6,28 @@ use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct Cli {
-    #[structopt(long = "openpgp")]
+    #[structopt(long)]
     /// Use the OpenPGP protocol
     openpgp: bool,
-    #[structopt(long = "cms", conflicts_with = "openpgp")]
+    #[structopt(long, conflicts_with = "openpgp")]
     /// Use the CMS protocol
     cms: bool,
-    #[structopt(long = "local")]
+    #[structopt(long)]
     /// Use GPGME_KEYLIST_MODE_LOCAL
     local: bool,
     #[structopt(long = "extern")]
     /// Use GPGME_KEYLIST_MODE_EXTERN
     external: bool,
-    #[structopt(long = "sigs")]
+    #[structopt(long)]
     /// Use GPGME_KEYLIST_MODE_SIGS
     sigs: bool,
     #[structopt(long = "sig-notations")]
     /// Use GPGME_KEYLIST_MODE_SIG_NOTATIONS
     notations: bool,
-    #[structopt(long = "ephemeral")]
+    #[structopt(long)]
     /// Use GPGME_KEYLIST_MODE_EPHEMERAL
     ephemeral: bool,
-    #[structopt(long = "validate")]
+    #[structopt(long)]
     /// Use GPGME_KEYLIST_MODE_VALIDATE
     validate: bool,
     users: Vec<String>,

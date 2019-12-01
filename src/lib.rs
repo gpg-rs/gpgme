@@ -142,7 +142,10 @@ pub fn init() -> Gpgme {
 
         let result =
             ffi::gpgme_check_version_internal(ffi::MIN_GPGME_VERSION.as_ptr() as _, offset);
-        assert!(!result.is_null(), "gpgme library could not be initialized");
+        assert!(
+            !result.is_null(),
+            "the library linked is not the correct version"
+        );
         (
             CStr::from_ptr(result)
                 .to_str()

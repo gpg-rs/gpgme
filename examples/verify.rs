@@ -7,10 +7,10 @@ use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct Cli {
-    #[structopt(long = "openpgp")]
+    #[structopt(long)]
     /// Use the OpenPGP protocol
     openpgp: bool,
-    #[structopt(long = "cms", conflicts_with = "openpgp")]
+    #[structopt(long, conflicts_with = "openpgp")]
     /// Use the CMS protocol
     cms: bool,
     #[structopt(parse(from_os_str))]

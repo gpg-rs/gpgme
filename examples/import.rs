@@ -7,13 +7,13 @@ use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct Cli {
-    #[structopt(long = "url")]
+    #[structopt(long)]
     /// Import from given URLs
     url: bool,
     #[structopt(short = "0")]
     /// URLS are delimited by a null
     nul: bool,
-    #[structopt(raw(required = "true"), parse(from_os_str))]
+    #[structopt(min_values(1), parse(from_os_str))]
     filenames: Vec<PathBuf>,
 }
 

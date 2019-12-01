@@ -12,7 +12,7 @@ struct Cli {
     #[structopt(long = "extern")]
     /// Send keys to the keyserver
     external: bool,
-    #[structopt(raw(required = "true"))]
+    #[structopt(min_values(1))]
     /// Keys to export
     users: Vec<String>,
 }
