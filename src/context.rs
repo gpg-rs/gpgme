@@ -1143,6 +1143,12 @@ impl Context {
         self.sign(SignMode::Normal, plaintext, signedtext)
     }
 
+    /// The function creates a signature for the text in the data object plaintext and returns it
+    /// in the data object signature. The type of the signature created is determined by the ASCII
+    /// armor (or, if that is not set, by the encoding specified for sig), the text mode attributes
+    /// set for the context ctx and the requested signature mode mode.
+    ///
+    /// Information about how the went is returned in the SigningResult structure.
     #[inline]
     pub fn sign<'p, 's, P, S>(
         &mut self, mode: crate::SignMode, plaintext: P, signature: S,
