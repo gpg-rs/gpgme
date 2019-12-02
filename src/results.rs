@@ -17,7 +17,8 @@ use crate::{
 };
 
 macro_rules! impl_result {
-    ($Name:ident : $T:ty = $Constructor:expr) => {
+    ($(#[$Attr:meta])* $Name:ident : $T:ty = $Constructor:expr) => {
+        $(#[$Attr])*
         pub struct $Name(NonNull<$T>);
 
         unsafe impl Send for $Name {}
@@ -60,14 +61,15 @@ macro_rules! impl_result {
 }
 
 macro_rules! impl_subresult {
-    ($Name:ident : $T:ty, $IterName:ident, $Owner:ty) => {
+    ($(#[$Attr:meta])* $Name:ident : $T:ty, $IterName:ident, $Owner:ty) => {
+        $(#[$Attr])*
         #[derive(Copy, Clone)]
-        pub struct $Name<'a>(NonNull<$T>, PhantomData<&'a $Owner>);
+        pub struct $Name<'result>(NonNull<$T>, PhantomData<&'result $Owner>);
 
         unsafe impl Send for $Name<'_> {}
         unsafe impl Sync for $Name<'_> {}
 
-        impl<'a> $Name<'a> {
+        impl $Name<'_> {
             impl_wrapper!($T, PhantomData);
         }
 
@@ -75,7 +77,11 @@ macro_rules! impl_subresult {
     };
 }
 
-impl_subresult!(InvalidKey: ffi::gpgme_invalid_key_t, InvalidKeys, ());
+impl_subresult! {
+    /// Upstream documentation:
+    /// [`gpgme_invalid_key_t`](https://www.gnupg.org/documentation/manuals/gpgme/Crypto-Operations.html#index-gpgme_005finvalid_005fkey_005ft)
+    InvalidKey: ffi::gpgme_invalid_key_t, InvalidKeys, ()
+}
 
 impl<'a> InvalidKey<'a> {
     #[inline]
@@ -100,7 +106,7 @@ impl<'a> InvalidKey<'a> {
     }
 }
 
-impl<'a> fmt::Debug for InvalidKey<'a> {
+impl fmt::Debug for InvalidKey<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("InvalidKey")
             .field("raw", &self.as_raw())
@@ -110,7 +116,11 @@ impl<'a> fmt::Debug for InvalidKey<'a> {
     }
 }
 
-impl_result!(KeyListResult: ffi::gpgme_keylist_result_t = ffi::gpgme_op_keylist_result);
+impl_result! {
+    /// Upstream documentation:
+    /// [`gpgme_keylist_result_t`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fkeylist_005fresult_005ft)
+    KeyListResult: ffi::gpgme_keylist_result_t = ffi::gpgme_op_keylist_result
+}
 impl KeyListResult {
     pub fn is_truncated(&self) -> bool {
         unsafe { (*self.as_raw()).truncated() }
@@ -126,7 +136,11 @@ impl fmt::Debug for KeyListResult {
     }
 }
 
-impl_result!(KeyGenerationResult: ffi::gpgme_genkey_result_t = ffi::gpgme_op_genkey_result);
+impl_result! {
+    /// Upstream documentation:
+    /// [`gpgme_genkey_result_t`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fgenkey_005fresult_005ft)
+    KeyGenerationResult: ffi::gpgme_genkey_result_t = ffi::gpgme_op_genkey_result
+}
 impl KeyGenerationResult {
     #[inline]
     pub fn has_primary_key(&self) -> bool {
@@ -164,7 +178,11 @@ impl fmt::Debug for KeyGenerationResult {
     }
 }
 
-impl_result!(ImportResult: ffi::gpgme_import_result_t = ffi::gpgme_op_import_result);
+impl_result! {
+    /// Upstream documentation:
+    /// [`gpgme_import_result_t`](https://www.gnupg.org/documentation/manuals/gpgme/Importing-Keys.html#index-gpgme_005fimport_005fresult_005ft)
+    ImportResult: ffi::gpgme_import_result_t = ffi::gpgme_op_import_result
+}
 impl ImportResult {
     #[inline]
     pub fn considered(&self) -> u32 {
@@ -269,16 +287,20 @@ impl fmt::Debug for ImportResult {
     }
 }
 
-impl_subresult!(Import: ffi::gpgme_import_status_t, Imports, ImportResult);
-impl<'a> Import<'a> {
+impl_subresult! {
+    /// Upstream documentation:
+    /// [`gpgme_import_status_t`](https://www.gnupg.org/documentation/manuals/gpgme/Importing-Keys.html#index-gpgme_005fimport_005fstatus_005ft)
+    Import: ffi::gpgme_import_status_t, Imports, ImportResult
+}
+impl<'result> Import<'result> {
     #[inline]
-    pub fn fingerprint(&self) -> result::Result<&'a str, Option<Utf8Error>> {
+    pub fn fingerprint(&self) -> result::Result<&'result str, Option<Utf8Error>> {
         self.fingerprint_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn fingerprint_raw(&self) -> Option<&'a CStr> {
+    pub fn fingerprint_raw(&self) -> Option<&'result CStr> {
         unsafe { (*self.as_raw()).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
@@ -307,7 +329,11 @@ impl fmt::Debug for Import<'_> {
     }
 }
 
-impl_result!(EncryptionResult: ffi::gpgme_encrypt_result_t = ffi::gpgme_op_encrypt_result);
+impl_result! {
+    /// Upstream documentation:
+    /// [`gpgme_encrypt_result_t`](https://www.gnupg.org/documentation/manuals/gpgme/Encrypting-a-Plaintext.html#index-gpgme_005fencrypt_005fresult_005ft)
+    EncryptionResult: ffi::gpgme_encrypt_result_t = ffi::gpgme_op_encrypt_result
+}
 impl EncryptionResult {
     #[inline]
     pub fn invalid_recipients(&self) -> InvalidKeys<'_> {
@@ -324,7 +350,11 @@ impl fmt::Debug for EncryptionResult {
     }
 }
 
-impl_result!(DecryptionResult: ffi::gpgme_decrypt_result_t = ffi::gpgme_op_decrypt_result);
+impl_result! {
+    /// Upstream documentation:
+    /// [`gpgme_decrypt_result_t`](https://www.gnupg.org/documentation/manuals/gpgme/Decrypt.html#index-gpgme_005fdecrypt_005fresult_005ft)
+    DecryptionResult: ffi::gpgme_decrypt_result_t = ffi::gpgme_op_decrypt_result
+}
 impl DecryptionResult {
     #[inline]
     pub fn unsupported_algorithm(&self) -> result::Result<&str, Option<Utf8Error>> {
@@ -431,20 +461,22 @@ impl fmt::Debug for DecryptionResult {
     }
 }
 
-impl_subresult!(
+impl_subresult! {
+    /// Upstream documentation:
+    /// [`gpgme_recipient_t`](https://www.gnupg.org/documentation/manuals/gpgme/Decrypt.html#index-gpgme_005frecipient_005ft)
     Recipient: ffi::gpgme_recipient_t,
     Recipients,
     DecryptionResult
-);
-impl<'a> Recipient<'a> {
+}
+impl<'result> Recipient<'result> {
     #[inline]
-    pub fn key_id(&self) -> result::Result<&'a str, Option<Utf8Error>> {
+    pub fn key_id(&self) -> result::Result<&'result str, Option<Utf8Error>> {
         self.key_id_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn key_id_raw(&self) -> Option<&'a CStr> {
+    pub fn key_id_raw(&self) -> Option<&'result CStr> {
         unsafe { (*self.as_raw()).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
@@ -473,7 +505,11 @@ impl fmt::Debug for Recipient<'_> {
     }
 }
 
-impl_result!(SigningResult: ffi::gpgme_sign_result_t = ffi::gpgme_op_sign_result);
+impl_result! {
+    /// Upstream documentation:
+    /// [`gpgme_sign_result_t`](https://www.gnupg.org/documentation/manuals/gpgme/Creating-a-Signature.html#index-gpgme_005fsign_005fresult_005ft)
+    SigningResult: ffi::gpgme_sign_result_t = ffi::gpgme_op_sign_result
+}
 impl SigningResult {
     #[inline]
     pub fn invalid_signers(&self) -> InvalidKeys<'_> {
@@ -496,20 +532,22 @@ impl fmt::Debug for SigningResult {
     }
 }
 
-impl_subresult!(
+impl_subresult! {
+    /// Upstream documentation:
+    /// [`gpgme_new_signature_t`](https://www.gnupg.org/documentation/manuals/gpgme/Creating-a-Signature.html#index-gpgme_005fnew_005fsignature_005ft)
     NewSignature: ffi::gpgme_new_signature_t,
     NewSignatures,
     SigningResult
-);
-impl<'a> NewSignature<'a> {
+}
+impl<'result> NewSignature<'result> {
     #[inline]
-    pub fn fingerprint(&self) -> result::Result<&'a str, Option<Utf8Error>> {
+    pub fn fingerprint(&self) -> result::Result<&'result str, Option<Utf8Error>> {
         self.fingerprint_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn fingerprint_raw(&self) -> Option<&'a CStr> {
+    pub fn fingerprint_raw(&self) -> Option<&'result CStr> {
         unsafe { (*self.as_raw()).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
@@ -536,7 +574,7 @@ impl<'a> NewSignature<'a> {
 
     #[inline]
     pub fn signature_class(&self) -> u32 {
-        unsafe { (*self.as_raw()).sig_class as u32 }
+        unsafe { (*self.as_raw()).sig_class.into() }
     }
 }
 
@@ -554,7 +592,11 @@ impl fmt::Debug for NewSignature<'_> {
     }
 }
 
-impl_result!(VerificationResult: ffi::gpgme_verify_result_t = ffi::gpgme_op_verify_result);
+impl_result! {
+    /// Upstream documentation:
+    /// [`gpgme_verify_result_t`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fverify_005fresult_005ft)
+    VerificationResult: ffi::gpgme_verify_result_t = ffi::gpgme_op_verify_result
+}
 impl VerificationResult {
     #[inline]
     pub fn is_mime(&self) -> bool {
@@ -600,6 +642,8 @@ impl fmt::Debug for VerificationResult {
 }
 
 ffi_enum_wrapper! {
+    /// Upstream documentation:
+    /// [`gpgme_signature_t`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fsignature_005ft)
     pub enum PkaTrust: libc::c_uint {
         Unknown = 0,
         Bad = 1,
@@ -607,25 +651,27 @@ ffi_enum_wrapper! {
     }
 }
 
-impl_subresult!(
+impl_subresult! {
+    /// Upstream documentation:
+    /// [`gpgme_signature_t`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fsignature_005ft)
     Signature: ffi::gpgme_signature_t,
     Signatures,
     VerificationResult
-);
-impl<'a> Signature<'a> {
+}
+impl<'result> Signature<'result> {
     #[inline]
     pub fn summary(&self) -> SignatureSummary {
         unsafe { SignatureSummary::from_bits_truncate((*self.as_raw()).summary as u32) }
     }
 
     #[inline]
-    pub fn fingerprint(&self) -> result::Result<&'a str, Option<Utf8Error>> {
+    pub fn fingerprint(&self) -> result::Result<&'result str, Option<Utf8Error>> {
         self.fingerprint_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn fingerprint_raw(&self) -> Option<&'a CStr> {
+    pub fn fingerprint_raw(&self) -> Option<&'result CStr> {
         unsafe { (*self.as_raw()).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
@@ -689,13 +735,13 @@ impl<'a> Signature<'a> {
     }
 
     #[inline]
-    pub fn pka_address(&self) -> result::Result<&'a str, Option<Utf8Error>> {
+    pub fn pka_address(&self) -> result::Result<&'result str, Option<Utf8Error>> {
         self.pka_address_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn pka_address_raw(&self) -> Option<&'a CStr> {
+    pub fn pka_address_raw(&self) -> Option<&'result CStr> {
         unsafe {
             (*self.as_raw())
                 .pka_address
@@ -730,13 +776,13 @@ impl<'a> Signature<'a> {
     }
 
     #[inline]
-    pub fn policy_url(&self) -> result::Result<&'a str, Option<Utf8Error>> {
+    pub fn policy_url(&self) -> result::Result<&'result str, Option<Utf8Error>> {
         self.policy_url_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn policy_url_raw(&self) -> Option<&'a CStr> {
+    pub fn policy_url_raw(&self) -> Option<&'result CStr> {
         unsafe {
             let mut notation = (*self.as_raw()).notations;
             while !notation.is_null() {
@@ -750,7 +796,7 @@ impl<'a> Signature<'a> {
     }
 
     #[inline]
-    pub fn notations(&self) -> SignatureNotations<'a> {
+    pub fn notations(&self) -> SignatureNotations<'result> {
         unsafe { SignatureNotations::from_list((*self.as_raw()).notations) }
     }
 
@@ -789,7 +835,11 @@ impl fmt::Debug for Signature<'_> {
     }
 }
 
-impl_result!(QuerySwdbResult: ffi::gpgme_query_swdb_result_t = ffi::gpgme_op_query_swdb_result);
+impl_result! {
+    /// Upstream documentation:
+    /// [`gpgme_query_swdb_result_t`](https://www.gnupg.org/documentation/manuals/gpgme/Checking-for-updates.html#index-gpgme_005fquery_005fswdb_005fresult_005ft)
+    QuerySwdbResult: ffi::gpgme_query_swdb_result_t = ffi::gpgme_op_query_swdb_result
+}
 impl QuerySwdbResult {
     #[inline]
     pub fn name(&self) -> result::Result<&str, Option<Utf8Error>> {

@@ -40,7 +40,6 @@ impl Drop for Context {
 impl Context {
     impl_wrapper!(ffi::gpgme_ctx_t);
 
-    #[inline]
     fn new() -> Result<Self> {
         crate::init();
         unsafe {
@@ -104,11 +103,15 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_get_offline`](https://www.gnupg.org/documentation/manuals/gpgme/Offline-Mode.html#index-gpgme_005fget_005foffline)
     #[inline]
     pub fn offline(&self) -> bool {
         unsafe { ffi::gpgme_get_offline(self.as_raw()) != 0 }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_offline`](https://www.gnupg.org/documentation/manuals/gpgme/Offline-Mode.html#index-gpgme_005fset_005foffline)
     #[inline]
     pub fn set_offline(&mut self, enabled: bool) {
         unsafe {
@@ -116,12 +119,16 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_get_ctx_flag`](https://www.gnupg.org/documentation/manuals/gpgme/Context-Flags.html#index-gpgme_005fget_005fctx_005fflag)
     #[inline]
     pub fn get_flag(&self, name: impl CStrArgument) -> result::Result<&str, Option<Utf8Error>> {
         self.get_flag_raw(name)
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_get_ctx_flag`](https://www.gnupg.org/documentation/manuals/gpgme/Context-Flags.html#index-gpgme_005fget_005fctx_005fflag)
     #[inline]
     pub fn get_flag_raw(&self, name: impl CStrArgument) -> Option<&CStr> {
         let name = name.into_cstr();
@@ -132,6 +139,8 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_ctx_flag`](https://www.gnupg.org/documentation/manuals/gpgme/Context-Flags.html#index-gpgme_005fset_005fctx_005fflag)
     #[inline]
     pub fn set_flag(&mut self, name: impl CStrArgument, value: impl CStrArgument) -> Result<()> {
         require_gpgme_ver! {
@@ -152,6 +161,8 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_ctx_get_engine_info`](https://www.gnupg.org/documentation/manuals/gpgme/Crypto-Engine.html#index-gpgme_005fctx_005fget_005fengine_005finfo)
     #[inline]
     pub fn engine_info(&self) -> EngineInfo<'_> {
         unsafe { EngineInfo::from_raw(ffi::gpgme_ctx_get_engine_info(self.as_raw())) }
@@ -193,6 +204,8 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_ctx_set_engine_info`](https://www.gnupg.org/documentation/manuals/gpgme/Crypto-Engine.html#index-gpgme_005fctx_005fset_005fengine_005finfo)
     #[inline]
     pub fn set_engine_info(
         &mut self, path: Option<impl CStrArgument>, home_dir: Option<impl CStrArgument>,
@@ -214,11 +227,15 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_get_pinentry_mode`](https://www.gnupg.org/documentation/manuals/gpgme/Pinentry-Mode.html#index-gpgme_005fget_005fpinentry_005fmode)
     #[inline]
     pub fn pinentry_mode(&self) -> crate::PinentryMode {
         unsafe { crate::PinentryMode::from_raw(ffi::gpgme_get_pinentry_mode(self.as_raw())) }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_pinentry_mode`](https://www.gnupg.org/documentation/manuals/gpgme/Pinentry-Mode.html#index-gpgme_005fset_005fpinentry_005fmode)
     #[inline]
     pub fn set_pinentry_mode(&mut self, mode: crate::PinentryMode) -> Result<()> {
         if (mode != crate::PinentryMode::Default)
@@ -233,6 +250,9 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_passphrase_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Passphrase-Callback.html#index-gpgme_005fset_005fpassphrase_005fcb)
+    #[inline]
     pub fn clear_passphrase_provider(&mut self) {
         unsafe {
             ffi::gpgme_set_passphrase_cb(self.as_raw(), None, ptr::null_mut());
@@ -241,6 +261,9 @@ impl Context {
 
     /// Uses the specified provider to handle passphrase requests for the duration of the
     /// closure.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_set_passphrase_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Passphrase-Callback.html#index-gpgme_005fset_005fpassphrase_005fcb)
     ///
     /// # Examples
     ///
@@ -279,12 +302,17 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_progress_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fset_005fprogress_005fcb)
+    #[inline]
     pub fn clear_progress_handler(&mut self) {
         unsafe {
             ffi::gpgme_set_progress_cb(self.as_raw(), None, ptr::null_mut());
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_progress_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fset_005fprogress_005fcb)
     pub fn with_progress_handler<R, H>(
         &mut self, handler: H, f: impl FnOnce(&mut Context) -> R,
     ) -> R
@@ -306,12 +334,16 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_status_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Status-Message-Callback.html#index-gpgme_005fset_005fstatus_005fcb)
     pub fn clear_status_handler(&mut self) {
         unsafe {
             ffi::gpgme_set_status_cb(self.as_raw(), None, ptr::null_mut());
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_status_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Status-Message-Callback.html#index-gpgme_005fset_005fstatus_005fcb)
     pub fn with_status_handler<R, H>(
         &mut self, handler: H, f: impl FnOnce(&mut Context) -> R,
     ) -> R
@@ -333,6 +365,10 @@ impl Context {
         }
     }
 
+    /// Returns an iterator yielding `TrustItem`s matching the provided pattern.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_op_trustlist_start`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Trust-Items.html#index-gpgme_005fop_005ftrustlist_005fstart)
     #[inline]
     pub fn find_trust_items(
         &mut self, pattern: impl CStrArgument, max_level: i32,
@@ -348,6 +384,8 @@ impl Context {
         Ok(TrustItems { ctx: self })
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_get_keylist_mode`](https://www.gnupg.org/documentation/manuals/gpgme/Key-Listing-Mode.html#index-gpgme_005fget_005fkeylist_005fmode)
     #[inline]
     pub fn key_list_mode(&self) -> KeyListMode {
         unsafe {
@@ -355,6 +393,10 @@ impl Context {
         }
     }
 
+    /// Adds all flags set in the provided key listing mode to the `Context`'s current mode.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_set_keylist_mode`](https://www.gnupg.org/documentation/manuals/gpgme/Key-Listing-Mode.html#index-gpgme_005fset_005fkeylist_005fmode)
     #[inline]
     pub fn add_key_list_mode(&mut self, mask: KeyListMode) -> Result<()> {
         unsafe {
@@ -367,6 +409,8 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_keylist_mode`](https://www.gnupg.org/documentation/manuals/gpgme/Key-Listing-Mode.html#index-gpgme_005fset_005fkeylist_005fmode)
     #[inline]
     pub fn set_key_list_mode(&mut self, mode: KeyListMode) -> Result<()> {
         unsafe {
@@ -375,16 +419,19 @@ impl Context {
         Ok(())
     }
 
+    /// Returns an iterator over all public keys available in the keyring.
     #[inline]
     pub fn keys(&mut self) -> Result<Keys<'_>> {
         self.find_keys(None::<String>)
     }
 
+    /// Returns an iterator over all secret keys available in the keyring.
     #[inline]
     pub fn secret_keys(&mut self) -> Result<Keys<'_>> {
         self.find_secret_keys(None::<String>)
     }
 
+    /// Returns an updated version of the provided key.
     #[inline]
     pub fn refresh_key(&mut self, key: &Key) -> Result<Key> {
         let fpr = key.fingerprint_raw().ok_or(Error::AMBIGUOUS_NAME)?;
@@ -398,6 +445,9 @@ impl Context {
 
     /// Returns the public key with the specified fingerprint, if such a key can
     /// be found. Otherwise, an error is returned.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_get_key`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fget_005fkey)
     #[inline]
     pub fn get_key(&mut self, fpr: impl CStrArgument) -> Result<Key> {
         let fingerprint = fpr.into_cstr();
@@ -415,6 +465,9 @@ impl Context {
 
     /// Returns the secret key with the specified fingerprint, if such a key can
     /// be found. Otherwise, an error is returned.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_get_key`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fget_005fkey)
     #[inline]
     pub fn get_secret_key(&mut self, fpr: impl CStrArgument) -> Result<Key> {
         let fingerprint = fpr.into_cstr();
@@ -430,20 +483,27 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_get_key`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fget_005fkey)
     #[deprecated(since = "0.8.0", note = "use `get_key` instead")]
     #[inline]
     pub fn find_key(&mut self, fpr: impl CStrArgument) -> Result<Key> {
         self.get_key(fpr)
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_get_key`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fget_005fkey)
     #[deprecated(since = "0.8.0", note = "use `get_secret_key` instead")]
     #[inline]
     pub fn find_secret_key(&mut self, fpr: impl CStrArgument) -> Result<Key> {
         self.get_secret_key(fpr)
     }
 
-    /// Returns an iterator for a list of all public keys matching one or more of the
+    /// Returns an iterator over a list of all public keys matching one or more of the
     /// specified patterns.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_op_keylist_ext_start`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fop_005fkeylist_005fext_005fstart)
     #[inline]
     pub fn find_keys<I>(&mut self, patterns: I) -> Result<Keys<'_>>
     where
@@ -452,8 +512,11 @@ impl Context {
         self.search_keys(patterns, false)
     }
 
-    /// Returns an iterator for a list of all secret keys matching one or more of the
+    /// Returns an iterator over a list of all secret keys matching one or more of the
     /// specified patterns.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_op_keylist_ext_start`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fop_005fkeylist_005fext_005fstart)
     #[inline]
     pub fn find_secret_keys<I>(&mut self, patterns: I) -> Result<Keys<'_>>
     where
@@ -490,6 +553,9 @@ impl Context {
 
     /// Returns an iterator over the keys encoded in the specified source.
     ///
+    /// Upstream documentation:
+    /// [`gpgme_op_keylist_from_data_start`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fop_005fkeylist_005ffrom_005fdata_005fstart)
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -503,11 +569,15 @@ impl Context {
     /// # Ok::<(), gpgme::Error>(())
     /// ```
     #[inline]
-    pub fn read_keys<'d, D>(&mut self, src: D) -> Result<Keys<'_, D::Output>>
-    where D: IntoData<'d> {
+    pub fn read_keys<'s, 'd, D>(&'s mut self, src: D) -> Result<Keys<'d, D::Output>>
+    where
+        D: IntoData<'d>,
+        's: 'd, {
         Keys::from_data(self, src)
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_genkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fgenkey)
     #[inline]
     pub fn generate_key<'d1, 'd2, D1, D2>(
         &mut self, params: impl CStrArgument, public: Option<D1>, secret: Option<D2>,
@@ -535,6 +605,9 @@ impl Context {
 
     /// Creates a new OpenPGP key.
     ///
+    /// Upstream documentation:
+    /// [`gpgme_op_createkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fcreatekey)
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -552,6 +625,8 @@ impl Context {
         self.create_key_with_flags(userid, algo, expires, crate::CreateKeyFlags::empty())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_createkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fcreatekey)
     #[inline]
     pub fn create_key_with_flags(
         &mut self, userid: impl CStrArgument, algo: impl CStrArgument, expires: Option<SystemTime>,
@@ -584,6 +659,8 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_createsubkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fcreatesubkey)
     #[inline]
     pub fn create_subkey(
         &mut self, key: &Key, algo: impl CStrArgument, expires: Option<SystemTime>,
@@ -591,6 +668,8 @@ impl Context {
         self.create_subkey_with_flags(key, algo, expires, crate::CreateKeyFlags::empty())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_createsubkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fcreatesubkey)
     #[inline]
     pub fn create_subkey_with_flags(
         &mut self, key: &Key, algo: impl CStrArgument, expires: Option<SystemTime>,
@@ -621,6 +700,8 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_adduid`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fadduid)
     #[inline]
     pub fn add_uid(&mut self, key: &Key, userid: impl CStrArgument) -> Result<()> {
         require_gpgme_ver! {
@@ -641,6 +722,8 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_revuid`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005frevuid)
     #[inline]
     pub fn revoke_uid(&mut self, key: &Key, userid: impl CStrArgument) -> Result<()> {
         require_gpgme_ver! {
@@ -661,29 +744,40 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_set_uid_flag`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fset_005fui_005fflag)
     #[inline]
     pub fn set_uid_flag(
         &mut self, key: &Key, userid: impl CStrArgument, name: impl CStrArgument,
         value: Option<impl CStrArgument>,
     ) -> Result<()>
     {
-        let userid = userid.into_cstr();
-        let name = name.into_cstr();
-        let value = value.map(CStrArgument::into_cstr);
-        unsafe {
-            return_err!(ffi::gpgme_op_set_uid_flag(
-                self.as_raw(),
-                key.as_raw(),
-                userid.as_ref().as_ptr(),
-                name.as_ref().as_ptr(),
-                value.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr()),
-            ));
+        require_gpgme_ver! {
+            (1, 8) => {
+                let userid = userid.into_cstr();
+                let name = name.into_cstr();
+                let value = value.map(CStrArgument::into_cstr);
+                unsafe {
+                    return_err!(ffi::gpgme_op_set_uid_flag(
+                            self.as_raw(),
+                            key.as_raw(),
+                            userid.as_ref().as_ptr(),
+                            name.as_ref().as_ptr(),
+                            value.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr()),
+                    ));
+                }
+                Ok(())
+            } else {
+                Err(Error::NOT_SUPPORTED)
+            }
         }
-        Ok(())
     }
 
     /// Signs the given key with the default signing key, or the keys specified via
     /// [`add_signer`].
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_op_keysign`](https://www.gnupg.org/documentation/manuals/gpgme/Signing-Keys.html#index-gpgme_005fop_005fkeysign)
     ///
     /// [`add_signer`]: struct.Context.html#method.add_signer
     #[inline]
@@ -696,6 +790,13 @@ impl Context {
         self.sign_key_with_flags(key, userids, expires, crate::KeySigningFlags::empty())
     }
 
+    /// Signs the given key with the default signing key, or the keys specified via
+    /// [`add_signer`].
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_op_keysign`](https://www.gnupg.org/documentation/manuals/gpgme/Signing-Keys.html#index-gpgme_005fop_005fkeysign)
+    ///
+    /// [`add_signer`]: struct.Context.html#method.add_signer
     pub fn sign_key_with_flags<I>(
         &mut self, key: &Key, userids: I, expires: Option<SystemTime>,
         flags: crate::KeySigningFlags,
@@ -736,6 +837,8 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_tofu_policy`](https://www.gnupg.org/documentation/manuals/gpgme/Changing-TOFU-Data.html#index-gpgme_005fop_005ftofu_005fpolicy)
     #[inline]
     pub fn change_key_tofu_policy(&mut self, key: &Key, policy: crate::TofuPolicy) -> Result<()> {
         require_gpgme_ver! {
@@ -754,7 +857,8 @@ impl Context {
         }
     }
 
-    // Only works with GPG >= 2.0.15
+    /// Upstream documentation:
+    /// [`gpgme_op_passwd`](https://www.gnupg.org/documentation/manuals/gpgme/Changing-Passphrases.html#index-gpgme_005fop_005fpasswd)
     #[inline]
     pub fn change_key_passphrase(&mut self, key: &Key) -> Result<()> {
         unsafe {
@@ -763,6 +867,9 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_edit`](https://www.gnupg.org/documentation/manuals/gpgme/Deprecated-Functions.html#index-gpgme_005fop_005fedit)
+    #[deprecated(since = "0.9.2", note = "use `interact` instead")]
     #[inline]
     pub fn edit_key<'a, E, D>(&mut self, key: &Key, interactor: E, data: D) -> Result<()>
     where
@@ -785,6 +892,9 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_card_edit`](https://www.gnupg.org/documentation/manuals/gpgme/Deprecated-Functions.html#index-gpgme_005fop_005fcard_005fedit)
+    #[deprecated(since = "0.9.2", note = "use `interact_with_card` instead")]
     #[inline]
     pub fn edit_card_key<'a, E, D>(&mut self, key: &Key, interactor: E, data: D) -> Result<()>
     where
@@ -807,22 +917,32 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_edit`](https://www.gnupg.org/documentation/manuals/gpgme/Deprecated-Functions.html#index-gpgme_005fop_005fedit)
+    #[deprecated(since = "0.9.2", note = "use `interact` instead")]
     #[inline]
     pub fn edit_key_with<'a, D>(
         &mut self, key: &Key, editor: impl edit::Editor, data: D,
     ) -> Result<()>
     where D: IntoData<'a> {
+        #[allow(deprecated)]
         self.edit_key(key, edit::EditorWrapper::new(editor), data)
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_card_edit`](https://www.gnupg.org/documentation/manuals/gpgme/Deprecated-Functions.html#index-gpgme_005fop_005fcard_005fedit)
+    #[deprecated(since = "0.9.2", note = "use `interact_with_card` instead")]
     #[inline]
     pub fn edit_card_key_with<'a, D>(
         &mut self, key: &Key, editor: impl edit::Editor, data: D,
     ) -> Result<()>
     where D: IntoData<'a> {
+        #[allow(deprecated)]
         self.edit_card_key(key, edit::EditorWrapper::new(editor), data)
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_interact`](https://www.gnupg.org/documentation/manuals/gpgme/Advanced-Key-Editing.html#index-gpgme_005fop_005finteract)
     #[inline]
     pub fn interact<'a, I, D>(&mut self, key: &Key, interactor: I, data: D) -> Result<()>
     where
@@ -846,6 +966,8 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_interact`](https://www.gnupg.org/documentation/manuals/gpgme/Advanced-Key-Editing.html#index-gpgme_005fop_005finteract)
     #[inline]
     pub fn interact_with_card<'a, I, D>(
         &mut self, key: &Key, interactor: I, data: D,
@@ -871,6 +993,8 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_delete`](https://www.gnupg.org/documentation/manuals/gpgme/Deleting-Keys.html#index-gpgme_005fop_005fdelete)
     #[inline]
     pub fn delete_key(&mut self, key: &Key) -> Result<()> {
         unsafe {
@@ -879,6 +1003,8 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_delete`](https://www.gnupg.org/documentation/manuals/gpgme/Deleting-Keys.html#index-gpgme_005fop_005fdelete)
     #[inline]
     pub fn delete_secret_key(&mut self, key: &Key) -> Result<()> {
         unsafe {
@@ -887,6 +1013,8 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_delete_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Deleting-Keys.html#index-gpgme_005fop_005fdelete_005fext)
     #[inline]
     pub fn delete_key_with_flags(&mut self, key: &Key, flags: crate::DeleteKeyFlags) -> Result<()> {
         unsafe {
@@ -899,6 +1027,8 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_import`](https://www.gnupg.org/documentation/manuals/gpgme/Importing-Keys.html#index-gpgme_005fop_005fimport)
     #[inline]
     pub fn import<'a, D>(&mut self, src: D) -> Result<results::ImportResult>
     where D: IntoData<'a> {
@@ -912,6 +1042,8 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_import_keys`](https://www.gnupg.org/documentation/manuals/gpgme/Importing-Keys.html#index-gpgme_005fop_005fimport_005fkeys)
     pub fn import_keys<'k, I>(&mut self, keys: I) -> Result<results::ImportResult>
     where I: IntoIterator<Item = &'k Key> {
         let mut ptrs: SmallVec<_> = keys.into_iter().map(Key::as_raw).collect();
@@ -927,6 +1059,8 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_export_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Exporting-Keys.html#index-gpgme_005fop_005fexport_005fext)
     #[inline]
     pub fn export_all_extern<I>(&mut self, mode: ExportMode) -> Result<()>
     where
@@ -935,6 +1069,8 @@ impl Context {
         self.export_(None::<&CStr>, mode | ExportMode::EXTERN, None)
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_export_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Exporting-Keys.html#index-gpgme_005fop_005fexport_005fext)
     #[inline]
     pub fn export_extern<I>(&mut self, patterns: I, mode: ExportMode) -> Result<()>
     where
@@ -944,6 +1080,8 @@ impl Context {
         self.export_(&patterns, mode | ExportMode::EXTERN, None)
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_export_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Exporting-Keys.html#index-gpgme_005fop_005fexport_005fext)
     #[inline]
     pub fn export_all<'a, D>(&mut self, mode: ExportMode, dst: D) -> Result<()>
     where D: IntoData<'a> {
@@ -951,6 +1089,8 @@ impl Context {
         self.export_(None::<&CStr>, mode, Some(dst.borrow_mut()))
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_export_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Exporting-Keys.html#index-gpgme_005fop_005fexport_005fext)
     #[inline]
     pub fn export<'a, I, D>(&mut self, patterns: I, mode: ExportMode, dst: D) -> Result<()>
     where
@@ -987,12 +1127,16 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_export_keys`](https://www.gnupg.org/documentation/manuals/gpgme/Exporting-Keys.html#index-gpgme_005fop_005fexport_005fkeys)
     #[inline]
     pub fn export_keys_extern<'k, I>(&mut self, keys: I, mode: ExportMode) -> Result<()>
     where I: IntoIterator<Item = &'k Key> {
         self.export_keys_(keys, mode | ExportMode::EXTERN, None)
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_export_keys`](https://www.gnupg.org/documentation/manuals/gpgme/Exporting-Keys.html#index-gpgme_005fop_005fexport_005fkeys)
     #[inline]
     pub fn export_keys<'k, 'a, I, D>(&mut self, keys: I, mode: ExportMode, dst: D) -> Result<()>
     where
@@ -1025,6 +1169,8 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_sender`](https://www.gnupg.org/documentation/manuals/gpgme/Setting-the-Sender.html#index-gpgme_005fset_005fsender)
     #[inline]
     pub fn clear_sender(&mut self) -> Result<()> {
         unsafe {
@@ -1033,6 +1179,8 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_sender`](https://www.gnupg.org/documentation/manuals/gpgme/Setting-the-Sender.html#index-gpgme_005fset_005fsender)
     #[inline]
     pub fn set_sender(&mut self, sender: impl CStrArgument) -> Result<()> {
         let sender = sender.into_cstr();
@@ -1045,12 +1193,16 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_get_sender`](https://www.gnupg.org/documentation/manuals/gpgme/Setting-the-Sender.html#index-gpgme_005fget_005fsender)
     #[inline]
     pub fn sender(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.sender_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_get_sender`](https://www.gnupg.org/documentation/manuals/gpgme/Setting-the-Sender.html#index-gpgme_005fget_005fsender)
     #[inline]
     pub fn sender_raw(&self) -> Option<&CStr> {
         unsafe {
@@ -1060,11 +1212,15 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_signers_clear`](https://www.gnupg.org/documentation/manuals/gpgme/Selecting-Signers.html#index-gpgme_005fsigners_005fclear)
     #[inline]
     pub fn clear_signers(&mut self) {
         unsafe { ffi::gpgme_signers_clear(self.as_raw()) }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_signers_add`](https://www.gnupg.org/documentation/manuals/gpgme/Selecting-Signers.html#index-gpgme_005fsigners_005fadd)
     #[inline]
     pub fn add_signer(&mut self, key: &Key) -> Result<()> {
         unsafe {
@@ -1073,6 +1229,8 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_signers_enum`](https://www.gnupg.org/documentation/manuals/gpgme/Selecting-Signers.html#index-gpgme_005fsigners_005fenum)
     #[inline]
     pub fn signers(&self) -> Signers<'_> {
         Signers {
@@ -1081,6 +1239,8 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_sig_notation_clear`](https://www.gnupg.org/documentation/manuals/gpgme/Signature-Notation-Data.html#index-gpgme_005fsig_005fnotation_005fclear)
     #[inline]
     pub fn clear_signature_notations(&mut self) {
         unsafe {
@@ -1088,6 +1248,8 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_sig_notation_add`](https://www.gnupg.org/documentation/manuals/gpgme/Signature-Notation-Data.html#index-gpgme_005fsig_005fnotation_005fadd)
     #[inline]
     pub fn add_signature_notation(
         &mut self, name: impl CStrArgument, value: impl CStrArgument,
@@ -1107,6 +1269,8 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_sig_notation_add`](https://www.gnupg.org/documentation/manuals/gpgme/Signature-Notation-Data.html#index-gpgme_005fsig_005fnotation_005fadd)
     #[inline]
     pub fn add_signature_policy_url(
         &mut self, url: impl CStrArgument, critical: bool,
@@ -1128,12 +1292,16 @@ impl Context {
         Ok(())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_sig_notation_get`](https://www.gnupg.org/documentation/manuals/gpgme/Signature-Notation-Data.html#index-gpgme_005fsig_005fnotation_005fget)
     #[inline]
     pub fn signature_policy_url(&self) -> result::Result<&str, Option<Utf8Error>> {
         self.signature_policy_url_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_sig_notation_get`](https://www.gnupg.org/documentation/manuals/gpgme/Signature-Notation-Data.html#index-gpgme_005fsig_005fnotation_005fget)
     #[inline]
     pub fn signature_policy_url_raw(&self) -> Option<&CStr> {
         unsafe {
@@ -1148,11 +1316,17 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_sig_notation_get`](https://www.gnupg.org/documentation/manuals/gpgme/Signature-Notation-Data.html#index-gpgme_005fsig_005fnotation_005fget)
     #[inline]
     pub fn signature_notations(&self) -> SignatureNotations<'_> {
         unsafe { SignatureNotations::from_list(ffi::gpgme_sig_notation_get(self.as_raw())) }
     }
 
+    /// Creates a clear text signature.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_op_sign`](https://www.gnupg.org/documentation/manuals/gpgme/Creating-a-Signature.html#index-gpgme_005fop_005fsign)
     #[inline]
     pub fn sign_clear<'p, 't, P, T>(
         &mut self, plaintext: P, signedtext: T,
@@ -1163,6 +1337,10 @@ impl Context {
         self.sign(SignMode::Clear, plaintext, signedtext)
     }
 
+    /// Creates a detached signature.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_op_sign`](https://www.gnupg.org/documentation/manuals/gpgme/Creating-a-Signature.html#index-gpgme_005fop_005fsign)
     #[inline]
     pub fn sign_detached<'p, 's, P, S>(
         &mut self, plaintext: P, signature: S,
@@ -1173,6 +1351,10 @@ impl Context {
         self.sign(SignMode::Detached, plaintext, signature)
     }
 
+    /// Creates a normal signature.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_op_sign`](https://www.gnupg.org/documentation/manuals/gpgme/Creating-a-Signature.html#index-gpgme_005fop_005fsign)
     #[inline]
     pub fn sign_normal<'p, 't, P, T>(
         &mut self, plaintext: P, signedtext: T,
@@ -1183,12 +1365,18 @@ impl Context {
         self.sign(SignMode::Normal, plaintext, signedtext)
     }
 
-    /// The function creates a signature for the text in the data object plaintext and returns it
-    /// in the data object signature. The type of the signature created is determined by the ASCII
-    /// armor (or, if that is not set, by the encoding specified for sig), the text mode attributes
-    /// set for the context ctx and the requested signature mode mode.
+    /// Creates a signature for the text stored in the data object `plaintext` and writes it to the
+    /// data object `signature`.
     ///
-    /// Information about how the went is returned in the SigningResult structure.
+    /// The type of the signature created is determined by the ASCII armor (or, if that is not set,
+    /// by the encoding specified for sig), the text mode attributes set for the context and the
+    /// requested signature mode.
+    ///
+    /// Information about the results of the operation are returned in the `SigningResult`
+    /// structure.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_op_sign`](https://www.gnupg.org/documentation/manuals/gpgme/Creating-a-Signature.html#index-gpgme_005fop_005fsign)
     #[inline]
     pub fn sign<'p, 's, P, S>(
         &mut self, mode: crate::SignMode, plaintext: P, signature: S,
@@ -1209,6 +1397,8 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_verify`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fop_005fverify)
     #[inline]
     pub fn verify_detached<'s, 't, S, T>(
         &mut self, signature: S, signedtext: T,
@@ -1221,6 +1411,8 @@ impl Context {
         self.verify(signature.borrow_mut(), Some(signed.borrow_mut()), None)
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_verify`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fop_005fverify)
     #[inline]
     pub fn verify_opaque<'s, 'p, S, P>(
         &mut self, signedtext: S, plaintext: P,
@@ -1253,6 +1445,9 @@ impl Context {
 
     /// Encrypts a message for the specified recipients.
     ///
+    /// Upstream documentation:
+    /// [`gpgme_op_encrypt`](https://www.gnupg.org/documentation/manuals/gpgme/Encrypting-a-Plaintext.html#index-gpgme_005fop_005fencrypt)
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -1275,6 +1470,8 @@ impl Context {
         self.encrypt_with_flags(recp, plaintext, ciphertext, crate::EncryptFlags::empty())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_encrypt`](https://www.gnupg.org/documentation/manuals/gpgme/Encrypting-a-Plaintext.html#index-gpgme_005fop_005fencrypt)
     pub fn encrypt_with_flags<'k, 'p, 'c, I, P, C>(
         &mut self, recp: I, plaintext: P, ciphertext: C, flags: crate::EncryptFlags,
     ) -> Result<results::EncryptionResult>
@@ -1304,6 +1501,8 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_encrypt`](https://www.gnupg.org/documentation/manuals/gpgme/Encrypting-a-Plaintext.html#index-gpgme_005fop_005fencrypt)
     #[inline]
     pub fn encrypt_symmetric<'p, 'c, P, C>(&mut self, plaintext: P, ciphertext: C) -> Result<()>
     where
@@ -1312,6 +1511,8 @@ impl Context {
         self.encrypt_symmetric_with_flags(plaintext, ciphertext, crate::EncryptFlags::empty())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_encrypt`](https://www.gnupg.org/documentation/manuals/gpgme/Encrypting-a-Plaintext.html#index-gpgme_005fop_005fencrypt)
     #[inline]
     pub fn encrypt_symmetric_with_flags<'p, 'c, P, C>(
         &mut self, plaintext: P, ciphertext: C, flags: crate::EncryptFlags,
@@ -1324,6 +1525,9 @@ impl Context {
     }
 
     /// Encrypts and signs a message for the specified recipients.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_op_encrypt_sign`](https://www.gnupg.org/documentation/manuals/gpgme/Encrypting-a-Plaintext.html#index-gpgme_005fop_005fencrypt_005fsign)
     ///
     /// # Examples
     ///
@@ -1347,6 +1551,8 @@ impl Context {
         self.sign_and_encrypt_with_flags(recp, plaintext, ciphertext, crate::EncryptFlags::empty())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_encrypt_sign`](https://www.gnupg.org/documentation/manuals/gpgme/Encrypting-a-Plaintext.html#index-gpgme_005fop_005fencrypt_005fsign)
     pub fn sign_and_encrypt_with_flags<'k, 'p, 'c, I, P, C>(
         &mut self, recp: I, plaintext: P, ciphertext: C, flags: crate::EncryptFlags,
     ) -> Result<(results::EncryptionResult, results::SigningResult)>
@@ -1378,6 +1584,9 @@ impl Context {
 
     /// Decrypts a message.
     ///
+    /// Upstream documentation:
+    /// [`gpgme_op_decrypt`](https://www.gnupg.org/documentation/manuals/gpgme/Decrypt.html#index-gpgme_005fop_005fdecrypt)
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -1408,6 +1617,8 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_decrypt_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Decrypt.html#index-gpgme_005fop_005fdecrypt_005fext)
     #[inline]
     pub fn decrypt_with_flags<'c, 'p, C, P>(
         &mut self, ciphertext: C, plaintext: P, flags: crate::DecryptFlags,
@@ -1429,6 +1640,9 @@ impl Context {
     }
 
     /// Decrypts and verifies a message.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_op_decrypt_verify`](https://www.gnupg.org/documentation/manuals/gpgme/Decrypt-and-Verify.html#index-gpgme_005fop_005fdecrypt_005fverify)
     ///
     /// # Examples
     ///
@@ -1460,6 +1674,8 @@ impl Context {
         Ok((self.get_result().unwrap(), self.get_result().unwrap()))
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_decrypt_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Decrypt.html#index-gpgme_005fop_005fdecrypt_005fext)
     #[inline]
     pub fn decrypt_and_verify_with_flags<'c, 'p, C, P>(
         &mut self, ciphertext: C, plaintext: P, flags: crate::DecryptFlags,
@@ -1471,6 +1687,8 @@ impl Context {
         Ok((self.get_result().unwrap(), self.get_result().unwrap()))
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_query_swdb`](https://www.gnupg.org/documentation/manuals/gpgme/Checking-for-updates.html#index-gpgme_005fop_005fquery_005fswdb)
     #[inline]
     pub fn query_swdb(
         &mut self, name: Option<impl CStrArgument>, installed_ver: Option<impl CStrArgument>,
@@ -1487,6 +1705,8 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_getauditlog`](https://www.gnupg.org/documentation/manuals/gpgme/Additional-Logs.html#index-gpgme_005fop_005fgetauditlog)
     #[inline]
     pub fn get_audit_log<'a, D>(&mut self, dst: D, flags: crate::AuditLogFlags) -> Result<()>
     where D: IntoData<'a> {
@@ -1518,6 +1738,7 @@ impl fmt::Debug for Context {
     }
 }
 
+/// An iterator type yielding `Key`s returned by a key listing operation.
 #[derive(Debug)]
 pub struct Keys<'ctx, D = ()> {
     ctx: &'ctx mut Context,
@@ -1525,9 +1746,13 @@ pub struct Keys<'ctx, D = ()> {
 }
 
 impl<'ctx> Keys<'ctx, ()> {
+    /// Upstream documentation:
+    /// [`gpgme_op_keylist_from_data_start`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fop_005fkeylist_005ffrom_005fdata_005fstart)
     #[inline]
-    pub fn from_data<'d, D>(ctx: &mut Context, src: D) -> Result<Keys<'_, D::Output>>
-    where D: IntoData<'d> {
+    pub fn from_data<'d, D>(ctx: &'ctx mut Context, src: D) -> Result<Keys<'d, D::Output>>
+    where
+        D: IntoData<'d>,
+        'ctx: 'd, {
         let mut src = src.into_data()?;
         unsafe {
             return_err!(ffi::gpgme_op_keylist_from_data_start(
@@ -1540,7 +1765,9 @@ impl<'ctx> Keys<'ctx, ()> {
     }
 }
 
-impl<'ctx, D> Keys<'ctx, D> {
+impl<D> Keys<'_, D> {
+    /// Upstream documentation:
+    /// [`gpgme_op_keylist_end`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fop_005fkeylist_005fend)
     #[inline]
     pub fn finish(self) -> Result<results::KeyListResult> {
         let ctx = self.ctx as *mut Context;
@@ -1552,7 +1779,7 @@ impl<'ctx, D> Keys<'ctx, D> {
     }
 }
 
-impl<'ctx, D> Drop for Keys<'ctx, D> {
+impl<D> Drop for Keys<'_, D> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -1561,7 +1788,7 @@ impl<'ctx, D> Drop for Keys<'ctx, D> {
     }
 }
 
-impl<'ctx, D> Iterator for Keys<'ctx, D> {
+impl<D> Iterator for Keys<'_, D> {
     type Item = Result<Key>;
 
     #[inline]
@@ -1577,14 +1804,17 @@ impl<'ctx, D> Iterator for Keys<'ctx, D> {
     }
 }
 
-impl<'ctx, D> FusedIterator for Keys<'ctx, D> {}
+impl<D> FusedIterator for Keys<'_, D> {}
 
+/// An iterator type yielding `TrustItem`s returned by a trust item listing operation.
 #[derive(Debug)]
 pub struct TrustItems<'ctx> {
     ctx: &'ctx mut Context,
 }
 
-impl<'ctx> TrustItems<'ctx> {
+impl TrustItems<'_> {
+    /// Upstream documentation:
+    /// [`gpgme_op_trustlist_end`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Trust-Items.html#index-gpgme_005fop_005ftrustlist_005fend)
     #[inline]
     pub fn finish(self) -> Result<()> {
         let ctx = self.ctx as *mut Context;
@@ -1596,7 +1826,7 @@ impl<'ctx> TrustItems<'ctx> {
     }
 }
 
-impl<'ctx> Drop for TrustItems<'ctx> {
+impl Drop for TrustItems<'_> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -1605,7 +1835,7 @@ impl<'ctx> Drop for TrustItems<'ctx> {
     }
 }
 
-impl<'ctx> Iterator for TrustItems<'ctx> {
+impl Iterator for TrustItems<'_> {
     type Item = Result<TrustItem>;
 
     #[inline]
@@ -1624,15 +1854,16 @@ impl<'ctx> Iterator for TrustItems<'ctx> {
     }
 }
 
-impl<'ctx> FusedIterator for TrustItems<'ctx> {}
+impl FusedIterator for TrustItems<'_> {}
 
+/// An iterator type yielding the `Key`s that would be used in a signing operation for a `Context`.
 #[derive(Clone)]
 pub struct Signers<'ctx> {
     ctx: &'ctx Context,
     current: Option<libc::c_int>,
 }
 
-impl<'ctx> Iterator for Signers<'ctx> {
+impl Iterator for Signers<'_> {
     type Item = Key;
 
     #[inline]
@@ -1681,9 +1912,9 @@ impl<'ctx> Iterator for Signers<'ctx> {
     }
 }
 
-impl<'ctx> FusedIterator for Signers<'ctx> {}
+impl FusedIterator for Signers<'_> {}
 
-impl<'ctx> fmt::Debug for Signers<'ctx> {
+impl fmt::Debug for Signers<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }

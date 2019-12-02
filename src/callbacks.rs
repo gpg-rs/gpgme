@@ -11,6 +11,8 @@ use libc;
 
 use crate::{edit, utils::FdWriter, Data, Error};
 
+// TODO: rewrite this module
+
 #[derive(Debug, Copy, Clone)]
 pub struct PassphraseRequest<'a> {
     uid_hint: Option<&'a CStr>,
@@ -38,6 +40,8 @@ impl<'a> PassphraseRequest<'a> {
 }
 
 // TODO: make object safe for next major release
+/// Upstream documentation:
+/// [`gpgme_passphrase_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Passphrase-Callback.html#index-gpgme_005fpassphrase_005fcb_005ft)
 pub trait PassphraseProvider: UnwindSafe + Send {
     fn get_passphrase<W: io::Write>(
         &mut self, request: PassphraseRequest<'_>, out: W,
@@ -54,7 +58,7 @@ where T: FnMut(PassphraseRequest<'_>, &mut dyn io::Write) -> Result<(), Error>
     }
 }
 
-pub struct PassphraseProviderWrapper<P> {
+pub(crate) struct PassphraseProviderWrapper<P> {
     pub ctx: ffi::gpgme_ctx_t,
     pub old: (ffi::gpgme_passphrase_cb_t, *mut libc::c_void),
     pub state: Option<thread::Result<P>>,
@@ -72,7 +76,7 @@ impl<P> Drop for PassphraseProviderWrapper<P> {
     }
 }
 
-pub extern "C" fn passphrase_cb<P: PassphraseProvider>(
+pub(crate) extern "C" fn passphrase_cb<P: PassphraseProvider>(
     hook: *mut libc::c_void, uid_hint: *const libc::c_char, info: *const libc::c_char,
     was_bad: libc::c_int, fd: libc::c_int,
 ) -> ffi::gpgme_error_t
@@ -129,6 +133,8 @@ impl<'a> ProgressInfo<'a> {
     }
 }
 
+/// Upstream documentation:
+/// [`gpgme_progress_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fprogress_005fcb_005ft)
 pub trait ProgressHandler: UnwindSafe + Send {
     fn handle(&mut self, info: ProgressInfo<'_>);
 }
@@ -141,7 +147,7 @@ where T: FnMut(ProgressInfo<'_>)
     }
 }
 
-pub struct ProgressHandlerWrapper<H> {
+pub(crate) struct ProgressHandlerWrapper<H> {
     pub ctx: ffi::gpgme_ctx_t,
     pub old: (ffi::gpgme_progress_cb_t, *mut libc::c_void),
     pub state: Option<thread::Result<H>>,
@@ -159,7 +165,7 @@ impl<H> Drop for ProgressHandlerWrapper<H> {
     }
 }
 
-pub extern "C" fn progress_cb<H: ProgressHandler>(
+pub(crate) extern "C" fn progress_cb<H: ProgressHandler>(
     hook: *mut libc::c_void, what: *const libc::c_char, typ: libc::c_int, current: libc::c_int,
     total: libc::c_int,
 )
@@ -188,6 +194,8 @@ pub extern "C" fn progress_cb<H: ProgressHandler>(
     }
 }
 
+/// Upstream documentation:
+/// [`gpgme_status_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Status-Message-Callback.html#index-gpgme_005fstatus_005fcb_005ft)
 pub trait StatusHandler: UnwindSafe + Send {
     fn handle(&mut self, keyword: Option<&CStr>, args: Option<&CStr>) -> Result<(), Error>;
 }
@@ -200,7 +208,7 @@ where T: FnMut(Option<&CStr>, Option<&CStr>) -> Result<(), Error>
     }
 }
 
-pub struct StatusHandlerWrapper<H> {
+pub(crate) struct StatusHandlerWrapper<H> {
     pub ctx: ffi::gpgme_ctx_t,
     pub old: (ffi::gpgme_status_cb_t, *mut libc::c_void),
     pub state: Option<thread::Result<H>>,
@@ -218,7 +226,7 @@ impl<H> Drop for StatusHandlerWrapper<H> {
     }
 }
 
-pub extern "C" fn status_cb<H: StatusHandler>(
+pub(crate) extern "C" fn status_cb<H: StatusHandler>(
     hook: *mut libc::c_void, keyword: *const libc::c_char, args: *const libc::c_char,
 ) -> ffi::gpgme_error_t {
     let wrapper = unsafe { &mut *(hook as *mut StatusHandlerWrapper<H>) };
@@ -272,6 +280,8 @@ impl<'a> EditInteractionStatus<'a> {
 }
 
 // TODO: make object safe for next major release
+/// Upstream documentation:
+/// [`gpgme_edit_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Deprecated-Functions.html#index-gpgme_005fedit_005fcb_005ft)
 pub trait EditInteractor: UnwindSafe + Send {
     fn interact<W: io::Write>(
         &mut self, status: EditInteractionStatus<'_>, out: Option<W>,
@@ -291,7 +301,7 @@ impl<'a, E> Drop for EditInteractorWrapper<'a, E> {
     }
 }
 
-pub extern "C" fn edit_cb<E: EditInteractor>(
+pub(crate) extern "C" fn edit_cb<E: EditInteractor>(
     hook: *mut libc::c_void, status: ffi::gpgme_status_code_t, args: *const libc::c_char,
     fd: libc::c_int,
 ) -> ffi::gpgme_error_t
@@ -359,18 +369,20 @@ impl<'a> InteractionStatus<'a> {
 }
 
 // TODO: make object safe for next major release
+/// Upstream documentation:
+/// [`gpgme_interact_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Advanced-Key-Editing.html#index-gpgme_005finteract_005fcb_005ft)
 pub trait Interactor: UnwindSafe + Send + 'static {
     fn interact<W: io::Write>(
         &mut self, status: InteractionStatus<'_>, out: Option<W>,
     ) -> Result<(), Error>;
 }
 
-pub struct InteractorWrapper<'a, I> {
+pub(crate) struct InteractorWrapper<'a, I> {
     pub state: Option<thread::Result<I>>,
     pub response: *mut Data<'a>,
 }
 
-impl<'a, I> Drop for InteractorWrapper<'a, I> {
+impl<I> Drop for InteractorWrapper<'_, I> {
     fn drop(&mut self) {
         if let Some(Err(err)) = self.state.take() {
             panic::resume_unwind(err);
@@ -378,7 +390,7 @@ impl<'a, I> Drop for InteractorWrapper<'a, I> {
     }
 }
 
-pub extern "C" fn interact_cb<I: Interactor>(
+pub(crate) extern "C" fn interact_cb<I: Interactor>(
     hook: *mut libc::c_void, keyword: *const libc::c_char, args: *const libc::c_char,
     fd: libc::c_int,
 ) -> ffi::gpgme_error_t

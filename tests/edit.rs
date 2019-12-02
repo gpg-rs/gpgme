@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use gpgme;
 
 use std::io::prelude::*;

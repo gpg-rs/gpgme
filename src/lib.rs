@@ -31,6 +31,7 @@ pub use self::{
     trust::TrustItem,
 };
 pub use ffi::require_gpgme_ver;
+#[doc(inline)]
 pub use gpg_error as error;
 
 #[macro_use]
@@ -140,6 +141,9 @@ pub fn set_flag(name: impl CStrArgument, val: impl CStrArgument) -> Result<()> {
 
 /// Initializes the gpgme library.
 ///
+/// Upstream documentation:
+/// [`gpgme_check_version`](https://www.gnupg.org/documentation/manuals/gpgme/Library-Version-Check.html#index-gpgme_005fcheck_005fversion)
+///
 /// # Examples
 ///
 /// ```no_run
@@ -190,6 +194,9 @@ impl Gpgme {
     /// specified version.
     ///
     /// Note: `false` is returned, if `version` is not in the format `MAJOR.MINOR.MICRO`.
+    ///
+    /// Upstream documentation:
+    /// [`gpgme_check_version`](https://www.gnupg.org/documentation/manuals/gpgme/Library-Version-Check.html#index-gpgme_005fcheck_005fversion)
     ///
     /// # Examples
     ///

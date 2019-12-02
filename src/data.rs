@@ -518,13 +518,14 @@ extern "C" fn release_callback<S>(handle: *mut libc::c_void) {
     }
 }
 
+/// A trait for converting compatible types into data objects.
 pub trait IntoData<'a> {
     type Output: BorrowMut<Data<'a>>;
 
     fn into_data(self) -> Result<Self::Output>;
 }
 
-impl<'a, 'b> IntoData<'a> for &'b mut Data<'a> {
+impl<'a> IntoData<'a> for &mut Data<'a> {
     type Output = Self;
 
     fn into_data(self) -> Result<Self> {
