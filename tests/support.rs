@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 use std::{
-    env,
-    fs::File,
+    env, fs,
     io::prelude::*,
     path::Path,
     process::{Command, Stdio},
@@ -91,21 +90,27 @@ fn setup_agent(dir: &Path) {
         panic!("Unable to find pinentry program");
     }
 
+    let conf = dir.join("gpg.conf");
+    fs::write(
+        conf,
+        "ignore-invalid-option allow-weak-key-signatures\n\
+         allow-weak-key-signatures\n",
+    )
+    .unwrap();
+
     let agent_conf = dir.join("gpg-agent.conf");
-    let mut agent_conf = File::create(agent_conf).unwrap();
-    agent_conf
-        .write_all(b"ignore-invalid-option allow-loopback-pinentry\n")
-        .unwrap();
-    agent_conf.write_all(b"allow-loopback-pinentry\n").unwrap();
-    agent_conf
-        .write_all(b"ignore-invalid-option pinentry-mode\n")
-        .unwrap();
-    agent_conf.write_all(b"pinentry-mode loopback\n").unwrap();
-    agent_conf.write_all(b"pinentry-program ").unwrap();
-    agent_conf
-        .write_all(pinentry.to_str().unwrap().as_ref())
-        .unwrap();
-    agent_conf.write_all(b"\n").unwrap();
+    fs::write(
+        agent_conf,
+        format!(
+            "ignore-invalid-option allow-loopback-pinentry\n\
+             allow-loopback-pinentry\n\
+             ignore-invalid-option pinentry-mode\n\
+             pinentry-mode loopback\n\
+             pinentry-program {}\n",
+            pinentry.to_str().unwrap()
+        ),
+    )
+    .unwrap();
 }
 
 pub struct TestCase {
@@ -169,13 +174,13 @@ pub struct Test<'a> {
     parent: &'a TestCase,
 }
 
-impl<'a> Drop for Test<'a> {
+impl Drop for Test<'_> {
     fn drop(&mut self) {
         self.parent.drop();
     }
 }
 
-impl<'a> Test<'a> {
+impl Test<'_> {
     pub fn create_context(&self) -> Context {
         let mut ctx = fail_if_err!(Context::from_protocol(gpgme::Protocol::OpenPgp));
         let _ = ctx.set_pinentry_mode(PinentryMode::Loopback);
