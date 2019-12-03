@@ -19,5 +19,10 @@ test_case! {
             fail_if_err!(ctx.decrypt(&ciphertext, &mut plaintext));
         });
         assert_eq!(plaintext, b"Hello World");
+
+        let mut plaintext = Vec::new();
+        let mut ctx = test.create_context().set_passphrase_provider(passphrase_cb);
+        fail_if_err!(ctx.decrypt(&ciphertext, &mut plaintext));
+        assert_eq!(plaintext, b"Hello World");
     },
 }

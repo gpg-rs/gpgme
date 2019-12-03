@@ -3,7 +3,9 @@ use std::{
     ffi::CStr,
     fmt,
     iter::FusedIterator,
-    mem, ptr, result,
+    mem,
+    ops::{Deref, DerefMut},
+    ptr, result,
     str::Utf8Error,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -24,7 +26,7 @@ use crate::{
     PassphraseProvider, ProgressReporter, Protocol, Result, SignMode, StatusHandler, TrustItem,
 };
 
-/// A context for cryptographic operations
+/// A context for cryptographic operations.
 ///
 /// Upstream documentation:
 /// [`gpgme_ctx_t`](https://www.gnupg.org/documentation/manuals/gpgme/Contexts.html#Contexts)
@@ -260,6 +262,17 @@ impl Context {
         }
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_set_passphrase_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Passphrase-Callback.html#index-gpgme_005fset_005fpassphrase_005fcb)
+    #[inline]
+    #[allow(deprecated)]
+    pub fn set_passphrase_provider<'a, P>(self, provider: P) -> ContextWithCallbacks<'a>
+    where P: PassphraseProvider + 'a {
+        let mut wrapper = ContextWithCallbacks::from(self);
+        wrapper.set_passphrase_provider(provider);
+        wrapper
+    }
+
     /// Uses the specified provider to handle passphrase requests for the duration of the
     /// closure.
     ///
@@ -315,6 +328,16 @@ impl Context {
 
     /// Upstream documentation:
     /// [`gpgme_set_progress_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fset_005fprogress_005fcb)
+    #[inline]
+    pub fn set_progress_reporter<'a, P>(self, reporter: P) -> ContextWithCallbacks<'a>
+    where P: ProgressReporter + 'a {
+        let mut wrapper = ContextWithCallbacks::from(self);
+        wrapper.set_progress_reporter(reporter);
+        wrapper
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_set_progress_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fset_005fprogress_005fcb)
     pub fn with_progress_reporter<R, H>(
         &mut self, handler: H, f: impl FnOnce(&mut Context) -> R,
     ) -> R
@@ -353,6 +376,16 @@ impl Context {
         unsafe {
             ffi::gpgme_set_status_cb(self.as_raw(), None, ptr::null_mut());
         }
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_set_status_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Status-Message-Callback.html#index-gpgme_005fset_005fstatus_005fcb)
+    #[inline]
+    pub fn set_status_handler<'a, H>(self, handler: H) -> ContextWithCallbacks<'a>
+    where H: StatusHandler + 'a {
+        let mut wrapper = ContextWithCallbacks::from(self);
+        wrapper.set_status_handler(handler);
+        wrapper
     }
 
     /// Upstream documentation:
@@ -1942,5 +1975,127 @@ impl FusedIterator for Signers<'_> {}
 impl fmt::Debug for Signers<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
+    }
+}
+
+/// A bundle containing a context for cryptographic operations and storage
+/// for various callbacks used by the context.
+///
+/// Upstream documentation:
+/// [`gpgme_ctx_t`](https://www.gnupg.org/documentation/manuals/gpgme/Contexts.html#Contexts)
+pub struct ContextWithCallbacks<'a> {
+    inner: Context,
+    passphrase_hook: Option<Box<dyn Drop + 'a>>,
+    progress_hook: Option<Box<dyn Drop + 'a>>,
+    status_hook: Option<Box<dyn Drop + 'a>>,
+}
+
+impl<'a> ContextWithCallbacks<'a> {
+    /// Upstream documentation:
+    /// [`gpgme_set_passphrase_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Passphrase-Callback.html#index-gpgme_005fset_005fpassphrase_005fcb)
+    pub fn clear_passphrase_provider(&mut self) {
+        (**self).clear_passphrase_provider();
+        self.passphrase_hook.take();
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_set_passphrase_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Passphrase-Callback.html#index-gpgme_005fset_005fpassphrase_005fcb)
+    #[allow(deprecated)]
+    pub fn set_passphrase_provider<P>(&mut self, provider: P)
+    where P: PassphraseProvider + 'a {
+        let mut hook = Box::new(callbacks::Hook::from(provider));
+        unsafe {
+            ffi::gpgme_set_passphrase_cb(
+                self.as_raw(),
+                Some(callbacks::passphrase_cb::<P>),
+                &mut *hook as *mut _ as *mut _,
+            );
+        }
+        self.passphrase_hook = Some(hook);
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_set_progress_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fset_005fprogress_005fcb)
+    pub fn clear_progress_reporter(&mut self) {
+        (**self).clear_progress_reporter();
+        self.progress_hook.take();
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_set_progress_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fset_005fprogress_005fcb)
+    pub fn set_progress_reporter<H>(&mut self, handler: H)
+    where H: ProgressReporter + 'a {
+        let mut hook = Box::new(callbacks::Hook::from(handler));
+        unsafe {
+            ffi::gpgme_set_progress_cb(
+                self.as_raw(),
+                Some(callbacks::progress_cb::<H>),
+                &mut *hook as *mut _ as *mut _,
+            );
+        }
+        self.progress_hook = Some(hook);
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_set_status_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Status-Message-Callback.html#index-gpgme_005fset_005fstatus_005fcb)
+    pub fn clear_status_handler(&mut self) {
+        (**self).clear_status_handler();
+        self.status_hook.take();
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_set_status_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Status-Message-Callback.html#index-gpgme_005fset_005fstatus_005fcb)
+    pub fn set_status_handler<H>(&mut self, handler: H)
+    where H: StatusHandler + 'a {
+        let mut hook = Box::new(callbacks::Hook::from(handler));
+        unsafe {
+            ffi::gpgme_set_status_cb(
+                self.as_raw(),
+                Some(callbacks::status_cb::<H>),
+                &mut *hook as *mut _ as *mut _,
+            );
+        }
+        self.status_hook = Some(hook);
+    }
+
+    /// Returns the inner `Context` object.
+    ///
+    /// All currently set callbacks are cleared by this method.
+    pub fn into_inner(mut self) -> Context {
+        self.clear_passphrase_provider();
+        self.clear_progress_reporter();
+        self.clear_status_handler();
+        self.inner
+    }
+}
+
+impl From<Context> for ContextWithCallbacks<'_> {
+    fn from(inner: Context) -> Self {
+        Self {
+            passphrase_hook: None,
+            progress_hook: None,
+            status_hook: None,
+            inner,
+        }
+    }
+}
+
+impl Deref for ContextWithCallbacks<'_> {
+    type Target = Context;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl DerefMut for ContextWithCallbacks<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+impl fmt::Debug for ContextWithCallbacks<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.inner, f)
     }
 }

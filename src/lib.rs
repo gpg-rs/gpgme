@@ -16,7 +16,7 @@ pub use self::{
         EditInteractionStatus, EditInteractor, InteractionStatus, Interactor, PassphraseProvider,
         PassphraseRequest, ProgressHandler, ProgressInfo, ProgressReporter, StatusHandler,
     },
-    context::Context,
+    context::{Context, ContextWithCallbacks},
     data::{Data, IntoData},
     engine::EngineInfo,
     error::{Error, Result},
