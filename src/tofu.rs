@@ -54,44 +54,29 @@ impl<'a> TofuInfo<'a> {
         unsafe { (*self.as_raw()).encrcount.into() }
     }
 
+    // TODO: Unwrap return value for next major release
     #[inline]
     pub fn first_signed(&self) -> Option<SystemTime> {
         let sign_first = unsafe { (*self.as_raw()).signfirst };
-        if sign_first > 0 {
-            Some(UNIX_EPOCH + Duration::from_secs(sign_first.into()))
-        } else {
-            None
-        }
+        Some(UNIX_EPOCH + Duration::from_secs(sign_first.into()))
     }
 
     #[inline]
     pub fn last_signed(&self) -> Option<SystemTime> {
         let sign_last = unsafe { (*self.as_raw()).signlast };
-        if sign_last > 0 {
-            Some(UNIX_EPOCH + Duration::from_secs(sign_last.into()))
-        } else {
-            None
-        }
+        Some(UNIX_EPOCH + Duration::from_secs(sign_last.into()))
     }
 
     #[inline]
     pub fn first_encrypted(&self) -> Option<SystemTime> {
         let encr_first = unsafe { (*self.as_raw()).encrfirst };
-        if encr_first > 0 {
-            Some(UNIX_EPOCH + Duration::from_secs(encr_first.into()))
-        } else {
-            None
-        }
+        Some(UNIX_EPOCH + Duration::from_secs(encr_first.into()))
     }
 
     #[inline]
     pub fn last_encrypted(&self) -> Option<SystemTime> {
         let encr_last = unsafe { (*self.as_raw()).encrlast };
-        if encr_last > 0 {
-            Some(UNIX_EPOCH + Duration::from_secs(encr_last.into()))
-        } else {
-            None
-        }
+        Some(UNIX_EPOCH + Duration::from_secs(encr_last.into()))
     }
 
     #[inline]

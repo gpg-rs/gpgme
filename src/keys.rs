@@ -97,11 +97,6 @@ impl Key {
     }
 
     #[inline]
-    pub fn origin(&self) -> crate::KeyOrigin {
-        unsafe { crate::KeyOrigin::from_raw((*self.as_raw()).origin()) }
-    }
-
-    #[inline]
     pub fn is_root(&self) -> bool {
         if let (Some(fpr), Some(chain_id)) = (self.fingerprint_raw(), self.chain_id_raw()) {
             fpr.to_bytes().eq_ignore_ascii_case(chain_id.to_bytes())
@@ -226,6 +221,11 @@ impl Key {
     }
 
     #[inline]
+    pub fn origin(&self) -> crate::KeyOrigin {
+        unsafe { crate::KeyOrigin::from_raw((*self.as_raw()).origin()) }
+    }
+
+    #[inline]
     pub fn primary_key(&self) -> Option<Subkey<'_>> {
         self.subkeys().next()
     }
@@ -238,6 +238,12 @@ impl Key {
     #[inline]
     pub fn subkeys(&self) -> Subkeys<'_> {
         unsafe { Subkeys::from_list((*self.as_raw()).subkeys) }
+    }
+
+    #[inline]
+    pub fn last_update(&self) -> SystemTime {
+        let timestamp = unsafe { (*self.as_raw()).last_update };
+        UNIX_EPOCH + Duration::from_secs(timestamp.into())
     }
 
     #[inline]
@@ -258,13 +264,14 @@ impl fmt::Debug for Key {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Key")
             .field("raw", &self.as_raw())
+            .field("fingerprint", &self.fingerprint_raw())
             .field("protocol", &self.protocol())
             .field("owner_trust", &self.owner_trust())
             .field("issuer", &self.issuer_name_raw())
-            .field("fingerprint", &self.fingerprint_raw())
+            .field("origin", &self.origin())
+            .field("last_update", &self.last_update())
             .field("list_mode", &self.key_list_mode())
             .field("has_secret", &self.has_secret())
-            .field("origin", &self.origin())
             .field("expired", &self.is_expired())
             .field("revoked", &self.is_revoked())
             .field("invalid", &self.is_invalid())
@@ -585,6 +592,16 @@ impl<'key> UserId<'key> {
     #[inline]
     pub fn origin(&self) -> crate::KeyOrigin {
         unsafe { crate::KeyOrigin::from_raw((*self.as_raw()).origin()) }
+    }
+
+    require_gpgme_ver! {
+        (1, 8) => {
+            #[inline]
+            pub fn last_update(&self) -> SystemTime {
+                let timestamp = unsafe { (*self.as_raw()).last_update };
+                UNIX_EPOCH + Duration::from_secs(timestamp.into())
+            }
+        }
     }
 
     #[inline]

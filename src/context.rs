@@ -483,6 +483,12 @@ impl Context {
         }
     }
 
+    #[inline]
+    pub fn locate_key(&mut self, email: impl CStrArgument) -> Result<Key> {
+        self.add_key_list_mode(KeyListMode::LOCATE)?;
+        self.find_keys(Some(email))?.next().unwrap_or(Err(Error::NOT_FOUND))
+    }
+
     /// Upstream documentation:
     /// [`gpgme_get_key`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fget_005fkey)
     #[deprecated(since = "0.8.0", note = "use `get_key` instead")]
