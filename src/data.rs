@@ -15,8 +15,12 @@ use std::{
 use conv::{UnwrapOrSaturate, ValueInto};
 use ffi;
 use libc;
+use static_assertions::{assert_impl_all, assert_not_impl_any};
 
 use crate::{error::return_err, utils::CStrArgument, Error, NonNull, Result};
+
+assert_impl_all!(Data: Send);
+assert_not_impl_any!(Data: Sync);
 
 ffi_enum_wrapper! {
     /// Upstream documentation:

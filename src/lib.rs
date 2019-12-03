@@ -10,10 +10,11 @@ use self::{engine::EngineInfoGuard, error::return_err, utils::CStrArgument};
 use once_cell::sync::Lazy;
 
 #[doc(inline)]
+#[allow(deprecated)]
 pub use self::{
     callbacks::{
         EditInteractionStatus, EditInteractor, InteractionStatus, Interactor, PassphraseProvider,
-        PassphraseRequest, ProgressHandler, ProgressInfo, StatusHandler,
+        PassphraseRequest, ProgressHandler, ProgressInfo, ProgressReporter, StatusHandler,
     },
     context::Context,
     data::{Data, IntoData},

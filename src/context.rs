@@ -12,6 +12,7 @@ use conv::{UnwrapOrSaturate, ValueInto};
 use ffi::{self, require_gpgme_ver};
 use libc;
 
+#[allow(deprecated)]
 use crate::{
     callbacks, edit,
     engine::EngineInfo,
@@ -19,8 +20,8 @@ use crate::{
     notation::SignatureNotations,
     results,
     utils::{CStrArgument, SmallVec},
-    Data, EditInteractor, Error, ExportMode, IntoData, Key, KeyListMode, NonNull,
-    PassphraseProvider, ProgressHandler, Protocol, Result, SignMode, TrustItem,
+    Data, EditInteractor, Error, ExportMode, Interactor, IntoData, Key, KeyListMode, NonNull,
+    PassphraseProvider, ProgressReporter, Protocol, Result, SignMode, StatusHandler, TrustItem,
 };
 
 /// A context for cryptographic operations
@@ -281,6 +282,7 @@ impl Context {
     /// });
     /// # Ok::<(), gpgme::Error>(())
     /// ```
+    #[allow(deprecated)]
     pub fn with_passphrase_provider<R, P>(
         &mut self, provider: P, f: impl FnOnce(&mut Context) -> R,
     ) -> R
@@ -288,15 +290,15 @@ impl Context {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_passphrase_cb(self.as_raw(), &mut old.0, &mut old.1);
-            let mut wrapper = callbacks::PassphraseProviderWrapper {
+            let mut hook = callbacks::Hook::from(provider);
+            let _guard = callbacks::PassphraseCbGuard {
                 ctx: self.as_raw(),
-                state: Some(Ok(provider)),
                 old,
             };
             ffi::gpgme_set_passphrase_cb(
                 self.as_raw(),
                 Some(callbacks::passphrase_cb::<P>),
-                (&mut wrapper as *mut _) as *mut _,
+                (&mut hook as *mut _) as *mut _,
             );
             f(self)
         }
@@ -305,7 +307,7 @@ impl Context {
     /// Upstream documentation:
     /// [`gpgme_set_progress_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fset_005fprogress_005fcb)
     #[inline]
-    pub fn clear_progress_handler(&mut self) {
+    pub fn clear_progress_reporter(&mut self) {
         unsafe {
             ffi::gpgme_set_progress_cb(self.as_raw(), None, ptr::null_mut());
         }
@@ -313,25 +315,36 @@ impl Context {
 
     /// Upstream documentation:
     /// [`gpgme_set_progress_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fset_005fprogress_005fcb)
-    pub fn with_progress_handler<R, H>(
+    pub fn with_progress_reporter<R, H>(
         &mut self, handler: H, f: impl FnOnce(&mut Context) -> R,
     ) -> R
-    where H: ProgressHandler {
+    where H: ProgressReporter {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_progress_cb(self.as_raw(), &mut old.0, &mut old.1);
-            let mut wrapper = callbacks::ProgressHandlerWrapper {
+            let mut hook = callbacks::Hook::from(handler);
+            let _guard = callbacks::ProgressCbGuard {
                 ctx: self.as_raw(),
-                state: Some(Ok(handler)),
                 old,
             };
             ffi::gpgme_set_progress_cb(
                 self.as_raw(),
                 Some(callbacks::progress_cb::<H>),
-                (&mut wrapper as *mut _) as *mut _,
+                (&mut hook as *mut _) as *mut _,
             );
             f(self)
         }
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_set_progress_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fset_005fprogress_005fcb)
+    #[allow(deprecated)]
+    #[deprecated(since = "0.9.2", note = "use `with_progress_reporter` instead")]
+    pub fn with_progress_handler<R, H>(
+        &mut self, handler: H, f: impl FnOnce(&mut Context) -> R,
+    ) -> R
+    where H: crate::ProgressHandler {
+        self.with_progress_reporter(handler, f)
     }
 
     /// Upstream documentation:
@@ -347,19 +360,19 @@ impl Context {
     pub fn with_status_handler<R, H>(
         &mut self, handler: H, f: impl FnOnce(&mut Context) -> R,
     ) -> R
-    where H: crate::StatusHandler {
+    where H: StatusHandler {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_status_cb(self.as_raw(), &mut old.0, &mut old.1);
-            let mut wrapper = callbacks::StatusHandlerWrapper {
+            let mut hook = callbacks::Hook::from(handler);
+            let _guard = callbacks::StatusCbGuard {
                 ctx: self.as_raw(),
-                state: Some(Ok(handler)),
                 old,
             };
             ffi::gpgme_set_status_cb(
                 self.as_raw(),
                 Some(callbacks::status_cb::<H>),
-                (&mut wrapper as *mut _) as *mut _,
+                (&mut hook as *mut _) as *mut _,
             );
             f(self)
         }
@@ -486,7 +499,9 @@ impl Context {
     #[inline]
     pub fn locate_key(&mut self, email: impl CStrArgument) -> Result<Key> {
         self.add_key_list_mode(KeyListMode::LOCATE)?;
-        self.find_keys(Some(email))?.next().unwrap_or(Err(Error::NOT_FOUND))
+        self.find_keys(Some(email))?
+            .next()
+            .unwrap_or(Err(Error::NOT_FOUND))
     }
 
     /// Upstream documentation:
@@ -875,15 +890,16 @@ impl Context {
 
     /// Upstream documentation:
     /// [`gpgme_op_edit`](https://www.gnupg.org/documentation/manuals/gpgme/Deprecated-Functions.html#index-gpgme_005fop_005fedit)
-    #[deprecated(since = "0.9.2", note = "use `interact` instead")]
     #[inline]
+    #[allow(deprecated)]
+    #[deprecated(since = "0.9.2", note = "use `interact` instead")]
     pub fn edit_key<'a, E, D>(&mut self, key: &Key, interactor: E, data: D) -> Result<()>
     where
         E: EditInteractor,
         D: IntoData<'a>, {
         let mut data = data.into_data()?;
-        let mut wrapper = callbacks::EditInteractorWrapper {
-            state: Some(Ok(interactor)),
+        let mut hook = callbacks::InteractorHook {
+            inner: interactor.into(),
             response: data.borrow_mut(),
         };
         unsafe {
@@ -891,8 +907,8 @@ impl Context {
                 self.as_raw(),
                 key.as_raw(),
                 Some(callbacks::edit_cb::<E>),
-                (&mut wrapper as *mut _) as *mut _,
-                (*wrapper.response).as_raw(),
+                (&mut hook as *mut _) as *mut _,
+                (*hook.response).as_raw(),
             ));
         }
         Ok(())
@@ -900,15 +916,16 @@ impl Context {
 
     /// Upstream documentation:
     /// [`gpgme_op_card_edit`](https://www.gnupg.org/documentation/manuals/gpgme/Deprecated-Functions.html#index-gpgme_005fop_005fcard_005fedit)
-    #[deprecated(since = "0.9.2", note = "use `interact_with_card` instead")]
     #[inline]
+    #[allow(deprecated)]
+    #[deprecated(since = "0.9.2", note = "use `interact_with_card` instead")]
     pub fn edit_card_key<'a, E, D>(&mut self, key: &Key, interactor: E, data: D) -> Result<()>
     where
         E: EditInteractor,
         D: IntoData<'a>, {
         let mut data = data.into_data()?;
-        let mut wrapper = callbacks::EditInteractorWrapper {
-            state: Some(Ok(interactor)),
+        let mut hook = callbacks::InteractorHook {
+            inner: interactor.into(),
             response: data.borrow_mut(),
         };
         unsafe {
@@ -916,8 +933,8 @@ impl Context {
                 self.as_raw(),
                 key.as_raw(),
                 Some(callbacks::edit_cb::<E>),
-                (&mut wrapper as *mut _) as *mut _,
-                (*wrapper.response).as_raw(),
+                (&mut hook as *mut _) as *mut _,
+                (*hook.response).as_raw(),
             ));
         }
         Ok(())
@@ -925,8 +942,8 @@ impl Context {
 
     /// Upstream documentation:
     /// [`gpgme_op_edit`](https://www.gnupg.org/documentation/manuals/gpgme/Deprecated-Functions.html#index-gpgme_005fop_005fedit)
-    #[deprecated(since = "0.9.2", note = "use `interact` instead")]
     #[inline]
+    #[deprecated(since = "0.9.2", note = "use `interact` instead")]
     pub fn edit_key_with<'a, D>(
         &mut self, key: &Key, editor: impl edit::Editor, data: D,
     ) -> Result<()>
@@ -937,8 +954,8 @@ impl Context {
 
     /// Upstream documentation:
     /// [`gpgme_op_card_edit`](https://www.gnupg.org/documentation/manuals/gpgme/Deprecated-Functions.html#index-gpgme_005fop_005fcard_005fedit)
-    #[deprecated(since = "0.9.2", note = "use `interact_with_card` instead")]
     #[inline]
+    #[deprecated(since = "0.9.2", note = "use `interact_with_card` instead")]
     pub fn edit_card_key_with<'a, D>(
         &mut self, key: &Key, editor: impl edit::Editor, data: D,
     ) -> Result<()>
@@ -950,13 +967,14 @@ impl Context {
     /// Upstream documentation:
     /// [`gpgme_op_interact`](https://www.gnupg.org/documentation/manuals/gpgme/Advanced-Key-Editing.html#index-gpgme_005fop_005finteract)
     #[inline]
+    #[allow(deprecated)]
     pub fn interact<'a, I, D>(&mut self, key: &Key, interactor: I, data: D) -> Result<()>
     where
-        I: crate::Interactor,
+        I: Interactor,
         D: IntoData<'a>, {
         let mut data = data.into_data()?;
-        let mut wrapper = callbacks::InteractorWrapper {
-            state: Some(Ok(interactor)),
+        let mut hook = callbacks::InteractorHook {
+            inner: interactor.into(),
             response: data.borrow_mut(),
         };
         unsafe {
@@ -965,8 +983,8 @@ impl Context {
                 key.as_raw(),
                 0,
                 Some(callbacks::interact_cb::<I>),
-                &mut wrapper as *mut _ as *mut _,
-                (*wrapper.response).as_raw(),
+                &mut hook as *mut _ as *mut _,
+                (*hook.response).as_raw(),
             ));
         }
         Ok(())
@@ -975,15 +993,16 @@ impl Context {
     /// Upstream documentation:
     /// [`gpgme_op_interact`](https://www.gnupg.org/documentation/manuals/gpgme/Advanced-Key-Editing.html#index-gpgme_005fop_005finteract)
     #[inline]
+    #[allow(deprecated)]
     pub fn interact_with_card<'a, I, D>(
         &mut self, key: &Key, interactor: I, data: D,
     ) -> Result<()>
     where
-        I: crate::Interactor,
+        I: Interactor,
         D: IntoData<'a>, {
         let mut data = data.into_data()?;
-        let mut wrapper = callbacks::InteractorWrapper {
-            state: Some(Ok(interactor)),
+        let mut hook = callbacks::InteractorHook {
+            inner: interactor.into(),
             response: data.borrow_mut(),
         };
         unsafe {
@@ -992,8 +1011,8 @@ impl Context {
                 key.as_raw(),
                 ffi::GPGME_INTERACT_CARD,
                 Some(callbacks::interact_cb::<I>),
-                &mut wrapper as *mut _ as *mut _,
-                (*wrapper.response).as_raw(),
+                &mut hook as *mut _ as *mut _,
+                (*hook.response).as_raw(),
             ));
         }
         Ok(())

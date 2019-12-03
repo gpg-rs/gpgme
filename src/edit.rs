@@ -1,4 +1,4 @@
-#![allow(non_camel_case_types)]
+#![allow(non_camel_case_types, deprecated)]
 use std::{fmt, io::prelude::*, panic::UnwindSafe};
 
 use ffi;
