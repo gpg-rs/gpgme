@@ -252,7 +252,6 @@ pub type gpgme_event_io_t = libc::c_uint;
 pub const GPGME_EVENT_START: gpgme_event_io_t = 0;
 pub const GPGME_EVENT_DONE: gpgme_event_io_t = 1;
 pub const GPGME_EVENT_NEXT_KEY: gpgme_event_io_t = 2;
-pub const GPGME_EVENT_NEXT_TRUSTITEM: gpgme_event_io_t = 3;
 
 pub type gpgme_encrypt_flags_t = libc::c_uint;
 pub const GPGME_ENCRYPT_ALWAYS_TRUST: gpgme_encrypt_flags_t = 1;
