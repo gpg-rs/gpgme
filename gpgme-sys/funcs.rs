@@ -403,17 +403,6 @@ extern "C" {
     ) -> gpgme_error_t;
     pub fn gpgme_op_passwd(ctx: gpgme_ctx_t, key: gpgme_key_t, flags: c_uint) -> gpgme_error_t;
 
-    pub fn gpgme_op_trustlist_start(
-        ctx: gpgme_ctx_t, pattern: *const c_char, max_level: c_int,
-    ) -> gpgme_error_t;
-    pub fn gpgme_op_trustlist_next(
-        ctx: gpgme_ctx_t, r_item: *mut gpgme_trust_item_t,
-    ) -> gpgme_error_t;
-    pub fn gpgme_op_trustlist_end(ctx: gpgme_ctx_t) -> gpgme_error_t;
-
-    pub fn gpgme_trust_item_ref(item: gpgme_trust_item_t);
-    pub fn gpgme_trust_item_unref(item: gpgme_trust_item_t);
-
     pub fn gpgme_op_getauditlog_start(
         ctx: gpgme_ctx_t, output: gpgme_data_t, flags: c_uint,
     ) -> gpgme_error_t;

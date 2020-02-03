@@ -23,7 +23,7 @@ use crate::{
     results,
     utils::{CStrArgument, SmallVec},
     Data, EditInteractor, Error, ExportMode, Interactor, IntoData, Key, KeyListMode, NonNull,
-    PassphraseProvider, ProgressReporter, Protocol, Result, SignMode, StatusHandler, TrustItem,
+    PassphraseProvider, ProgressReporter, Protocol, Result, SignMode, StatusHandler,
 };
 
 /// A context for cryptographic operations.
@@ -409,25 +409,6 @@ impl Context {
             );
             f(self)
         }
-    }
-
-    /// Returns an iterator yielding `TrustItem`s matching the provided pattern.
-    ///
-    /// Upstream documentation:
-    /// [`gpgme_op_trustlist_start`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Trust-Items.html#index-gpgme_005fop_005ftrustlist_005fstart)
-    #[inline]
-    pub fn find_trust_items(
-        &mut self, pattern: impl CStrArgument, max_level: i32,
-    ) -> Result<TrustItems<'_>> {
-        let pattern = pattern.into_cstr();
-        unsafe {
-            return_err!(ffi::gpgme_op_trustlist_start(
-                self.as_raw(),
-                pattern.as_ref().as_ptr(),
-                max_level.into(),
-            ));
-        }
-        Ok(TrustItems { ctx: self })
     }
 
     /// Upstream documentation:
@@ -1863,56 +1844,6 @@ impl<D> Iterator for Keys<'_, D> {
 }
 
 impl<D> FusedIterator for Keys<'_, D> {}
-
-/// An iterator type yielding `TrustItem`s returned by a trust item listing operation.
-#[derive(Debug)]
-pub struct TrustItems<'ctx> {
-    ctx: &'ctx mut Context,
-}
-
-impl TrustItems<'_> {
-    /// Upstream documentation:
-    /// [`gpgme_op_trustlist_end`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Trust-Items.html#index-gpgme_005fop_005ftrustlist_005fend)
-    #[inline]
-    pub fn finish(self) -> Result<()> {
-        let ctx = self.ctx as *mut Context;
-        mem::forget(self);
-        unsafe {
-            return_err!(ffi::gpgme_op_trustlist_end((*ctx).as_raw()));
-        }
-        Ok(())
-    }
-}
-
-impl Drop for TrustItems<'_> {
-    #[inline]
-    fn drop(&mut self) {
-        unsafe {
-            ffi::gpgme_op_trustlist_end(self.ctx.as_raw());
-        }
-    }
-}
-
-impl Iterator for TrustItems<'_> {
-    type Item = Result<TrustItem>;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        unsafe {
-            let mut trust_item = ptr::null_mut();
-            match Error::new(ffi::gpgme_op_trustlist_next(
-                self.ctx.as_raw(),
-                &mut trust_item,
-            )) {
-                Error::NO_ERROR => Some(Ok(TrustItem::from_raw(trust_item))),
-                e if e.code() == Error::EOF.code() => None,
-                e => Some(Err(e)),
-            }
-        }
-    }
-}
-
-impl FusedIterator for TrustItems<'_> {}
 
 /// An iterator type yielding the `Key`s that would be used in a signing operation for a `Context`.
 #[derive(Clone)]

@@ -29,7 +29,6 @@ pub use self::{
         SigningResult, VerificationResult,
     },
     tofu::{TofuInfo, TofuPolicy},
-    trust::TrustItem,
 };
 pub use ffi::require_gpgme_ver;
 #[doc(inline)]
@@ -47,7 +46,6 @@ pub mod keys;
 pub mod notation;
 pub mod results;
 pub mod tofu;
-pub mod trust;
 
 ffi_enum_wrapper! {
     /// A cryptographic protocol that may be used with the library.

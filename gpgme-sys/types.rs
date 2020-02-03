@@ -584,22 +584,6 @@ impl _gpgme_op_keylist_result {
     }
 }
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct _gpgme_trust_item {
-    _refs: c_uint,
-    pub keyid: *mut c_char,
-    _keyid: [c_char; 17],
-    pub typ: c_int,
-    pub level: c_int,
-    pub owner_trust: *mut c_char,
-    _owner_trust: [c_char; 2],
-    pub validity: *mut c_char,
-    _validity: [c_char; 2],
-    pub name: *mut c_char,
-}
-pub type gpgme_trust_item_t = *mut _gpgme_trust_item;
-
 pub type gpgme_assuan_data_cb_t =
     Option<extern "C" fn(*mut c_void, *const c_void, size_t) -> gpgme_error_t>;
 pub type gpgme_assuan_inquire_cb_t = Option<
