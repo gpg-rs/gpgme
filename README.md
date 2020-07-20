@@ -32,11 +32,11 @@ separator.
 **NOTE**: These crates also depend on the gpg-error crate which has its own
 [requirements](https://github.com/gpg-rs/libgpg-error).
 
-**NOTE**: Previous versions of these crates bundled the sources of the gpgme library and attempted
-to build them via the buildscript. This is no longer supported.
+**NOTE**: Previous versions of these crates bundled the sources of the gpgme
+library and attempted to build them via the buildscript. This is no longer
+supported.
 
 ## Examples
-
 Some simple example programs based on those in the GPGME sources can be found
 in [examples](./examples).
 
@@ -50,6 +50,7 @@ flags   :
 userid 0: Example <example@example.org>
 valid  0: Unknown
 ```
+
 [crate]: https://crates.io/crates/gpgme
 [ci]: https://travis-ci.org/gpg-rs/gpgme
 [build]: https://img.shields.io/travis/gpg-rs/gpgme/master?style=flat-square

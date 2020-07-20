@@ -1,4 +1,4 @@
-#![deny(missing_debug_implementations)]
+#![forbid(elided_lifetimes_in_paths, missing_debug_implementations)]
 use std::{
     ffi::CStr,
     fmt, mem, ptr, result,
@@ -155,7 +155,7 @@ pub fn init() -> Gpgme {
         let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
 
         let result =
-            ffi::gpgme_check_version_internal(ffi::MIN_GPGME_VERSION.as_ptr() as _, offset);
+            ffi::gpgme_check_version_internal(ffi::MIN_GPGME_VERSION.as_ptr().cast(), offset);
         assert!(
             !result.is_null(),
             "the library linked is not the correct version"

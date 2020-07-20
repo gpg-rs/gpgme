@@ -170,7 +170,7 @@ impl Key {
 
     #[inline]
     pub fn id_raw(&self) -> Option<&CStr> {
-        self.primary_key().and_then(|k| k.id_raw())
+        self.primary_key()?.id_raw()
     }
 
     #[inline]
@@ -207,10 +207,10 @@ impl Key {
                         .fpr
                         .as_ref()
                         .map(|s| CStr::from_ptr(s))
-                        .or_else(|| self.primary_key().and_then(|k| k.fingerprint_raw()))
+                        .or_else(|| self.primary_key()?.fingerprint_raw())
                 }
             } else {
-                self.primary_key().and_then(|k| k.fingerprint_raw())
+                self.primary_key()?.fingerprint_raw()
             }
         }
     }
@@ -564,6 +564,23 @@ impl<'key> UserId<'key> {
     }
 
     #[inline]
+    pub fn uidhash(&self) -> Result<&'key str, Option<Utf8Error>> {
+        self.uidhash_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    #[inline]
+    pub fn uidhash_raw(&self) -> Option<&'key CStr> {
+        require_gpgme_ver! {
+            (1, 14) => {
+                unsafe { (*self.as_raw()).uidhash.as_ref().map(|s| CStr::from_ptr(s)) }
+            } else {
+                None
+            }
+        }
+    }
+
+    #[inline]
     pub fn address(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.address_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
@@ -602,6 +619,21 @@ impl<'key> UserId<'key> {
                 UNIX_EPOCH + Duration::from_secs(timestamp.into())
             }
         }
+    }
+
+    #[inline]
+    pub fn signature(&self, key: &Key) -> Option<UserIdSignature<'key>> {
+        if key.protocol() != Protocol::OpenPgp {
+            return None;
+        }
+
+        self.signatures()
+            .filter(|s| {
+                s.signer_key_id_raw() == key.id_raw()
+                    && !(s.is_expired() || s.is_revocation() || s.is_invalid())
+                    && (s.status() == Error::NO_ERROR)
+            })
+            .max_by_key(|s| s.creation_time())
     }
 
     #[inline]
@@ -789,16 +821,30 @@ impl<'key> UserIdSignature<'key> {
 
     #[inline]
     pub fn policy_url_raw(&self) -> Option<&'key CStr> {
-        unsafe {
-            let mut notation = (*self.as_raw()).notations;
-            while !notation.is_null() {
-                if (*notation).name.is_null() {
-                    return (*notation).value.as_ref().map(|s| CStr::from_ptr(s));
-                }
-                notation = (*notation).next;
+        self.notations().find_map(|n| {
+            if n.name_raw().is_none() {
+                n.value_raw()
+            } else {
+                None
             }
-            None
-        }
+        })
+    }
+
+    #[inline]
+    pub fn remark(&self) -> Result<&'key str, Option<Utf8Error>> {
+        self.remark_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
+
+    #[inline]
+    pub fn remark_raw(&self) -> Option<&'key CStr> {
+        self.notations().find_map(|n| {
+            if n.name() == Ok("rem@gnupg.org") {
+                n.value_raw()
+            } else {
+                None
+            }
+        })
     }
 
     #[inline]

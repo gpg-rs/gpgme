@@ -123,7 +123,7 @@ where T: FnMut(ProgressInfo<'_>)
 /// Upstream documentation:
 /// [`gpgme_progress_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fprogress_005fcb_005ft)
 pub trait ProgressReporter: UnwindSafe + Send {
-    fn report(&mut self, info: ProgressInfo);
+    fn report(&mut self, info: ProgressInfo<'_>);
 }
 
 impl<T: ProgressHandler> ProgressReporter for T {
@@ -222,7 +222,7 @@ pub(crate) trait InteractorNew: UnwindSafe + Send {
 
 impl<T: Interactor> InteractorNew for T {
     fn interact(
-        &mut self, status: InteractionStatus, out: Option<&mut dyn Write>,
+        &mut self, status: InteractionStatus<'_>, out: Option<&mut dyn Write>,
     ) -> Result<(), Error> {
         <Self as Interactor>::interact(self, status, out)
     }

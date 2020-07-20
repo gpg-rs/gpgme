@@ -19,8 +19,8 @@ use static_assertions::{assert_impl_all, assert_not_impl_any};
 
 use crate::{error::return_err, utils::CStrArgument, Error, NonNull, Result};
 
-assert_impl_all!(Data: Send);
-assert_not_impl_any!(Data: Sync);
+assert_impl_all!(Data<'_>: Send);
+assert_not_impl_any!(Data<'_>: Sync);
 
 ffi_enum_wrapper! {
     /// Upstream documentation:
@@ -83,10 +83,15 @@ impl<S> fmt::Display for WrappedError<S> {
 
 impl<S> StdError for WrappedError<S> {
     fn description(&self) -> &str {
+        #[allow(deprecated)]
         StdError::description(&self.0)
     }
 
     fn cause(&self) -> Option<&dyn StdError> {
+        Some(&self.0)
+    }
+
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
         Some(&self.0)
     }
 }

@@ -222,6 +222,7 @@ pub struct _gpgme_user_id {
     pub address: *mut c_char,
     pub tofu: gpgme_tofu_info_t,
     pub last_update: c_ulong,
+    pub uidhash: *mut c_char,
 }
 pub type gpgme_user_id_t = *mut _gpgme_user_id;
 

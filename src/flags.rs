@@ -14,6 +14,7 @@ bitflags! {
         const SIGS = ffi::GPGME_KEYLIST_MODE_SIGS;
         const SIG_NOTATIONS = ffi::GPGME_KEYLIST_MODE_SIG_NOTATIONS;
         const WITH_SECRET = ffi::GPGME_KEYLIST_MODE_WITH_SECRET;
+        const WITH_KEYGRIP = ffi::GPGME_KEYLIST_MODE_WITH_KEYGRIP;
         const WITH_TOFU = ffi::GPGME_KEYLIST_MODE_WITH_TOFU;
         const EPHEMERAL = ffi::GPGME_KEYLIST_MODE_EPHEMERAL;
         const VALIDATE = ffi::GPGME_KEYLIST_MODE_VALIDATE;
@@ -79,6 +80,7 @@ bitflags! {
         const SECRET = ffi::GPGME_EXPORT_MODE_SECRET;
         const RAW = ffi::GPGME_EXPORT_MODE_RAW;
         const PKCS12 = ffi::GPGME_EXPORT_MODE_PKCS12;
+        const SSH = ffi::GPGME_EXPORT_MODE_SSH;
     }
 }
 
