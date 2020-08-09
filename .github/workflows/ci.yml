@@ -31,7 +31,7 @@ jobs:
 
       - name: Install dependencies (macOS)
         if: startsWith(matrix.os, 'macos')
-        run: brew install gnupg
+        run: brew install gpgme
 
       - name: Install rust
         uses: actions-rs/toolchain@v1
