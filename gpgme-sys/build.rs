@@ -80,7 +80,7 @@ fn try_registry(proj: &Project) -> Result<Config> {
     let mut config = Config::default();
     config.include_dir.insert(root.join("include"));
     config.lib_dir.insert(proj.out_dir.clone());
-    config.libs.insert(proj.links.clone());
+    config.libs.insert(proj.links.clone().into());
     config.prefix = Some(root);
     Ok(config)
 }
