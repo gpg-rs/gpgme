@@ -23,3 +23,6 @@ path = "lib.rs"
 [dependencies]
 libc = "0.2"
 libgpg-error-sys = "0.5.1"
+
+[target.'cfg(windows)'.build-dependencies]
+winreg = "0.7"

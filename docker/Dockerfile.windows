@@ -1,0 +1,23 @@
+# escape=`
+ARG WIN_VARIANT=1909
+FROM mcr.microsoft.com/windows/servercore:${WIN_VARIANT}
+
+ENV RUSTUP_HOME=C:\rustup CARGO_HOME=C:\cargo
+
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+ADD https://win.rustup.rs/ C:\TEMP\rustup-init.exe
+
+RUN C:\TEMP\rustup-init.exe -y --profile minimal --default-host i686-pc-windows-gnu
+
+RUN setx /M PATH $(${Env:PATH} + \";${Env:CARGO_HOME}\bin\")
+
+ARG GNUPG_VERSION=2.2.21_20200709
+ADD https://gnupg.org/ftp/gcrypt/binary/gnupg-w32-${GNUPG_VERSION}.exe C:\TEMP\gnupg-w32.exe
+
+RUN C:\TEMP\gnupg-w32.exe /S
+
+WORKDIR C:\workspace
+COPY ./ ./
+ENV GPGME_DEBUG 9
+CMD ["cargo", "test", "--no-fail-fast"]

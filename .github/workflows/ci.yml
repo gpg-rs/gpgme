@@ -1,0 +1,75 @@
+name: ci
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 0 1 * *'
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rust: stable
+          - os: ubuntu-latest
+            rust: nightly
+          - os: macos-latest
+            rust: stable
+    runs-on: ${{ matrix.os }}
+    env:
+      GPGME_DEBUG: 9
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Install dependencies (Linux)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: sudo apt-get install -y --no-install-recommends libgpgme11-dev
+
+      - name: Install dependencies (macOS)
+        if: startsWith(matrix.os, 'macos')
+        run: brew install gnupg
+
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Run tests
+        run: cargo test --verbose --no-fail-fast
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Build docker container
+        run: docker build -f docker/Dockerfile.static -t test-build .
+
+      - name: Run tests in container
+        run: docker run test-build
+
+  docker-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Build docker container
+        run: docker build --build-arg WIN_VARIANT=ltsc2019 -f docker/Dockerfile.windows -t test-build .
+
+      - name: Run tests in container
+        run: docker run test-build
