@@ -7,7 +7,7 @@ use std::{
     ops::{Deref, DerefMut},
     ptr, result,
     str::Utf8Error,
-    time::{SystemTime, UNIX_EPOCH},
+    time::Duration,
 };
 
 use conv::{UnwrapOrSaturate, ValueInto};
@@ -649,13 +649,13 @@ impl Context {
     /// use gpgme::{Context, Data, Protocol};
     ///
     /// let mut ctx = Context::from_protocol(Protocol::OpenPgp)?;
-    /// let result = ctx.create_key("Example User <example@example.com>", "default", None)?;
+    /// let result = ctx.create_key("Example User <example@example.com>", "default", Default::default())?;
     /// println!("Key Fingerprint: {}", result.fingerprint().unwrap());
     /// # Ok::<(), gpgme::Error>(())
     /// ```
     #[inline]
     pub fn create_key(
-        &mut self, userid: impl CStrArgument, algo: impl CStrArgument, expires: Option<SystemTime>,
+        &mut self, userid: impl CStrArgument, algo: impl CStrArgument, expires: Duration,
     ) -> Result<results::KeyGenerationResult> {
         self.create_key_with_flags(userid, algo, expires, crate::CreateKeyFlags::empty())
     }
@@ -664,7 +664,7 @@ impl Context {
     /// [`gpgme_op_createkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fcreatekey)
     #[inline]
     pub fn create_key_with_flags(
-        &mut self, userid: impl CStrArgument, algo: impl CStrArgument, expires: Option<SystemTime>,
+        &mut self, userid: impl CStrArgument, algo: impl CStrArgument, expires: Duration,
         flags: crate::CreateKeyFlags,
     ) -> Result<results::KeyGenerationResult>
     {
@@ -672,10 +672,7 @@ impl Context {
             (1, 7) => {
                 let userid = userid.into_cstr();
                 let algo = algo.into_cstr();
-                let expires = expires
-                    .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
-                    .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
-
+                let expires = expires.as_secs().value_into().unwrap_or_saturate();
                 unsafe {
                     return_err!(ffi::gpgme_op_createkey(
                             self.as_raw(),
@@ -698,7 +695,7 @@ impl Context {
     /// [`gpgme_op_createsubkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fcreatesubkey)
     #[inline]
     pub fn create_subkey(
-        &mut self, key: &Key, algo: impl CStrArgument, expires: Option<SystemTime>,
+        &mut self, key: &Key, algo: impl CStrArgument, expires: Duration,
     ) -> Result<results::KeyGenerationResult> {
         self.create_subkey_with_flags(key, algo, expires, crate::CreateKeyFlags::empty())
     }
@@ -707,17 +704,14 @@ impl Context {
     /// [`gpgme_op_createsubkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fcreatesubkey)
     #[inline]
     pub fn create_subkey_with_flags(
-        &mut self, key: &Key, algo: impl CStrArgument, expires: Option<SystemTime>,
+        &mut self, key: &Key, algo: impl CStrArgument, expires: Duration,
         flags: crate::CreateKeyFlags,
     ) -> Result<results::KeyGenerationResult>
     {
         require_gpgme_ver! {
             (1, 7) => {
                 let algo = algo.into_cstr();
-                let expires = expires
-                    .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
-                    .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
-
+                let expires = expires.as_secs().value_into().unwrap_or_saturate();
                 unsafe {
                     return_err!(ffi::gpgme_op_createsubkey(
                             self.as_raw(),
@@ -816,9 +810,7 @@ impl Context {
     ///
     /// [`add_signer`]: struct.Context.html#method.add_signer
     #[inline]
-    pub fn sign_key<I>(
-        &mut self, key: &Key, userids: I, expires: Option<SystemTime>,
-    ) -> Result<()>
+    pub fn sign_key<I>(&mut self, key: &Key, userids: I, expires: Duration) -> Result<()>
     where
         I: IntoIterator,
         I::Item: AsRef<[u8]>, {
@@ -833,13 +825,11 @@ impl Context {
     ///
     /// [`add_signer`]: struct.Context.html#method.add_signer
     pub fn sign_key_with_flags<I>(
-        &mut self, key: &Key, userids: I, expires: Option<SystemTime>,
-        flags: crate::KeySigningFlags,
+        &mut self, key: &Key, userids: I, expires: Duration, flags: crate::KeySigningFlags,
     ) -> Result<()>
     where
         I: IntoIterator,
-        I::Item: AsRef<[u8]>,
-    {
+        I::Item: AsRef<[u8]>, {
         require_gpgme_ver! {
             (1, 7) => {
                 let mut userids = userids.into_iter().fuse();
@@ -853,9 +843,7 @@ impl Context {
                     (Some(first), None) => (Some(first.as_ref().to_owned().into_cstr()), flags),
                     _ => (None, flags),
                 };
-                let expires = expires
-                    .and_then(|e| e.duration_since(UNIX_EPOCH).ok())
-                    .map_or(0, |e| e.as_secs().value_into().unwrap_or_saturate());
+                let expires = expires.as_secs().value_into().unwrap_or_saturate();
                 unsafe {
                     return_err!(ffi::gpgme_op_keysign(
                             self.as_raw(),

@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
 
             let users = Vec::<&[u8]>::new();
-            ctx.sign_key(&key_to_sign, &users, None)
+            ctx.sign_key(&key_to_sign, &users, Default::default())
                 .map_err(|e| format!("signing failed: {:?}", e))?;
 
             println!("Signed key for {}", args.keyid);
