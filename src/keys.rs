@@ -42,6 +42,11 @@ impl Key {
     impl_wrapper!(ffi::gpgme_key_t);
 
     #[inline]
+    pub fn is_bad(&self) -> bool {
+        self.is_revoked() || self.is_expired() || self.is_disabled() || self.is_invalid()
+    }
+
+    #[inline]
     pub fn is_revoked(&self) -> bool {
         unsafe { (*self.as_raw()).revoked() }
     }
@@ -344,6 +349,11 @@ impl<'key> Subkey<'key> {
     }
 
     #[inline]
+    pub fn is_bad(&self) -> bool {
+        self.is_revoked() || self.is_expired() || self.is_disabled() || self.is_invalid()
+    }
+
+    #[inline]
     pub fn is_revoked(&self) -> bool {
         unsafe { (*self.as_raw()).revoked() }
     }
@@ -597,6 +607,11 @@ impl<'key> UserId<'key> {
     }
 
     #[inline]
+    pub fn is_bad(&self) -> bool {
+        self.is_revoked() || self.is_invalid()
+    }
+
+    #[inline]
     pub fn is_revoked(&self) -> bool {
         unsafe { (*self.as_raw()).revoked() }
     }
@@ -630,7 +645,7 @@ impl<'key> UserId<'key> {
         self.signatures()
             .filter(|s| {
                 s.signer_key_id_raw() == key.id_raw()
-                    && !(s.is_expired() || s.is_revocation() || s.is_invalid())
+                    && !(s.is_bad() || s.is_revocation())
                     && (s.status() == Error::NO_ERROR)
             })
             .max_by_key(|s| s.creation_time())
@@ -737,6 +752,11 @@ impl<'key> UserIdSignature<'key> {
     #[inline]
     pub fn never_expires(&self) -> bool {
         self.expiration_time().is_none()
+    }
+
+    #[inline]
+    pub fn is_bad(&self) -> bool {
+        self.is_expired() || self.is_invalid()
     }
 
     #[inline]

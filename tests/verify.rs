@@ -1,5 +1,5 @@
 #[macro_use]
-mod support;
+mod common;
 
 const TEST_MSG1: &'static [u8] = b"-----BEGIN PGP MESSAGE-----\n\
                                    \n\
@@ -13,7 +13,7 @@ test_case! {
     test_signature_key(test) {
         let mut output = Vec::new();
         let mut ctx = test.create_context();
-        let result = fail_if_err!(ctx.verify_opaque(TEST_MSG1, &mut output));
+        let result = ctx.verify_opaque(TEST_MSG1, &mut output).unwrap();
         assert_eq!(result.signatures().count(), 1);
 
         let sig = result.signatures().nth(0).unwrap();
@@ -23,6 +23,6 @@ test_case! {
                 return;
             }
         }
-        assert!(false);
-    },
+        panic!();
+    }
 }

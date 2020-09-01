@@ -1,7 +1,7 @@
-use self::support::passphrase_cb;
+use self::common::passphrase_cb;
 
 #[macro_use]
-mod support;
+mod common;
 
 test_case! {
     test_symmetric_encrypt_decrypt(test) {
@@ -10,19 +10,19 @@ test_case! {
             ctx.set_armor(true);
             ctx.set_text_mode(true);
 
-            fail_if_err!(ctx.encrypt_symmetric("Hello World", &mut ciphertext));
+            ctx.encrypt_symmetric("Hello World", &mut ciphertext).unwrap();
         });
         assert!(ciphertext.starts_with(b"-----BEGIN PGP MESSAGE-----"));
 
         let mut plaintext = Vec::new();
         test.create_context().with_passphrase_provider(passphrase_cb, |ctx| {
-            fail_if_err!(ctx.decrypt(&ciphertext, &mut plaintext));
+            ctx.decrypt(&ciphertext, &mut plaintext).unwrap();
         });
         assert_eq!(plaintext, b"Hello World");
 
         let mut plaintext = Vec::new();
         let mut ctx = test.create_context().set_passphrase_provider(passphrase_cb);
-        fail_if_err!(ctx.decrypt(&ciphertext, &mut plaintext));
+        ctx.decrypt(&ciphertext, &mut plaintext).unwrap();
         assert_eq!(plaintext, b"Hello World");
-    },
+    }
 }

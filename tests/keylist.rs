@@ -1,13 +1,13 @@
 use gpgme;
 
 #[macro_use]
-mod support;
+mod common;
 
 test_case! {
-    test_single_key_list(test) {
+    test_key_list(test) {
         let mut ctx = test.create_context();
-        let keys: Vec<_> = fail_if_err!(fail_if_err!(ctx.find_keys(Some("alfa@example.net")))
-                                        .collect());
+        let keys: Vec<_> = ctx.find_keys(Some("alfa@example.net")).unwrap()
+                                        .collect::<Result<_, _>>().unwrap();
         assert_eq!(keys.len(), 1, "incorrect number of keys");
 
         let key = &keys[0];
@@ -16,5 +16,5 @@ test_case! {
         let subkeys: Vec<_> = key.subkeys().collect();
         assert_eq!(subkeys[0].algorithm(), gpgme::KeyAlgorithm::Dsa);
         assert_eq!(subkeys[1].algorithm(), gpgme::KeyAlgorithm::ElgamalEncrypt);
-    },
+    }
 }

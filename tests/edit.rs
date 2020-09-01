@@ -8,10 +8,10 @@ use gpgme::{
     Error, Result,
 };
 
-use self::support::passphrase_cb;
+use self::common::passphrase_cb;
 
 #[macro_use]
-mod support;
+mod common;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 enum TestEditorState {
@@ -85,8 +85,8 @@ impl Editor for TestEditor {
 test_case! {
     test_edit(test) {
         test.create_context().with_passphrase_provider(passphrase_cb, |ctx| {
-            let key = fail_if_err!(ctx.find_keys(Some("Alpha"))).next().unwrap().unwrap();
-            fail_if_err!(ctx.edit_key_with(&key, TestEditor, &mut Vec::new()));
+            let key = ctx.find_keys(Some("Alpha")).unwrap().next().unwrap().unwrap();
+            ctx.edit_key_with(&key, TestEditor, &mut Vec::new()).unwrap();
         });
     }
 }

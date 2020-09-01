@@ -14,16 +14,6 @@ use tempdir::TempDir;
 
 use gpgme::{self, Context, PassphraseRequest, PinentryMode};
 
-#[macro_export]
-macro_rules! fail_if_err {
-    ($e:expr) => {
-        match $e {
-            Ok(v) => v,
-            Err(err) => panic!("Operation failed: {}", err),
-        }
-    };
-}
-
 macro_rules! count {
     () => {0usize};
     ($_head:tt $($tail:tt)*) => {1usize + count!($($tail)*)};
@@ -42,13 +32,19 @@ macro_rules! test_case {
         test_case!(@impl $name($tester) $body,);
         test_case!(@impl $($rest_name($rest_tester) $rest_body,)+);
     };
-    ($($name:ident($tester:ident) $body:block,)+) => {
-        static TEST_CASE: ::once_cell::sync::Lazy<$crate::support::TestCase>
-            = ::once_cell::sync::Lazy::new(|| $crate::support::TestCase::new(count!($($name)+)));
+    ($($name:ident($tester:ident) $body:block)+) => {
+        static TEST_CASE: ::once_cell::sync::Lazy<$crate::common::TestCase>
+            = ::once_cell::sync::Lazy::new(|| $crate::common::TestCase::new(count!($($name)+)));
         test_case!(@impl $($name($tester) $body,)+);
     };
-    ($($name:ident($tester:ident) $body:block),+) => {
-        test_case!($($name($tester) $body,)+);
+    ($(#[requires($version:tt)] $name:ident($tester:ident) $body:block)+) => {
+        test_case!($($name($tester) {
+            gpgme::require_gpgme_ver! {
+                $version => {
+                    $body
+                }
+            }
+        })+);
     };
 }
 
@@ -76,16 +72,7 @@ fn import_key(key: &[u8]) {
 fn setup_agent(dir: &Path) {
     env::set_var("GNUPGHOME", dir);
     env::set_var("GPG_AGENT_INFO", "");
-    let pinentry = {
-        let mut path = env::current_exe().unwrap();
-        path.pop();
-        if path.ends_with("deps") {
-            path.pop();
-        }
-        path.push("pinentry");
-        path.set_extension(env::consts::EXE_EXTENSION);
-        path
-    };
+    let pinentry = Path::new(env!("CARGO_BIN_EXE_pinentry"));
     if !pinentry.exists() {
         panic!("Unable to find pinentry program");
     }
@@ -182,7 +169,7 @@ impl Drop for Test<'_> {
 
 impl Test<'_> {
     pub fn create_context(&self) -> Context {
-        let mut ctx = fail_if_err!(Context::from_protocol(gpgme::Protocol::OpenPgp));
+        let mut ctx = Context::from_protocol(gpgme::Protocol::OpenPgp).unwrap();
         let _ = ctx.set_pinentry_mode(PinentryMode::Loopback);
         ctx
     }
