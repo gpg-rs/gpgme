@@ -1,4 +1,4 @@
-use gpgme::{require_gpgme_ver, KeyListMode};
+use gpgme::KeyListMode;
 
 use self::common::passphrase_cb;
 

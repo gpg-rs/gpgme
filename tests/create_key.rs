@@ -1,6 +1,6 @@
 use std::time::{Duration, SystemTime};
 
-use gpgme::{require_gpgme_ver, CreateKeyFlags};
+use gpgme::CreateKeyFlags;
 
 use self::common::passphrase_cb;
 
