@@ -52,8 +52,8 @@ valid  0: Unknown
 ```
 
 [crate]: https://crates.io/crates/gpgme
-[ci]: https://travis-ci.org/gpg-rs/gpgme
-[build]: https://img.shields.io/travis/gpg-rs/gpgme/master?style=flat-square
+[ci]: https://github.com/gpg-rs/gpgme/workflows/ci
+[build]: https://img.shields.io/github/workflow/status/gpg-rs/gpgme/ci?style=flat-square
 [version]: https://img.shields.io/crates/v/gpgme?style=flat-square
 [license]: https://img.shields.io/crates/l/gpgme?style=flat-square
 [downloads]: https://img.shields.io/crates/d/gpgme?style=flat-square

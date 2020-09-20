@@ -15,7 +15,7 @@ ENV TARGET "x86_64-unknown-linux-musl"
 # RUN ./configure --host "$TARGET" --prefix="$PREFIX" --with-pic --enable-fast-install --disable-dependency-tracking --without-emacs --disable-java --disable-csharp --disable-c++
 # RUN make -j$(nproc) install
 
-ARG LIBGPG_ERROR_VER=1.36
+ARG LIBGPG_ERROR_VER=1.39
 WORKDIR /usr/src
 RUN curl -sSL "https://www.gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-${LIBGPG_ERROR_VER}.tar.bz2" | tar -xj
 WORKDIR libgpg-error-$LIBGPG_ERROR_VER
@@ -32,7 +32,7 @@ WORKDIR "libassuan-$LIBASSUAN_VER"
 RUN ./configure --host "$TARGET" --prefix="$PREFIX" --with-pic --enable-fast-install --disable-dependency-tracking --enable-static --disable-shared --disable-doc --with-gpg-error-prefix="$PREFIX"
 RUN make -j$(nproc) install
 
-ARG GPGME_VER=1.13.1
+ARG GPGME_VER=1.14.0
 WORKDIR /usr/src
 RUN curl -sSL "https://www.gnupg.org/ftp/gcrypt/gpgme/gpgme-${GPGME_VER}.tar.bz2" | tar -xj
 WORKDIR "gpgme-$GPGME_VER"
