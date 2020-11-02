@@ -562,7 +562,7 @@ impl<'a> IntoData<'a> for &'a mut [u8] {
     type Output = Data<'a>;
 
     fn into_data(self) -> Result<Data<'a>> {
-        Data::from_seekable_reader(Cursor::new(self)).map_err(|e| e.error())
+        Data::from_seekable_stream(Cursor::new(self)).map_err(|e| e.error())
     }
 }
 
@@ -578,7 +578,7 @@ impl<'a> IntoData<'a> for &'a mut Vec<u8> {
     type Output = Data<'a>;
 
     fn into_data(self) -> Result<Data<'a>> {
-        self.as_mut_slice().into_data()
+        Data::from_seekable_stream(Cursor::new(self)).map_err(|e| e.error())
     }
 }
 
