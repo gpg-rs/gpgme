@@ -324,6 +324,14 @@ extern "C" {
         ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char, name: *const c_char,
         value: *const c_char,
     ) -> gpgme_error_t;
+    pub fn gpgme_op_setexpire_start(
+        ctx: gpgme_ctx_t, key: gpgme_key_t, expires: c_ulong, subfprs: *const c_char,
+        reserved: c_uint,
+    ) -> gpgme_error_t;
+    pub fn gpgme_op_setexpire(
+        ctx: gpgme_ctx_t, key: gpgme_key_t, expires: c_ulong, subfprs: *const c_char,
+        reserved: c_uint,
+    ) -> gpgme_error_t;
 
     pub fn gpgme_op_delete_start(
         ctx: gpgme_ctx_t, key: gpgme_key_t, allow_secret: c_int,
@@ -341,6 +349,15 @@ extern "C" {
     ) -> gpgme_error_t;
     pub fn gpgme_op_keysign(
         ctx: gpgme_ctx_t, key: gpgme_key_t, userid: *const c_char, expires: c_ulong, flags: c_uint,
+    ) -> gpgme_error_t;
+
+    pub fn gpgme_op_revsig_start(
+        ctx: gpgme_ctx_t, key: gpgme_key_t, signing_key: gpgme_key_t, userid: *const c_char,
+        flags: c_uint,
+    ) -> gpgme_error_t;
+    pub fn gpgme_op_revsig(
+        ctx: gpgme_ctx_t, key: gpgme_key_t, signing_key: gpgme_key_t, userid: *const c_char,
+        flags: c_uint,
     ) -> gpgme_error_t;
 
     pub fn gpgme_op_interact_start(

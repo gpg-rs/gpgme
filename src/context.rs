@@ -682,7 +682,7 @@ impl Context {
                             expires,
                             ptr::null_mut(),
                             flags.bits(),
-                            ));
+                    ));
                 }
                 Ok(self.get_result().unwrap())
             } else {
@@ -720,9 +720,58 @@ impl Context {
                             0,
                             expires,
                             flags.bits(),
-                            ));
+                    ));
                 }
                 Ok(self.get_result().unwrap())
+            } else {
+                Err(Error::NOT_SUPPORTED)
+            }
+        }
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_op_setexpire`](https://www.gnupg.org/documentation/manuals/gpgme/Manipulating-Keys.html#index-gpgme_005fop_005fsetexpire)
+    pub fn set_expire_all(&mut self, key: &Key, expires: Duration) -> Result<()> {
+        require_gpgme_ver! {
+            (1, 15) => {
+                let expires = expires.as_secs().value_into().unwrap_or_saturate();
+                unsafe {
+                    return_err!(ffi::gpgme_op_setexpire(
+                            self.as_raw(),
+                            key.as_raw(),
+                            expires,
+                            b"*\0".into_cstr().as_ref().as_ptr(),
+                            0,
+                    ));
+                }
+                Ok(())
+            } else {
+                Err(Error::NOT_SUPPORTED)
+            }
+        }
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_op_setexpire`](https://www.gnupg.org/documentation/manuals/gpgme/Manipulating-Keys.html#index-gpgme_005fop_005fsetexpire)
+    pub fn set_expire<I>(&mut self, key: &Key, expires: Duration, subkeys: I) -> Result<()>
+    where
+        I: IntoIterator,
+        I::Item: CStrArgument, {
+        require_gpgme_ver! {
+            (1, 15) => {
+                let expires = expires.as_secs().value_into().unwrap_or_saturate();
+                self::with_joined_cstr(subkeys, |subkeys, _| {
+                    unsafe {
+                        return_err!(ffi::gpgme_op_setexpire(
+                                self.as_raw(),
+                                key.as_raw(),
+                                expires,
+                                subkeys.map_or(ptr::null(), |subkeys| subkeys.as_ptr()),
+                                0,
+                        ));
+                    }
+                    Ok(())
+                })
             } else {
                 Err(Error::NOT_SUPPORTED)
             }
@@ -742,7 +791,7 @@ impl Context {
                             key.as_raw(),
                             userid.as_ref().as_ptr(),
                             0,
-                            ));
+                    ));
                 }
                 Ok(())
             } else {
@@ -764,7 +813,7 @@ impl Context {
                             key.as_raw(),
                             userid.as_ref().as_ptr(),
                             0,
-                            ));
+                    ));
                 }
                 Ok(())
             } else {
@@ -813,7 +862,7 @@ impl Context {
     pub fn sign_key<I>(&mut self, key: &Key, userids: I, expires: Duration) -> Result<()>
     where
         I: IntoIterator,
-        I::Item: AsRef<[u8]>, {
+        I::Item: CStrArgument, {
         self.sign_key_with_flags(key, userids, expires, crate::KeySigningFlags::empty())
     }
 
@@ -825,35 +874,59 @@ impl Context {
     ///
     /// [`add_signer`]: struct.Context.html#method.add_signer
     pub fn sign_key_with_flags<I>(
-        &mut self, key: &Key, userids: I, expires: Duration, flags: crate::KeySigningFlags,
+        &mut self, key: &Key, userids: I, expires: Duration, mut flags: crate::KeySigningFlags,
     ) -> Result<()>
     where
         I: IntoIterator,
-        I::Item: AsRef<[u8]>, {
+        I::Item: CStrArgument, {
         require_gpgme_ver! {
             (1, 7) => {
-                let mut userids = userids.into_iter().fuse();
-                let (userids, flags) = match (userids.next(), userids.next()) {
-                    (Some(first), Some(second)) => (Some(userids.fold([first.as_ref(), second.as_ref()].join(&b'\n'),
-                        |mut acc, x| {
-                            acc.push(b'\n');
-                            acc.extend_from_slice(x.as_ref());
-                            acc
-                        }).into_cstr()), crate::KeySigningFlags::LFSEP | flags),
-                    (Some(first), None) => (Some(first.as_ref().to_owned().into_cstr()), flags),
-                    _ => (None, flags),
-                };
                 let expires = expires.as_secs().value_into().unwrap_or_saturate();
-                unsafe {
-                    return_err!(ffi::gpgme_op_keysign(
-                            self.as_raw(),
-                            key.as_raw(),
-                            userids.map_or(ptr::null(), |uid| uid.as_ref().as_ptr()),
-                            expires,
-                            flags.bits(),
-                            ));
-                }
-                Ok(())
+                self::with_joined_cstr(userids, |userids, count| {
+                    if count > 1 {
+                        flags |= crate::KeySigningFlags::LFSEP;
+                    }
+                    unsafe {
+                        return_err!(ffi::gpgme_op_keysign(
+                                self.as_raw(),
+                                key.as_raw(),
+                                userids.map_or(ptr::null(), |uid| uid.as_ptr()),
+                                expires,
+                                flags.bits(),
+                        ));
+                    }
+                    Ok(())
+                })
+            } else {
+                Err(Error::NOT_SUPPORTED)
+            }
+        }
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_op_revsig`](https://www.gnupg.org/documentation/manuals/gpgme/Signing-Keys.html#index-gpgme_005fop_005frevsig)
+    #[inline]
+    pub fn revoke_signature<I>(&mut self, key: &Key, signing_key: &Key, userids: I) -> Result<()>
+    where
+        I: IntoIterator,
+        I::Item: CStrArgument, {
+        require_gpgme_ver! {
+            (1, 15) => {
+                self::with_joined_cstr(userids, |userids, count| {
+                    let flags = if count > 1 {
+                        ffi::GPGME_REVSIG_LFSEP
+                    } else  { 0 };
+                    unsafe {
+                        return_err!(ffi::gpgme_op_revsig(
+                                self.as_raw(),
+                                key.as_raw(),
+                                signing_key.as_raw(),
+                                userids.map_or(ptr::null(), |uid| uid.as_ptr()),
+                                flags,
+                        ));
+                    }
+                    Ok(())
+                })
             } else {
                 Err(Error::NOT_SUPPORTED)
             }
@@ -2016,5 +2089,30 @@ impl DerefMut for ContextWithCallbacks<'_> {
 impl fmt::Debug for ContextWithCallbacks<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.inner, f)
+    }
+}
+
+fn with_joined_cstr<R, F, I>(strings: I, f: F) -> R
+where
+    I: IntoIterator,
+    I::Item: CStrArgument,
+    F: FnOnce(Option<&CStr>, usize) -> R, {
+    let mut strings = strings.into_iter().fuse();
+    match (strings.next(), strings.next()) {
+        (Some(first), Some(second)) => {
+            let mut count = 2;
+            let mut joined = Vec::new();
+            joined.extend_from_slice(first.into_cstr().as_ref().to_bytes());
+            joined.push(b'\n');
+            joined.extend_from_slice(second.into_cstr().as_ref().to_bytes());
+            for x in strings {
+                joined.push(b'\n');
+                joined.extend_from_slice(x.into_cstr().as_ref().to_bytes());
+                count += 1;
+            }
+            f(Some(joined.into_cstr().as_ref()), count)
+        }
+        (Some(single), None) => f(Some(single.into_cstr().as_ref()), 1),
+        _ => f(None, 0),
     }
 }

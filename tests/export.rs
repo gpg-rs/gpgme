@@ -1,4 +1,4 @@
-use gpgme::{ExportMode, CreateKeyFlags};
+use gpgme::{CreateKeyFlags, ExportMode};
 
 use self::common::passphrase_cb;
 

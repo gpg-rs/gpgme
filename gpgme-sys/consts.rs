@@ -306,6 +306,8 @@ pub const GPGME_KEYSIGN_LOCAL: libc::c_uint = 1 << 7;
 pub const GPGME_KEYSIGN_LFSEP: libc::c_uint = 1 << 8;
 pub const GPGME_KEYSIGN_NOEXPIRE: libc::c_uint = 1 << 9;
 
+pub const GPGME_REVSIG_LFSEP: libc::c_uint = 1 << 8;
+
 pub const GPGME_INTERACT_CARD: libc::c_uint = 1 << 0;
 
 pub const GPGME_SPAWN_DETACHED: libc::c_uint = 1;
