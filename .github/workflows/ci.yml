@@ -48,7 +48,7 @@ jobs:
         run: cargo test --verbose --no-fail-fast
 
   docker-static:
-    name: Test static (musl) build with docker
+    name: Test Suite (linux, docker, musl)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -63,7 +63,7 @@ jobs:
         run: docker run test-build
 
   docker-windows:
-    name: Test on windows with docker
+    name: Test Suite (windows, docker)
     runs-on: windows-latest
     steps:
       - name: Checkout repository

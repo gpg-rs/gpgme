@@ -53,7 +53,7 @@ valid  0: Unknown
 
 [crate]: https://crates.io/crates/gpgme
 [ci]: https://github.com/gpg-rs/gpgme/actions?query=branch%3Amaster
-[build]: https://img.shields.io/github/workflow/status/gpg-rs/gpgme/ci?style=flat-square
+[build]: https://img.shields.io/github/workflow/status/gpg-rs/gpgme/Continuous%20Integration?style=flat-square
 [version]: https://img.shields.io/crates/v/gpgme?style=flat-square
 [license]: https://img.shields.io/crates/l/gpgme?style=flat-square
 [downloads]: https://img.shields.io/crates/d/gpgme?style=flat-square

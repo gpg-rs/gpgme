@@ -56,6 +56,7 @@ bitflags! {
         const LOCAL = ffi::GPGME_KEYSIGN_LOCAL;
         const LFSEP = ffi::GPGME_KEYSIGN_LFSEP;
         const NOEXPIRE = ffi::GPGME_KEYSIGN_NOEXPIRE;
+        const FORCE = ffi::GPGME_KEYSIGN_FORCE;
     }
 }
 

@@ -185,6 +185,7 @@ pub struct _gpgme_key_sig {
     pub sig_class: c_uint,
     pub notations: gpgme_sig_notation_t,
     _last_notation: gpgme_sig_notation_t,
+    pub trust_scope: *mut c_char,
 }
 pub type gpgme_key_sig_t = *mut _gpgme_key_sig;
 
@@ -204,6 +205,14 @@ impl _gpgme_key_sig {
     #[inline]
     pub fn exportable(&self) -> bool {
         (self.bitfield & 0b1000) == 0b1000
+    }
+    #[inline]
+    pub fn trust_depth(&self) -> u8 {
+        ((self.bitfield >> 16) & 0xFF) as u8
+    }
+    #[inline]
+    pub fn trust_value(&self) -> u8 {
+        (self.bitfield >> 24) as u8
     }
 }
 

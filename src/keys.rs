@@ -703,6 +703,13 @@ impl fmt::Display for UserId<'_> {
 
 impl_list_iterator!(pub struct UserIds(UserId: ffi::gpgme_user_id_t));
 
+#[derive(Debug)]
+pub enum SignatureTrust {
+    None,
+    Partial,
+    Complete,
+}
+
 /// Upstream documentation: [`gpgme_key_sig_t`](https://www.gnupg.org/documentation/manuals/gpgme/Key-objects.html#index-gpgme_005fkey_005fsig_005ft)
 #[derive(Copy, Clone)]
 pub struct UserIdSignature<'key>(NonNull<ffi::gpgme_key_sig_t>, PhantomData<&'key Key>);
@@ -871,6 +878,49 @@ impl<'key> UserIdSignature<'key> {
     pub fn notations(&self) -> SignatureNotations<'key> {
         unsafe { SignatureNotations::from_list((*self.as_raw()).notations) }
     }
+
+    require_gpgme_ver! {
+        (1, 16) => {
+            #[inline]
+            pub fn is_trust_signature(&self) -> bool {
+                self.trust_depth() != 0
+            }
+
+            #[inline]
+            pub fn trust_value(&self) -> u8 {
+                let value = unsafe {
+                    (*self.as_raw()).trust_value
+                };
+                if (!self.is_trust_signature()) {
+                    SignatureTrust::None
+                } else if (value >= 120) {
+                    SignatureTrust::Complete
+                } else {
+                    SignatureTrust::Partial
+                }
+            }
+
+            #[inline]
+            pub fn trust_depth(&self) -> u8 {
+                unsafe {
+                    (*self.as_raw()).trust_depth
+                }
+            }
+
+            #[inline]
+            pub fn trust_scope(&self) -> Result<&'key str, Option<Utf8Error>> {
+                self.trust_scope_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
+            }
+
+            #[inline]
+            pub fn trust_scope_raw(&self) -> Option<&'key CStr> {
+                unsafe {
+                    (*self.as_raw()).trust_scope.as_ref().map(|s| CStr::from_ptr(s))
+                }
+            }
+        }
+    }
+
 }
 
 impl fmt::Debug for UserIdSignature<'_> {
