@@ -286,7 +286,7 @@ impl Context {
     ///
     /// use gpgme::{Context, PassphraseRequest, Protocol};
     ///
-    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp)?;
+    /// let mut ctx = Context::from_protocol(Protocol::OpenPgp).unwrap();
     /// ctx.with_passphrase_provider(|_: PassphraseRequest, out: &mut dyn Write| {
     ///     out.write_all(b"some passphrase")?;
     ///     Ok(())
