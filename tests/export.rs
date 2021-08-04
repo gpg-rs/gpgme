@@ -24,8 +24,12 @@ test_case! {
         ctx.set_offline(true);
         ctx.set_armor(true);
 
-        let res = ctx.create_key_with_flags("test user <test@example.com>",
-            "future-default", Default::default(), CreateKeyFlags::NOPASSWD).unwrap();
+        let res = match ctx.create_key_with_flags("test user <test@example.com>",
+            "future-default", Default::default(), CreateKeyFlags::NOPASSWD) {
+            Ok(r) => r,
+            Err(e) if e.code() == gpgme::Error::NOT_SUPPORTED.code() => return,
+            Err(e) => panic!("error: {:?}", e),
+        };
         let fpr = res.fingerprint_raw().unwrap();
 
         let mut data = Vec::new();

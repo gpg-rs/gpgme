@@ -323,8 +323,7 @@ impl Gpgme {
     pub fn set_engine_info(
         &self, proto: Protocol, path: Option<impl CStrArgument>,
         home_dir: Option<impl CStrArgument>,
-    ) -> Result<()>
-    {
+    ) -> Result<()> {
         let path = path.map(CStrArgument::into_cstr);
         let home_dir = home_dir.map(CStrArgument::into_cstr);
         unsafe {

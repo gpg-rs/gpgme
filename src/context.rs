@@ -666,8 +666,7 @@ impl Context {
     pub fn create_key_with_flags(
         &mut self, userid: impl CStrArgument, algo: impl CStrArgument, expires: Duration,
         flags: crate::CreateKeyFlags,
-    ) -> Result<results::KeyGenerationResult>
-    {
+    ) -> Result<results::KeyGenerationResult> {
         require_gpgme_ver! {
             (1, 7) => {
                 let userid = userid.into_cstr();
@@ -706,8 +705,7 @@ impl Context {
     pub fn create_subkey_with_flags(
         &mut self, key: &Key, algo: impl CStrArgument, expires: Duration,
         flags: crate::CreateKeyFlags,
-    ) -> Result<results::KeyGenerationResult>
-    {
+    ) -> Result<results::KeyGenerationResult> {
         require_gpgme_ver! {
             (1, 7) => {
                 let algo = algo.into_cstr();
@@ -828,8 +826,7 @@ impl Context {
     pub fn set_uid_flag(
         &mut self, key: &Key, userid: impl CStrArgument, name: impl CStrArgument,
         value: Option<impl CStrArgument>,
-    ) -> Result<()>
-    {
+    ) -> Result<()> {
         require_gpgme_ver! {
             (1, 8) => {
                 let userid = userid.into_cstr();
@@ -1354,8 +1351,7 @@ impl Context {
     pub fn add_signature_notation(
         &mut self, name: impl CStrArgument, value: impl CStrArgument,
         flags: crate::SignatureNotationFlags,
-    ) -> Result<()>
-    {
+    ) -> Result<()> {
         let name = name.into_cstr();
         let value = value.into_cstr();
         unsafe {
@@ -1528,8 +1524,7 @@ impl Context {
     fn verify(
         &mut self, signature: &mut Data<'_>, signedtext: Option<&mut Data<'_>>,
         plaintext: Option<&mut Data<'_>>,
-    ) -> Result<results::VerificationResult>
-    {
+    ) -> Result<results::VerificationResult> {
         unsafe {
             let signed = signedtext.map_or(ptr::null_mut(), |d| d.as_raw());
             let plain = plaintext.map_or(ptr::null_mut(), |d| d.as_raw());
@@ -1977,9 +1972,9 @@ impl fmt::Debug for Signers<'_> {
 /// [`gpgme_ctx_t`](https://www.gnupg.org/documentation/manuals/gpgme/Contexts.html#Contexts)
 pub struct ContextWithCallbacks<'a> {
     inner: Context,
-    passphrase_hook: Option<Box<dyn Drop + 'a>>,
-    progress_hook: Option<Box<dyn Drop + 'a>>,
-    status_hook: Option<Box<dyn Drop + 'a>>,
+    passphrase_hook: Option<Box<dyn Send + 'a>>,
+    progress_hook: Option<Box<dyn Send + 'a>>,
+    status_hook: Option<Box<dyn Send + 'a>>,
 }
 
 impl<'a> ContextWithCallbacks<'a> {

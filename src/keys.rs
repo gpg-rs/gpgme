@@ -887,13 +887,13 @@ impl<'key> UserIdSignature<'key> {
             }
 
             #[inline]
-            pub fn trust_value(&self) -> u8 {
+            pub fn trust_value(&self) -> SignatureTrust {
                 let value = unsafe {
-                    (*self.as_raw()).trust_value
+                    (*self.as_raw()).trust_value()
                 };
-                if (!self.is_trust_signature()) {
+                if !self.is_trust_signature() {
                     SignatureTrust::None
-                } else if (value >= 120) {
+                } else if value >= 120 {
                     SignatureTrust::Complete
                 } else {
                     SignatureTrust::Partial
@@ -903,7 +903,7 @@ impl<'key> UserIdSignature<'key> {
             #[inline]
             pub fn trust_depth(&self) -> u8 {
                 unsafe {
-                    (*self.as_raw()).trust_depth
+                    (*self.as_raw()).trust_depth()
                 }
             }
 
@@ -920,7 +920,6 @@ impl<'key> UserIdSignature<'key> {
             }
         }
     }
-
 }
 
 impl fmt::Debug for UserIdSignature<'_> {

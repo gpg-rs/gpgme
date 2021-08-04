@@ -318,8 +318,7 @@ where
 pub(crate) extern "C" fn passphrase_cb<P: PassphraseProviderNew>(
     hook: *mut libc::c_void, uid_hint: *const libc::c_char, info: *const libc::c_char,
     was_bad: libc::c_int, fd: libc::c_int,
-) -> ffi::gpgme_error_t
-{
+) -> ffi::gpgme_error_t {
     let hook = unsafe { &mut *(hook as *mut Hook<P>) };
     update_hook(&mut hook.0, move |h| unsafe {
         let info = PassphraseRequest {
@@ -336,8 +335,7 @@ pub(crate) extern "C" fn passphrase_cb<P: PassphraseProviderNew>(
 pub(crate) extern "C" fn progress_cb<H: ProgressReporter>(
     hook: *mut libc::c_void, what: *const libc::c_char, typ: libc::c_int, current: libc::c_int,
     total: libc::c_int,
-)
-{
+) {
     let hook = unsafe { &mut *(hook as *mut Hook<H>) };
     update_hook(&mut hook.0, move |h| unsafe {
         let info = ProgressInfo {
@@ -365,8 +363,7 @@ pub(crate) extern "C" fn status_cb<H: StatusHandler>(
 pub(crate) extern "C" fn edit_cb<E: EditInteractor>(
     hook: *mut libc::c_void, status: ffi::gpgme_status_code_t, args: *const libc::c_char,
     fd: libc::c_int,
-) -> ffi::gpgme_error_t
-{
+) -> ffi::gpgme_error_t {
     let hook = unsafe { &mut *(hook as *mut InteractorHook<'_, E>) };
     let response = hook.response;
     update_hook(&mut hook.inner.0, move |h| unsafe {
@@ -386,8 +383,7 @@ pub(crate) extern "C" fn edit_cb<E: EditInteractor>(
 pub(crate) extern "C" fn interact_cb<I: InteractorNew>(
     hook: *mut libc::c_void, keyword: *const libc::c_char, args: *const libc::c_char,
     fd: libc::c_int,
-) -> ffi::gpgme_error_t
-{
+) -> ffi::gpgme_error_t {
     let hook = unsafe { &mut *(hook as *mut InteractorHook<'_, I>) };
     let response = hook.response;
     update_hook(&mut hook.inner.0, move |h| unsafe {

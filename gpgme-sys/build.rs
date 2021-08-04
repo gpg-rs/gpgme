@@ -66,7 +66,7 @@ fn try_registry(proj: &Project) -> Result<Config> {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let root = PathBuf::from(
         hklm.open_subkey("SOFTWARE\\GnuPG")
-            .and_then(|k| k.get_value::<String, _>("Install Directory"))
+            .and_then(|k| k.get_value::<OsString, _>("Install Directory"))
             .warn_err("unable to retrieve install location")?,
     );
     if root.join("lib/libgpgme.imp").exists() {

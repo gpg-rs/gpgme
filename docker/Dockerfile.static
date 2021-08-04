@@ -1,6 +1,6 @@
 FROM clux/muslrust as base
 
-RUN apt-get update && apt-get install -y --no-install-recommends bzip2 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends bzip2 gnupg && rm -rf /var/lib/apt/lists/*
 
 ENV TARGET "x86_64-unknown-linux-musl"
 
@@ -8,14 +8,14 @@ ENV TARGET "x86_64-unknown-linux-musl"
 # To enable uncomment the following commands, replace "--disable-nls" with
 # "--with-libintl-prefix=$PREFIX", and add ":intl" to the LIBGPG_ERROR_LIBS
 # environment variable.
-# ARG GETTEXT_VER=0.19.8
+# ARG GETTEXT_VER=0.21
 # WORKDIR /usr/src
-# RUN curl -sL "https://ftp.gnu.org/gnu/gettext/gettext-${GETTEXT_VER}.tar.bz2" | tar -xj
+# RUN curl -sL "https://ftp.gnu.org/gnu/gettext/gettext-${GETTEXT_VER}.tar.xz" | tar -xj
 # WORKDIR "gettext-$GETTEXT_VER"
 # RUN ./configure --host "$TARGET" --prefix="$PREFIX" --with-pic --enable-fast-install --disable-dependency-tracking --without-emacs --disable-java --disable-csharp --disable-c++
 # RUN make -j$(nproc) install
 
-ARG LIBGPG_ERROR_VER=1.39
+ARG LIBGPG_ERROR_VER=1.42
 WORKDIR /usr/src
 RUN curl -sSL "https://www.gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-${LIBGPG_ERROR_VER}.tar.bz2" | tar -xj
 WORKDIR libgpg-error-$LIBGPG_ERROR_VER
@@ -23,16 +23,14 @@ RUN ./configure --host "$TARGET" --prefix="$PREFIX" --with-pic --enable-fast-ins
 RUN make -j$(nproc) install
 RUN true
 
-RUN apt-get update && apt-get install -y --no-install-recommends gnupg2 && rm -rf /var/lib/apt/lists/*
-
-ARG LIBASSUAN_VER=2.5.3
+ARG LIBASSUAN_VER=2.5.5
 WORKDIR /usr/src
 RUN curl -sSL "https://www.gnupg.org/ftp/gcrypt/libassuan/libassuan-${LIBASSUAN_VER}.tar.bz2" | tar -xj
 WORKDIR "libassuan-$LIBASSUAN_VER"
 RUN ./configure --host "$TARGET" --prefix="$PREFIX" --with-pic --enable-fast-install --disable-dependency-tracking --enable-static --disable-shared --disable-doc --with-gpg-error-prefix="$PREFIX"
 RUN make -j$(nproc) install
 
-ARG GPGME_VER=1.14.0
+ARG GPGME_VER=1.16.0
 WORKDIR /usr/src
 RUN curl -sSL "https://www.gnupg.org/ftp/gcrypt/gpgme/gpgme-${GPGME_VER}.tar.bz2" | tar -xj
 WORKDIR "gpgme-$GPGME_VER"
