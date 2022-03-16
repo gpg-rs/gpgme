@@ -10,8 +10,6 @@ use std::{
     },
 };
 
-use tempdir::TempDir;
-
 use gpgme::{self, Context, PassphraseRequest, PinentryMode};
 
 macro_rules! count {
@@ -98,12 +96,12 @@ fn setup_agent(dir: &Path) {
 
 pub struct TestCase {
     count: AtomicUsize,
-    homedir: RwLock<Option<TempDir>>,
+    homedir: RwLock<Option<tempfile::TempDir>>,
 }
 
 impl TestCase {
     pub fn new(count: usize) -> TestCase {
-        let dir = TempDir::new(".test-gpgme").unwrap();
+        let dir = tempfile::TempDir::new().unwrap();
         setup_agent(dir.path());
         import_key(include_bytes!("./data/pubdemo.asc"));
         import_key(include_bytes!("./data/secdemo.asc"));
