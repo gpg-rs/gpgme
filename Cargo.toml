@@ -15,7 +15,7 @@ maintenance = { status = "experimental" }
 
 [dev-dependencies]
 structopt = "0.3"
-tempdir = "0.3"
+tempfile = "3"
 
 [dependencies]
 bitflags = "1"
