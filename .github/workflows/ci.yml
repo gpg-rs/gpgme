@@ -1,7 +1,5 @@
 name: Continuous Integration
-on:
-  push:
-  pull_request:
+on: [push, pull_request]
 jobs:
   test:
     name: Test Suite (${{ matrix.os }}, rust-${{ matrix.rust }})
@@ -20,9 +18,7 @@ jobs:
       GPGME_DEBUG: 9
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          submodules: true
+        uses: actions/checkout@v3
 
       - name: Install dependencies (Linux)
         if: startsWith(matrix.os, 'ubuntu')
@@ -33,26 +29,20 @@ jobs:
         run: brew install gpgme
 
       - name: Install rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          override: true
+        uses: dtolnay/rust-toolchain@${{ matrix.rust }}
 
       - name: Build
-        run: cargo build --verbose
+        run: cargo build --verbose --all-features
 
       - name: Run tests
-        run: cargo test --verbose --no-fail-fast
+        run: cargo test --verbose --no-fail-fast --all-features
 
   docker-static:
     name: Test Suite (linux, docker, musl)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          submodules: true
+        uses: actions/checkout@v3
 
       - name: Build docker container
         run: docker build -f docker/Dockerfile.static -t test-build .
@@ -62,16 +52,14 @@ jobs:
 
   docker-windows:
     name: Test Suite (windows, docker)
-    runs-on: windows-latest
+    runs-on: windows-2022
     continue-on-error: true
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          submodules: true
+        uses: actions/checkout@v3
 
       - name: Build docker container
-        run: docker build --build-arg WIN_VARIANT=ltsc2019 -f docker/Dockerfile.windows -t test-build .
+        run: docker build --build-arg WIN_VARIANT=ltsc2022 -f docker/Dockerfile.windows -t test-build .
 
       - name: Run tests in container
         run: docker run test-build
