@@ -37,7 +37,9 @@ impl Editor for TestEditor {
     type State = TestEditorState;
 
     fn next_state(
-        state: Result<Self::State>, status: EditInteractionStatus<'_>, need_response: bool,
+        state: Result<Self::State>,
+        status: EditInteractionStatus<'_>,
+        need_response: bool,
     ) -> Result<Self::State> {
         use self::TestEditorState as State;
 

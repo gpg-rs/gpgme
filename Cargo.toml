@@ -1,10 +1,9 @@
 [package]
 name = "gpgme"
-version = "0.10.0"
-edition = "2018"
-license = "LGPL-2.1"
-readme = "README.md"
-repository = "https://github.com/gpg-rs/gpgme"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 documentation = "https://docs.rs/gpgme"
 categories = ["api-bindings"]
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
@@ -12,6 +11,14 @@ description = "GPGme bindings for Rust"
 
 [badges]
 maintenance = { status = "experimental" }
+
+[features]
+"v1_18" = ["v1_17"]
+"v1_17" = ["v1_16"]
+"v1_16" = ["v1_15"]
+"v1_15" = ["v1_14"]
+"v1_14" = ["v1_13"]
+"v1_13" = []
 
 [dev-dependencies]
 structopt = "0.3"
@@ -22,7 +29,8 @@ bitflags = "1"
 conv = "0.3"
 cstr-argument = "0.1"
 gpg-error = "0.5.1"
-libc = "0.2"
+libc.workspace = true
+memoffset = "0.7.1"
 once_cell = "1"
 smallvec = "1"
 static_assertions = "1.1"
@@ -36,5 +44,11 @@ version = "0.10.0"
 name = "pinentry"
 test = false
 
-[workspace]
-members = ["systest"]
+[workspace.package]
+version = "0.10.0"
+edition = "2021"
+license = "LGPL-2.1"
+repository = "https://github.com/gpg-rs/gpgme"
+
+[workspace.dependencies]
+libc = "0.2"

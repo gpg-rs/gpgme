@@ -1,3 +1,0 @@
-[submodule "gpgme-sys/build_helper"]
-	path = gpgme-sys/build_helper
-	url = https://github.com/gpg-rs/build_helper.git

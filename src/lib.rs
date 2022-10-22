@@ -1,7 +1,7 @@
-#![forbid(elided_lifetimes_in_paths, missing_debug_implementations)]
+#![forbid(missing_debug_implementations)]
 use std::{
     ffi::CStr,
-    fmt, mem, ptr, result,
+    fmt, ptr, result,
     str::Utf8Error,
     sync::{Mutex, RwLock},
 };
@@ -14,7 +14,7 @@ use once_cell::sync::Lazy;
 pub use self::{
     callbacks::{
         EditInteractionStatus, EditInteractor, InteractionStatus, Interactor, PassphraseProvider,
-        PassphraseRequest, ProgressHandler, ProgressInfo, ProgressReporter, StatusHandler,
+        PassphraseRequest, ProgressInfo, ProgressReporter, StatusHandler,
     },
     context::{Context, ContextWithCallbacks},
     data::{Data, IntoData},
@@ -30,7 +30,6 @@ pub use self::{
     },
     tofu::{TofuInfo, TofuPolicy},
 };
-pub use ffi::require_gpgme_ver;
 #[doc(inline)]
 pub use gpg_error as error;
 
@@ -151,11 +150,9 @@ pub fn set_flag(name: impl CStrArgument, val: impl CStrArgument) -> Result<()> {
 #[inline]
 pub fn init() -> Gpgme {
     static TOKEN: Lazy<(&str, RwLock<()>)> = Lazy::new(|| unsafe {
-        let base: ffi::_gpgme_signature = mem::zeroed();
-        let offset = (&base.validity as *const _ as usize) - (&base as *const _ as usize);
+        let offset = memoffset::offset_of!(ffi::_gpgme_signature, validity);
 
-        let result =
-            ffi::gpgme_check_version_internal(ffi::MIN_GPGME_VERSION.as_ptr().cast(), offset);
+        let result = ffi::gpgme_check_version_internal(ptr::null(), offset);
         assert!(
             !result.is_null(),
             "the library linked is not the correct version"
@@ -223,7 +220,8 @@ impl Gpgme {
     /// [`gpgme_get_dirinfo`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Version-Check.html#index-gpgme_005fget_005fdirinfo)
     #[inline]
     pub fn get_dir_info(
-        &self, what: impl CStrArgument,
+        &self,
+        what: impl CStrArgument,
     ) -> result::Result<&'static str, Option<Utf8Error>> {
         self.get_dir_info_raw(what)
             .map_or(Err(None), |s| s.to_str().map_err(Some))
@@ -321,7 +319,9 @@ impl Gpgme {
     /// [`gpgme_set_engine_info`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Configuration.html#index-gpgme_005fset_005fengine_005finfo)
     #[inline]
     pub fn set_engine_info(
-        &self, proto: Protocol, path: Option<impl CStrArgument>,
+        &self,
+        proto: Protocol,
+        path: Option<impl CStrArgument>,
         home_dir: Option<impl CStrArgument>,
     ) -> Result<()> {
         let path = path.map(CStrArgument::into_cstr);

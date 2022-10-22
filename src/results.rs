@@ -8,7 +8,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use ffi::{self, require_gpgme_ver};
+use ffi;
 use libc;
 
 use crate::{
@@ -251,13 +251,7 @@ impl ImportResult {
 
     #[inline]
     pub fn skipped_v3_keys(&self) -> u32 {
-        require_gpgme_ver! {
-            (1, 11) => {
-                unsafe { (*self.as_raw()).skipped_v3_keys as u32 }
-            } else {
-                0
-            }
-        }
+        unsafe { (*self.as_raw()).skipped_v3_keys as u32 }
     }
 
     #[inline]
@@ -379,33 +373,17 @@ impl DecryptionResult {
 
     #[inline]
     pub fn is_de_vs(&self) -> bool {
-        require_gpgme_ver! {
-            (1, 10) => {
-                unsafe { (*self.as_raw()).is_de_vs() }
-            } else {
-                false
-            }
-        }
+        unsafe { (*self.as_raw()).is_de_vs() }
     }
 
     #[inline]
     pub fn is_mime(&self) -> bool {
-        require_gpgme_ver! {
-            (1, 11) => {
-                unsafe { (*self.as_raw()).is_mime() }
-            } else {
-                false
-            }
-        }
+        unsafe { (*self.as_raw()).is_mime() }
     }
 
-    require_gpgme_ver! {
-        (1, 12) => {
-            #[inline]
-            pub fn is_legacy_cipher_no_mdc(&self) -> bool {
-                unsafe { (*self.as_raw()).legacy_cipher_nomdc() }
-            }
-        }
+    #[inline]
+    pub fn is_legacy_cipher_no_mdc(&self) -> bool {
+        unsafe { (*self.as_raw()).legacy_cipher_nomdc() }
     }
 
     #[inline]
@@ -432,14 +410,11 @@ impl DecryptionResult {
 
     #[inline]
     pub fn symmetric_key_algorithm_raw(&self) -> Option<&CStr> {
-        require_gpgme_ver! {
-            (1, 11) => {
-                unsafe {
-                    (*self.as_raw()).symkey_algo.as_ref().map(|s| CStr::from_ptr(s))
-                }
-            } else {
-                None
-            }
+        unsafe {
+            (*self.as_raw())
+                .symkey_algo
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
         }
     }
 
@@ -600,13 +575,7 @@ impl_result! {
 impl VerificationResult {
     #[inline]
     pub fn is_mime(&self) -> bool {
-        require_gpgme_ver! {
-            (1, 11) => {
-                unsafe { (*self.as_raw()).is_mime() }
-            } else {
-                false
-            }
-        }
+        unsafe { (*self.as_raw()).is_mime() }
     }
 
     #[inline]
@@ -720,13 +689,7 @@ impl<'result> Signature<'result> {
 
     #[inline]
     pub fn is_de_vs(&self) -> bool {
-        require_gpgme_ver! {
-            (1, 10) => {
-                unsafe { (*self.as_raw()).is_de_vs() }
-            } else {
-                false
-            }
-        }
+        unsafe { (*self.as_raw()).is_de_vs() }
     }
 
     #[inline]
@@ -802,17 +765,11 @@ impl<'result> Signature<'result> {
 
     #[inline]
     pub fn key(&self) -> Option<crate::Key> {
-        require_gpgme_ver! {
-            (1, 7) => {
-                unsafe {
-                    (*self.as_raw()).key.as_mut().map(|k| {
-                        ffi::gpgme_key_ref(k);
-                        crate::Key::from_raw(k)
-                    })
-                }
-            } else {
-                None
-            }
+        unsafe {
+            (*self.as_raw()).key.as_mut().map(|k| {
+                ffi::gpgme_key_ref(k);
+                crate::Key::from_raw(k)
+            })
         }
     }
 }

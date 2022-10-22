@@ -18,7 +18,6 @@ test_case! {
         assert!(!data.is_empty());
     }
 
-    #[requires((1, 7))]
     test_export_secret(test) {
         let mut ctx = test.create_context();
         ctx.set_offline(true);

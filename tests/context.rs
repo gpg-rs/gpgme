@@ -1,10 +1,9 @@
-use gpgme::{require_gpgme_ver, Context, Error, PinentryMode};
+use gpgme::{Context, Error, PinentryMode};
 
 #[macro_use]
 mod common;
 
 test_case! {
-    #[requires((1, 4))]
     test_pinentry_mode(test) {
         let mode = PinentryMode::Loopback;
         let mut ctx = test.create_context();

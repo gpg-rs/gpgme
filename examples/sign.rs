@@ -13,14 +13,9 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 struct Cli {
     #[structopt(long)]
-    /// Use the OpenPGP protocol
-    openpgp: bool,
-    #[structopt(long, conflicts_with = "openpgp")]
     /// Use the CMS protocol
     cms: bool,
     #[structopt(long)]
-    /// Create a normal signature (default)
-    normal: bool,
     #[structopt(long, conflicts_with = "normal")]
     /// Create a detached signature
     detach: bool,

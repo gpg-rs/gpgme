@@ -11,6 +11,7 @@ use std::{
 };
 
 use gpgme::{self, Context, PassphraseRequest, PinentryMode};
+use tempfile::TempDir;
 
 macro_rules! count {
     () => {0usize};
@@ -27,11 +28,8 @@ macro_rules! test_case {
     };
     (@impl #[requires($version:tt)] $name:ident($tester:ident) $body:block) => {
         test_case!(@impl $name($tester) {
-            use gpgme::require_gpgme_ver;
-            require_gpgme_ver! {
-                $version => {
-                    $body
-                }
+            #[cfg(feature = $version)] {
+                $body
             }
         });
     };
@@ -96,12 +94,12 @@ fn setup_agent(dir: &Path) {
 
 pub struct TestCase {
     count: AtomicUsize,
-    homedir: RwLock<Option<tempfile::TempDir>>,
+    homedir: RwLock<Option<TempDir>>,
 }
 
 impl TestCase {
     pub fn new(count: usize) -> TestCase {
-        let dir = tempfile::TempDir::new().unwrap();
+        let dir = TempDir::new().unwrap();
         setup_agent(dir.path());
         import_key(include_bytes!("./data/pubdemo.asc"));
         import_key(include_bytes!("./data/secdemo.asc"));

@@ -18,7 +18,9 @@ bitflags! {
         const WITH_TOFU = ffi::GPGME_KEYLIST_MODE_WITH_TOFU;
         const EPHEMERAL = ffi::GPGME_KEYLIST_MODE_EPHEMERAL;
         const VALIDATE = ffi::GPGME_KEYLIST_MODE_VALIDATE;
+        const FORCE_EXTERN = ffi::GPGME_KEYLIST_MODE_FORCE_EXTERN;
         const LOCATE = ffi::GPGME_KEYLIST_MODE_LOCATE;
+        const LOCATE_EXTERNAL = ffi::GPGME_KEYLIST_MODE_LOCATE_EXTERNAL;
     }
 }
 
@@ -82,6 +84,7 @@ bitflags! {
         const RAW = ffi::GPGME_EXPORT_MODE_RAW;
         const PKCS12 = ffi::GPGME_EXPORT_MODE_PKCS12;
         const SSH = ffi::GPGME_EXPORT_MODE_SSH;
+        const SECRET_SUBKEY = ffi::GPGME_EXPORT_MODE_SECRET_SUBKEY;
     }
 }
 

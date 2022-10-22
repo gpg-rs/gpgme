@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate gpgme;
 use structopt;
 
@@ -13,16 +12,11 @@ struct Cli {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    require_gpgme_ver! {
-        (1, 8) => {
-            let args = Cli::from_args();
-            let mut ctx = Context::from_protocol(Protocol::GpgConf)?;
-            let result = ctx.query_swdb(args.name, args.version)
-                .map_err(|e| format!("query failed: {:?}", e))?;
-            println!("{:#?}", result);
-        } else {
-            Err("This example requires GPGme version 1.8")?;
-        }
-    }
+    let args = Cli::from_args();
+    let mut ctx = Context::from_protocol(Protocol::GpgConf)?;
+    let result = ctx
+        .query_swdb(args.name, args.version)
+        .map_err(|e| format!("query failed: {:?}", e))?;
+    println!("{:#?}", result);
     Ok(())
 }

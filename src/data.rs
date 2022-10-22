@@ -220,9 +220,12 @@ impl<'data> Data<'data> {
     }
 
     unsafe fn from_callbacks<S>(
-        cbs: ffi::gpgme_data_cbs, src: S,
+        cbs: ffi::gpgme_data_cbs,
+        src: S,
     ) -> result::Result<Self, WrappedError<S>>
-    where S: Send + 'data {
+    where
+        S: Send + 'data,
+    {
         crate::init();
         let src = Box::into_raw(Box::new(CallbackWrapper { inner: src, cbs }));
         let cbs = &mut (*src).cbs as *mut _;
@@ -237,7 +240,9 @@ impl<'data> Data<'data> {
 
     #[inline]
     pub fn from_reader<R>(r: R) -> result::Result<Self, WrappedError<R>>
-    where R: Read + Send + 'data {
+    where
+        R: Read + Send + 'data,
+    {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -249,7 +254,9 @@ impl<'data> Data<'data> {
 
     #[inline]
     pub fn from_seekable_reader<R>(r: R) -> result::Result<Self, WrappedError<R>>
-    where R: Read + Seek + Send + 'data {
+    where
+        R: Read + Seek + Send + 'data,
+    {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<R>),
             write: None,
@@ -261,7 +268,9 @@ impl<'data> Data<'data> {
 
     #[inline]
     pub fn from_writer<W>(w: W) -> result::Result<Self, WrappedError<W>>
-    where W: Write + Send + 'data {
+    where
+        W: Write + Send + 'data,
+    {
         let cbs = ffi::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -273,7 +282,9 @@ impl<'data> Data<'data> {
 
     #[inline]
     pub fn from_seekable_writer<W>(w: W) -> result::Result<Self, WrappedError<W>>
-    where W: Write + Seek + Send + 'data {
+    where
+        W: Write + Seek + Send + 'data,
+    {
         let cbs = ffi::gpgme_data_cbs {
             read: None,
             write: Some(write_callback::<W>),
@@ -285,7 +296,9 @@ impl<'data> Data<'data> {
 
     #[inline]
     pub fn from_stream<S: Send>(s: S) -> result::Result<Self, WrappedError<S>>
-    where S: Read + Write + Send + 'data {
+    where
+        S: Read + Write + Send + 'data,
+    {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -297,7 +310,9 @@ impl<'data> Data<'data> {
 
     #[inline]
     pub fn from_seekable_stream<S>(s: S) -> result::Result<Self, WrappedError<S>>
-    where S: Read + Write + Seek + Send + 'data {
+    where
+        S: Read + Write + Seek + Send + 'data,
+    {
         let cbs = ffi::gpgme_data_cbs {
             read: Some(read_callback::<S>),
             write: Some(write_callback::<S>),
@@ -463,7 +478,9 @@ struct CallbackWrapper<S> {
 }
 
 extern "C" fn read_callback<S: Read>(
-    handle: *mut libc::c_void, buffer: *mut libc::c_void, size: libc::size_t,
+    handle: *mut libc::c_void,
+    buffer: *mut libc::c_void,
+    size: libc::size_t,
 ) -> libc::ssize_t {
     let handle = handle as *mut CallbackWrapper<S>;
     unsafe {
@@ -480,7 +497,9 @@ extern "C" fn read_callback<S: Read>(
 }
 
 extern "C" fn write_callback<S: Write>(
-    handle: *mut libc::c_void, buffer: *const libc::c_void, size: libc::size_t,
+    handle: *mut libc::c_void,
+    buffer: *const libc::c_void,
+    size: libc::size_t,
 ) -> libc::ssize_t {
     let handle = handle as *mut CallbackWrapper<S>;
     unsafe {
@@ -497,7 +516,9 @@ extern "C" fn write_callback<S: Write>(
 }
 
 extern "C" fn seek_callback<S: Seek>(
-    handle: *mut libc::c_void, offset: libc::off_t, whence: libc::c_int,
+    handle: *mut libc::c_void,
+    offset: libc::off_t,
+    whence: libc::c_int,
 ) -> libc::off_t {
     let handle = handle as *mut CallbackWrapper<S>;
     let pos = match whence {

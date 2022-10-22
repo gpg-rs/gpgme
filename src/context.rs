@@ -11,7 +11,7 @@ use std::{
 };
 
 use conv::{UnwrapOrSaturate, ValueInto};
-use ffi::{self, require_gpgme_ver};
+use ffi;
 use libc;
 
 #[allow(deprecated)]
@@ -146,22 +146,16 @@ impl Context {
     /// [`gpgme_set_ctx_flag`](https://www.gnupg.org/documentation/manuals/gpgme/Context-Flags.html#index-gpgme_005fset_005fctx_005fflag)
     #[inline]
     pub fn set_flag(&mut self, name: impl CStrArgument, value: impl CStrArgument) -> Result<()> {
-        require_gpgme_ver! {
-            (1, 7) => {
-                let name = name.into_cstr();
-                let value = value.into_cstr();
-                unsafe {
-                    return_err!(ffi::gpgme_set_ctx_flag(
-                            self.as_raw(),
-                            name.as_ref().as_ptr(),
-                            value.as_ref().as_ptr(),
-                            ));
-                }
-                Ok(())
-            } else {
-                Err(Error::NOT_SUPPORTED)
-            }
+        let name = name.into_cstr();
+        let value = value.into_cstr();
+        unsafe {
+            return_err!(ffi::gpgme_set_ctx_flag(
+                self.as_raw(),
+                name.as_ref().as_ptr(),
+                value.as_ref().as_ptr(),
+            ));
         }
+        Ok(())
     }
 
     /// Upstream documentation:
@@ -211,7 +205,9 @@ impl Context {
     /// [`gpgme_ctx_set_engine_info`](https://www.gnupg.org/documentation/manuals/gpgme/Crypto-Engine.html#index-gpgme_005fctx_005fset_005fengine_005finfo)
     #[inline]
     pub fn set_engine_info(
-        &mut self, path: Option<impl CStrArgument>, home_dir: Option<impl CStrArgument>,
+        &mut self,
+        path: Option<impl CStrArgument>,
+        home_dir: Option<impl CStrArgument>,
     ) -> Result<()> {
         let path = path.map(CStrArgument::into_cstr);
         let home_dir = home_dir.map(CStrArgument::into_cstr);
@@ -267,7 +263,9 @@ impl Context {
     #[inline]
     #[allow(deprecated)]
     pub fn set_passphrase_provider<'a, P>(self, provider: P) -> ContextWithCallbacks<'a>
-    where P: PassphraseProvider + 'a {
+    where
+        P: PassphraseProvider + 'a,
+    {
         let mut wrapper = ContextWithCallbacks::from(self);
         wrapper.set_passphrase_provider(provider);
         wrapper
@@ -297,9 +295,13 @@ impl Context {
     /// ```
     #[allow(deprecated)]
     pub fn with_passphrase_provider<R, P>(
-        &mut self, provider: P, f: impl FnOnce(&mut Context) -> R,
+        &mut self,
+        provider: P,
+        f: impl FnOnce(&mut Context) -> R,
     ) -> R
-    where P: PassphraseProvider {
+    where
+        P: PassphraseProvider,
+    {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_passphrase_cb(self.as_raw(), &mut old.0, &mut old.1);
@@ -330,7 +332,9 @@ impl Context {
     /// [`gpgme_set_progress_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fset_005fprogress_005fcb)
     #[inline]
     pub fn set_progress_reporter<'a, P>(self, reporter: P) -> ContextWithCallbacks<'a>
-    where P: ProgressReporter + 'a {
+    where
+        P: ProgressReporter + 'a,
+    {
         let mut wrapper = ContextWithCallbacks::from(self);
         wrapper.set_progress_reporter(reporter);
         wrapper
@@ -339,9 +343,13 @@ impl Context {
     /// Upstream documentation:
     /// [`gpgme_set_progress_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fset_005fprogress_005fcb)
     pub fn with_progress_reporter<R, H>(
-        &mut self, handler: H, f: impl FnOnce(&mut Context) -> R,
+        &mut self,
+        handler: H,
+        f: impl FnOnce(&mut Context) -> R,
     ) -> R
-    where H: ProgressReporter {
+    where
+        H: ProgressReporter,
+    {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_progress_cb(self.as_raw(), &mut old.0, &mut old.1);
@@ -360,17 +368,6 @@ impl Context {
     }
 
     /// Upstream documentation:
-    /// [`gpgme_set_progress_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fset_005fprogress_005fcb)
-    #[allow(deprecated)]
-    #[deprecated(since = "0.9.2", note = "use `with_progress_reporter` instead")]
-    pub fn with_progress_handler<R, H>(
-        &mut self, handler: H, f: impl FnOnce(&mut Context) -> R,
-    ) -> R
-    where H: crate::ProgressHandler {
-        self.with_progress_reporter(handler, f)
-    }
-
-    /// Upstream documentation:
     /// [`gpgme_set_status_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Status-Message-Callback.html#index-gpgme_005fset_005fstatus_005fcb)
     pub fn clear_status_handler(&mut self) {
         unsafe {
@@ -382,7 +379,9 @@ impl Context {
     /// [`gpgme_set_status_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Status-Message-Callback.html#index-gpgme_005fset_005fstatus_005fcb)
     #[inline]
     pub fn set_status_handler<'a, H>(self, handler: H) -> ContextWithCallbacks<'a>
-    where H: StatusHandler + 'a {
+    where
+        H: StatusHandler + 'a,
+    {
         let mut wrapper = ContextWithCallbacks::from(self);
         wrapper.set_status_handler(handler);
         wrapper
@@ -390,10 +389,10 @@ impl Context {
 
     /// Upstream documentation:
     /// [`gpgme_set_status_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Status-Message-Callback.html#index-gpgme_005fset_005fstatus_005fcb)
-    pub fn with_status_handler<R, H>(
-        &mut self, handler: H, f: impl FnOnce(&mut Context) -> R,
-    ) -> R
-    where H: StatusHandler {
+    pub fn with_status_handler<R, H>(&mut self, handler: H, f: impl FnOnce(&mut Context) -> R) -> R
+    where
+        H: StatusHandler,
+    {
         unsafe {
             let mut old = (None, ptr::null_mut());
             ffi::gpgme_get_status_cb(self.as_raw(), &mut old.0, &mut old.1);
@@ -518,22 +517,6 @@ impl Context {
             .unwrap_or(Err(Error::NOT_FOUND))
     }
 
-    /// Upstream documentation:
-    /// [`gpgme_get_key`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fget_005fkey)
-    #[deprecated(since = "0.8.0", note = "use `get_key` instead")]
-    #[inline]
-    pub fn find_key(&mut self, fpr: impl CStrArgument) -> Result<Key> {
-        self.get_key(fpr)
-    }
-
-    /// Upstream documentation:
-    /// [`gpgme_get_key`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fget_005fkey)
-    #[deprecated(since = "0.8.0", note = "use `get_secret_key` instead")]
-    #[inline]
-    pub fn find_secret_key(&mut self, fpr: impl CStrArgument) -> Result<Key> {
-        self.get_secret_key(fpr)
-    }
-
     /// Returns an iterator over a list of all public keys matching one or more of the
     /// specified patterns.
     ///
@@ -543,7 +526,8 @@ impl Context {
     pub fn find_keys<I>(&mut self, patterns: I) -> Result<Keys<'_>>
     where
         I: IntoIterator,
-        I::Item: CStrArgument, {
+        I::Item: CStrArgument,
+    {
         self.search_keys(patterns, false)
     }
 
@@ -556,14 +540,16 @@ impl Context {
     pub fn find_secret_keys<I>(&mut self, patterns: I) -> Result<Keys<'_>>
     where
         I: IntoIterator,
-        I::Item: CStrArgument, {
+        I::Item: CStrArgument,
+    {
         self.search_keys(patterns, true)
     }
 
     fn search_keys<I>(&mut self, patterns: I, secret_only: bool) -> Result<Keys<'_>>
     where
         I: IntoIterator,
-        I::Item: CStrArgument, {
+        I::Item: CStrArgument,
+    {
         let patterns: SmallVec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
         let mut patterns: SmallVec<_> = patterns.iter().map(|s| s.as_ref().as_ptr()).collect();
         let ptr = if !patterns.is_empty() {
@@ -607,7 +593,8 @@ impl Context {
     pub fn read_keys<'s, 'd, D>(&'s mut self, src: D) -> Result<Keys<'d, D::Output>>
     where
         D: IntoData<'d>,
-        's: 'd, {
+        's: 'd,
+    {
         Keys::from_data(self, src)
     }
 
@@ -615,11 +602,15 @@ impl Context {
     /// [`gpgme_op_genkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fgenkey)
     #[inline]
     pub fn generate_key<'d1, 'd2, D1, D2>(
-        &mut self, params: impl CStrArgument, public: Option<D1>, secret: Option<D2>,
+        &mut self,
+        params: impl CStrArgument,
+        public: Option<D1>,
+        secret: Option<D2>,
     ) -> Result<results::KeyGenerationResult>
     where
         D1: IntoData<'d1>,
-        D2: IntoData<'d2>, {
+        D2: IntoData<'d2>,
+    {
         let params = params.into_cstr();
         let mut public = public.map_or(Ok(None), |d| d.into_data().map(Some))?;
         let mut secret = secret.map_or(Ok(None), |d| d.into_data().map(Some))?;
@@ -655,7 +646,10 @@ impl Context {
     /// ```
     #[inline]
     pub fn create_key(
-        &mut self, userid: impl CStrArgument, algo: impl CStrArgument, expires: Duration,
+        &mut self,
+        userid: impl CStrArgument,
+        algo: impl CStrArgument,
+        expires: Duration,
     ) -> Result<results::KeyGenerationResult> {
         self.create_key_with_flags(userid, algo, expires, crate::CreateKeyFlags::empty())
     }
@@ -664,37 +658,37 @@ impl Context {
     /// [`gpgme_op_createkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fcreatekey)
     #[inline]
     pub fn create_key_with_flags(
-        &mut self, userid: impl CStrArgument, algo: impl CStrArgument, expires: Duration,
+        &mut self,
+        userid: impl CStrArgument,
+        algo: impl CStrArgument,
+        expires: Duration,
         flags: crate::CreateKeyFlags,
     ) -> Result<results::KeyGenerationResult> {
-        require_gpgme_ver! {
-            (1, 7) => {
-                let userid = userid.into_cstr();
-                let algo = algo.into_cstr();
-                let expires = expires.as_secs().value_into().unwrap_or_saturate();
-                unsafe {
-                    return_err!(ffi::gpgme_op_createkey(
-                            self.as_raw(),
-                            userid.as_ref().as_ptr(),
-                            algo.as_ref().as_ptr(),
-                            0,
-                            expires,
-                            ptr::null_mut(),
-                            flags.bits(),
-                    ));
-                }
-                Ok(self.get_result().unwrap())
-            } else {
-                Err(Error::NOT_SUPPORTED)
-            }
+        let userid = userid.into_cstr();
+        let algo = algo.into_cstr();
+        let expires = expires.as_secs().value_into().unwrap_or_saturate();
+        unsafe {
+            return_err!(ffi::gpgme_op_createkey(
+                self.as_raw(),
+                userid.as_ref().as_ptr(),
+                algo.as_ref().as_ptr(),
+                0,
+                expires,
+                ptr::null_mut(),
+                flags.bits(),
+            ));
         }
+        Ok(self.get_result().unwrap())
     }
 
     /// Upstream documentation:
     /// [`gpgme_op_createsubkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fcreatesubkey)
     #[inline]
     pub fn create_subkey(
-        &mut self, key: &Key, algo: impl CStrArgument, expires: Duration,
+        &mut self,
+        key: &Key,
+        algo: impl CStrArgument,
+        expires: Duration,
     ) -> Result<results::KeyGenerationResult> {
         self.create_subkey_with_flags(key, algo, expires, crate::CreateKeyFlags::empty())
     }
@@ -703,149 +697,122 @@ impl Context {
     /// [`gpgme_op_createsubkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fcreatesubkey)
     #[inline]
     pub fn create_subkey_with_flags(
-        &mut self, key: &Key, algo: impl CStrArgument, expires: Duration,
+        &mut self,
+        key: &Key,
+        algo: impl CStrArgument,
+        expires: Duration,
         flags: crate::CreateKeyFlags,
     ) -> Result<results::KeyGenerationResult> {
-        require_gpgme_ver! {
-            (1, 7) => {
-                let algo = algo.into_cstr();
-                let expires = expires.as_secs().value_into().unwrap_or_saturate();
-                unsafe {
-                    return_err!(ffi::gpgme_op_createsubkey(
-                            self.as_raw(),
-                            key.as_raw(),
-                            algo.as_ref().as_ptr(),
-                            0,
-                            expires,
-                            flags.bits(),
-                    ));
-                }
-                Ok(self.get_result().unwrap())
-            } else {
-                Err(Error::NOT_SUPPORTED)
-            }
+        let algo = algo.into_cstr();
+        let expires = expires.as_secs().value_into().unwrap_or_saturate();
+        unsafe {
+            return_err!(ffi::gpgme_op_createsubkey(
+                self.as_raw(),
+                key.as_raw(),
+                algo.as_ref().as_ptr(),
+                0,
+                expires,
+                flags.bits(),
+            ));
         }
+        Ok(self.get_result().unwrap())
     }
 
     /// Upstream documentation:
     /// [`gpgme_op_setexpire`](https://www.gnupg.org/documentation/manuals/gpgme/Manipulating-Keys.html#index-gpgme_005fop_005fsetexpire)
+    #[cfg(feature = "v1_15")]
     pub fn set_expire_all(&mut self, key: &Key, expires: Duration) -> Result<()> {
-        require_gpgme_ver! {
-            (1, 15) => {
-                let expires = expires.as_secs().value_into().unwrap_or_saturate();
-                unsafe {
-                    return_err!(ffi::gpgme_op_setexpire(
-                            self.as_raw(),
-                            key.as_raw(),
-                            expires,
-                            b"*\0".into_cstr().as_ref().as_ptr(),
-                            0,
-                    ));
-                }
-                Ok(())
-            } else {
-                Err(Error::NOT_SUPPORTED)
-            }
+        let expires = expires.as_secs().value_into().unwrap_or_saturate();
+        unsafe {
+            return_err!(ffi::gpgme_op_setexpire(
+                self.as_raw(),
+                key.as_raw(),
+                expires,
+                b"*\0".into_cstr().as_ref().as_ptr(),
+                0,
+            ));
         }
+        Ok(())
     }
 
     /// Upstream documentation:
     /// [`gpgme_op_setexpire`](https://www.gnupg.org/documentation/manuals/gpgme/Manipulating-Keys.html#index-gpgme_005fop_005fsetexpire)
+    #[cfg(feature = "v1_15")]
     pub fn set_expire<I>(&mut self, key: &Key, expires: Duration, subkeys: I) -> Result<()>
     where
         I: IntoIterator,
-        I::Item: CStrArgument, {
-        require_gpgme_ver! {
-            (1, 15) => {
-                let expires = expires.as_secs().value_into().unwrap_or_saturate();
-                self::with_joined_cstr(subkeys, |subkeys, _| {
-                    unsafe {
-                        return_err!(ffi::gpgme_op_setexpire(
-                                self.as_raw(),
-                                key.as_raw(),
-                                expires,
-                                subkeys.map_or(ptr::null(), |subkeys| subkeys.as_ptr()),
-                                0,
-                        ));
-                    }
-                    Ok(())
-                })
-            } else {
-                Err(Error::NOT_SUPPORTED)
+        I::Item: CStrArgument,
+    {
+        let expires = expires.as_secs().value_into().unwrap_or_saturate();
+        self::with_joined_cstr(subkeys, |subkeys, _| {
+            unsafe {
+                return_err!(ffi::gpgme_op_setexpire(
+                    self.as_raw(),
+                    key.as_raw(),
+                    expires,
+                    subkeys.map_or(ptr::null(), |subkeys| subkeys.as_ptr()),
+                    0,
+                ));
             }
-        }
+            Ok(())
+        })
     }
 
     /// Upstream documentation:
     /// [`gpgme_op_adduid`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fadduid)
     #[inline]
     pub fn add_uid(&mut self, key: &Key, userid: impl CStrArgument) -> Result<()> {
-        require_gpgme_ver! {
-            (1, 7) => {
-                let userid = userid.into_cstr();
-                unsafe {
-                    return_err!(ffi::gpgme_op_adduid(
-                            self.as_raw(),
-                            key.as_raw(),
-                            userid.as_ref().as_ptr(),
-                            0,
-                    ));
-                }
-                Ok(())
-            } else {
-                Err(Error::NOT_SUPPORTED)
-            }
+        let userid = userid.into_cstr();
+        unsafe {
+            return_err!(ffi::gpgme_op_adduid(
+                self.as_raw(),
+                key.as_raw(),
+                userid.as_ref().as_ptr(),
+                0,
+            ));
         }
+        Ok(())
     }
 
     /// Upstream documentation:
     /// [`gpgme_op_revuid`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005frevuid)
     #[inline]
     pub fn revoke_uid(&mut self, key: &Key, userid: impl CStrArgument) -> Result<()> {
-        require_gpgme_ver! {
-            (1, 7) => {
-                let userid = userid.into_cstr();
-                unsafe {
-                    return_err!(ffi::gpgme_op_revuid(
-                            self.as_raw(),
-                            key.as_raw(),
-                            userid.as_ref().as_ptr(),
-                            0,
-                    ));
-                }
-                Ok(())
-            } else {
-                Err(Error::NOT_SUPPORTED)
-            }
+        let userid = userid.into_cstr();
+        unsafe {
+            return_err!(ffi::gpgme_op_revuid(
+                self.as_raw(),
+                key.as_raw(),
+                userid.as_ref().as_ptr(),
+                0,
+            ));
         }
+        Ok(())
     }
 
     /// Upstream documentation:
     /// [`gpgme_op_set_uid_flag`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fset_005fui_005fflag)
     #[inline]
     pub fn set_uid_flag(
-        &mut self, key: &Key, userid: impl CStrArgument, name: impl CStrArgument,
+        &mut self,
+        key: &Key,
+        userid: impl CStrArgument,
+        name: impl CStrArgument,
         value: Option<impl CStrArgument>,
     ) -> Result<()> {
-        require_gpgme_ver! {
-            (1, 8) => {
-                let userid = userid.into_cstr();
-                let name = name.into_cstr();
-                let value = value.map(CStrArgument::into_cstr);
-                unsafe {
-                    return_err!(ffi::gpgme_op_set_uid_flag(
-                            self.as_raw(),
-                            key.as_raw(),
-                            userid.as_ref().as_ptr(),
-                            name.as_ref().as_ptr(),
-                            value.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr()),
-                    ));
-                }
-                Ok(())
-            } else {
-                Err(Error::NOT_SUPPORTED)
-            }
+        let userid = userid.into_cstr();
+        let name = name.into_cstr();
+        let value = value.map(CStrArgument::into_cstr);
+        unsafe {
+            return_err!(ffi::gpgme_op_set_uid_flag(
+                self.as_raw(),
+                key.as_raw(),
+                userid.as_ref().as_ptr(),
+                name.as_ref().as_ptr(),
+                value.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr()),
+            ));
         }
+        Ok(())
     }
 
     /// Signs the given key with the default signing key, or the keys specified via
@@ -859,7 +826,8 @@ impl Context {
     pub fn sign_key<I>(&mut self, key: &Key, userids: I, expires: Duration) -> Result<()>
     where
         I: IntoIterator,
-        I::Item: CStrArgument, {
+        I::Item: CStrArgument,
+    {
         self.sign_key_with_flags(key, userids, expires, crate::KeySigningFlags::empty())
     }
 
@@ -871,83 +839,74 @@ impl Context {
     ///
     /// [`add_signer`]: struct.Context.html#method.add_signer
     pub fn sign_key_with_flags<I>(
-        &mut self, key: &Key, userids: I, expires: Duration, mut flags: crate::KeySigningFlags,
+        &mut self,
+        key: &Key,
+        userids: I,
+        expires: Duration,
+        mut flags: crate::KeySigningFlags,
     ) -> Result<()>
     where
         I: IntoIterator,
-        I::Item: CStrArgument, {
-        require_gpgme_ver! {
-            (1, 7) => {
-                let expires = expires.as_secs().value_into().unwrap_or_saturate();
-                self::with_joined_cstr(userids, |userids, count| {
-                    if count > 1 {
-                        flags |= crate::KeySigningFlags::LFSEP;
-                    }
-                    unsafe {
-                        return_err!(ffi::gpgme_op_keysign(
-                                self.as_raw(),
-                                key.as_raw(),
-                                userids.map_or(ptr::null(), |uid| uid.as_ptr()),
-                                expires,
-                                flags.bits(),
-                        ));
-                    }
-                    Ok(())
-                })
-            } else {
-                Err(Error::NOT_SUPPORTED)
+        I::Item: CStrArgument,
+    {
+        let expires = expires.as_secs().value_into().unwrap_or_saturate();
+        self::with_joined_cstr(userids, |userids, count| {
+            if count > 1 {
+                flags |= crate::KeySigningFlags::LFSEP;
             }
-        }
+            unsafe {
+                return_err!(ffi::gpgme_op_keysign(
+                    self.as_raw(),
+                    key.as_raw(),
+                    userids.map_or(ptr::null(), |uid| uid.as_ptr()),
+                    expires,
+                    flags.bits(),
+                ));
+            }
+            Ok(())
+        })
     }
 
     /// Upstream documentation:
     /// [`gpgme_op_revsig`](https://www.gnupg.org/documentation/manuals/gpgme/Signing-Keys.html#index-gpgme_005fop_005frevsig)
     #[inline]
+    #[cfg(feature = "v1_15")]
     pub fn revoke_signature<I>(&mut self, key: &Key, signing_key: &Key, userids: I) -> Result<()>
     where
         I: IntoIterator,
-        I::Item: CStrArgument, {
-        require_gpgme_ver! {
-            (1, 15) => {
-                self::with_joined_cstr(userids, |userids, count| {
-                    let flags = if count > 1 {
-                        ffi::GPGME_REVSIG_LFSEP
-                    } else  { 0 };
-                    unsafe {
-                        return_err!(ffi::gpgme_op_revsig(
-                                self.as_raw(),
-                                key.as_raw(),
-                                signing_key.as_raw(),
-                                userids.map_or(ptr::null(), |uid| uid.as_ptr()),
-                                flags,
-                        ));
-                    }
-                    Ok(())
-                })
+        I::Item: CStrArgument,
+    {
+        self::with_joined_cstr(userids, |userids, count| {
+            let flags = if count > 1 {
+                ffi::GPGME_REVSIG_LFSEP
             } else {
-                Err(Error::NOT_SUPPORTED)
+                0
+            };
+            unsafe {
+                return_err!(ffi::gpgme_op_revsig(
+                    self.as_raw(),
+                    key.as_raw(),
+                    signing_key.as_raw(),
+                    userids.map_or(ptr::null(), |uid| uid.as_ptr()),
+                    flags,
+                ));
             }
-        }
+            Ok(())
+        })
     }
 
     /// Upstream documentation:
     /// [`gpgme_op_tofu_policy`](https://www.gnupg.org/documentation/manuals/gpgme/Changing-TOFU-Data.html#index-gpgme_005fop_005ftofu_005fpolicy)
     #[inline]
     pub fn change_key_tofu_policy(&mut self, key: &Key, policy: crate::TofuPolicy) -> Result<()> {
-        require_gpgme_ver! {
-            (1, 7) => {
-                unsafe {
-                    return_err!(ffi::gpgme_op_tofu_policy(
-                            self.as_raw(),
-                            key.as_raw(),
-                            policy.raw(),
-                            ));
-                }
-                Ok(())
-            } else {
-                Err(Error::NOT_SUPPORTED)
-            }
+        unsafe {
+            return_err!(ffi::gpgme_op_tofu_policy(
+                self.as_raw(),
+                key.as_raw(),
+                policy.raw(),
+            ));
         }
+        Ok(())
     }
 
     /// Upstream documentation:
@@ -968,7 +927,8 @@ impl Context {
     pub fn edit_key<'a, E, D>(&mut self, key: &Key, interactor: E, data: D) -> Result<()>
     where
         E: EditInteractor,
-        D: IntoData<'a>, {
+        D: IntoData<'a>,
+    {
         let mut data = data.into_data()?;
         let mut hook = callbacks::InteractorHook {
             inner: interactor.into(),
@@ -994,7 +954,8 @@ impl Context {
     pub fn edit_card_key<'a, E, D>(&mut self, key: &Key, interactor: E, data: D) -> Result<()>
     where
         E: EditInteractor,
-        D: IntoData<'a>, {
+        D: IntoData<'a>,
+    {
         let mut data = data.into_data()?;
         let mut hook = callbacks::InteractorHook {
             inner: interactor.into(),
@@ -1017,9 +978,14 @@ impl Context {
     #[inline]
     #[deprecated(since = "0.9.2", note = "use `interact` instead")]
     pub fn edit_key_with<'a, D>(
-        &mut self, key: &Key, editor: impl edit::Editor, data: D,
+        &mut self,
+        key: &Key,
+        editor: impl edit::Editor,
+        data: D,
     ) -> Result<()>
-    where D: IntoData<'a> {
+    where
+        D: IntoData<'a>,
+    {
         #[allow(deprecated)]
         self.edit_key(key, edit::EditorWrapper::new(editor), data)
     }
@@ -1029,9 +995,14 @@ impl Context {
     #[inline]
     #[deprecated(since = "0.9.2", note = "use `interact_with_card` instead")]
     pub fn edit_card_key_with<'a, D>(
-        &mut self, key: &Key, editor: impl edit::Editor, data: D,
+        &mut self,
+        key: &Key,
+        editor: impl edit::Editor,
+        data: D,
     ) -> Result<()>
-    where D: IntoData<'a> {
+    where
+        D: IntoData<'a>,
+    {
         #[allow(deprecated)]
         self.edit_card_key(key, edit::EditorWrapper::new(editor), data)
     }
@@ -1043,7 +1014,8 @@ impl Context {
     pub fn interact<'a, I, D>(&mut self, key: &Key, interactor: I, data: D) -> Result<()>
     where
         I: Interactor,
-        D: IntoData<'a>, {
+        D: IntoData<'a>,
+    {
         let mut data = data.into_data()?;
         let mut hook = callbacks::InteractorHook {
             inner: interactor.into(),
@@ -1066,12 +1038,11 @@ impl Context {
     /// [`gpgme_op_interact`](https://www.gnupg.org/documentation/manuals/gpgme/Advanced-Key-Editing.html#index-gpgme_005fop_005finteract)
     #[inline]
     #[allow(deprecated)]
-    pub fn interact_with_card<'a, I, D>(
-        &mut self, key: &Key, interactor: I, data: D,
-    ) -> Result<()>
+    pub fn interact_with_card<'a, I, D>(&mut self, key: &Key, interactor: I, data: D) -> Result<()>
     where
         I: Interactor,
-        D: IntoData<'a>, {
+        D: IntoData<'a>,
+    {
         let mut data = data.into_data()?;
         let mut hook = callbacks::InteractorHook {
             inner: interactor.into(),
@@ -1128,7 +1099,9 @@ impl Context {
     /// [`gpgme_op_import`](https://www.gnupg.org/documentation/manuals/gpgme/Importing-Keys.html#index-gpgme_005fop_005fimport)
     #[inline]
     pub fn import<'a, D>(&mut self, src: D) -> Result<results::ImportResult>
-    where D: IntoData<'a> {
+    where
+        D: IntoData<'a>,
+    {
         let mut src = src.into_data()?;
         unsafe {
             return_err!(ffi::gpgme_op_import(
@@ -1142,7 +1115,9 @@ impl Context {
     /// Upstream documentation:
     /// [`gpgme_op_import_keys`](https://www.gnupg.org/documentation/manuals/gpgme/Importing-Keys.html#index-gpgme_005fop_005fimport_005fkeys)
     pub fn import_keys<'k, I>(&mut self, keys: I) -> Result<results::ImportResult>
-    where I: IntoIterator<Item = &'k Key> {
+    where
+        I: IntoIterator<Item = &'k Key>,
+    {
         let mut ptrs: SmallVec<_> = keys.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
             ptrs.push(ptr::null_mut());
@@ -1162,7 +1137,8 @@ impl Context {
     pub fn export_all_extern<I>(&mut self, mode: ExportMode) -> Result<()>
     where
         I: IntoIterator,
-        I::Item: CStrArgument, {
+        I::Item: CStrArgument,
+    {
         self.export_(None::<&CStr>, mode | ExportMode::EXTERN, None)
     }
 
@@ -1172,7 +1148,8 @@ impl Context {
     pub fn export_extern<I>(&mut self, patterns: I, mode: ExportMode) -> Result<()>
     where
         I: IntoIterator,
-        I::Item: CStrArgument, {
+        I::Item: CStrArgument,
+    {
         let patterns: SmallVec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
         self.export_(&patterns, mode | ExportMode::EXTERN, None)
     }
@@ -1181,7 +1158,9 @@ impl Context {
     /// [`gpgme_op_export_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Exporting-Keys.html#index-gpgme_005fop_005fexport_005fext)
     #[inline]
     pub fn export_all<'a, D>(&mut self, mode: ExportMode, dst: D) -> Result<()>
-    where D: IntoData<'a> {
+    where
+        D: IntoData<'a>,
+    {
         let mut dst = dst.into_data()?;
         self.export_(None::<&CStr>, mode, Some(dst.borrow_mut()))
     }
@@ -1193,18 +1172,23 @@ impl Context {
     where
         I: IntoIterator,
         I::Item: CStrArgument,
-        D: IntoData<'a>, {
+        D: IntoData<'a>,
+    {
         let mut dst = dst.into_data()?;
         let patterns: SmallVec<_> = patterns.into_iter().map(|s| s.into_cstr()).collect();
         self.export_(&patterns, mode, Some(dst.borrow_mut()))
     }
 
     fn export_<I>(
-        &mut self, patterns: I, mode: ExportMode, dst: Option<&mut Data<'_>>,
+        &mut self,
+        patterns: I,
+        mode: ExportMode,
+        dst: Option<&mut Data<'_>>,
     ) -> Result<()>
     where
         I: IntoIterator,
-        I::Item: AsRef<CStr>, {
+        I::Item: AsRef<CStr>,
+    {
         let dst = dst.map_or(ptr::null_mut(), |d| d.as_raw());
         let mut patterns: SmallVec<_> = patterns.into_iter().map(|s| s.as_ref().as_ptr()).collect();
         let ptr = if !patterns.is_empty() {
@@ -1228,7 +1212,9 @@ impl Context {
     /// [`gpgme_op_export_keys`](https://www.gnupg.org/documentation/manuals/gpgme/Exporting-Keys.html#index-gpgme_005fop_005fexport_005fkeys)
     #[inline]
     pub fn export_keys_extern<'k, I>(&mut self, keys: I, mode: ExportMode) -> Result<()>
-    where I: IntoIterator<Item = &'k Key> {
+    where
+        I: IntoIterator<Item = &'k Key>,
+    {
         self.export_keys_(keys, mode | ExportMode::EXTERN, None)
     }
 
@@ -1238,15 +1224,21 @@ impl Context {
     pub fn export_keys<'k, 'a, I, D>(&mut self, keys: I, mode: ExportMode, dst: D) -> Result<()>
     where
         I: IntoIterator<Item = &'k Key>,
-        D: IntoData<'a>, {
+        D: IntoData<'a>,
+    {
         let mut dst = dst.into_data()?;
         self.export_keys_(keys, mode, Some(dst.borrow_mut()))
     }
 
     fn export_keys_<'k, I>(
-        &mut self, keys: I, mode: ExportMode, dst: Option<&mut Data<'_>>,
+        &mut self,
+        keys: I,
+        mode: ExportMode,
+        dst: Option<&mut Data<'_>>,
     ) -> Result<()>
-    where I: IntoIterator<Item = &'k Key> {
+    where
+        I: IntoIterator<Item = &'k Key>,
+    {
         let dst = dst.map_or(ptr::null_mut(), |d| d.as_raw());
         let mut ptrs: SmallVec<_> = keys.into_iter().map(Key::as_raw).collect();
         let keys = if !ptrs.is_empty() {
@@ -1349,7 +1341,9 @@ impl Context {
     /// [`gpgme_sig_notation_add`](https://www.gnupg.org/documentation/manuals/gpgme/Signature-Notation-Data.html#index-gpgme_005fsig_005fnotation_005fadd)
     #[inline]
     pub fn add_signature_notation(
-        &mut self, name: impl CStrArgument, value: impl CStrArgument,
+        &mut self,
+        name: impl CStrArgument,
+        value: impl CStrArgument,
         flags: crate::SignatureNotationFlags,
     ) -> Result<()> {
         let name = name.into_cstr();
@@ -1369,7 +1363,9 @@ impl Context {
     /// [`gpgme_sig_notation_add`](https://www.gnupg.org/documentation/manuals/gpgme/Signature-Notation-Data.html#index-gpgme_005fsig_005fnotation_005fadd)
     #[inline]
     pub fn add_signature_policy_url(
-        &mut self, url: impl CStrArgument, critical: bool,
+        &mut self,
+        url: impl CStrArgument,
+        critical: bool,
     ) -> Result<()> {
         let url = url.into_cstr();
         unsafe {
@@ -1425,11 +1421,14 @@ impl Context {
     /// [`gpgme_op_sign`](https://www.gnupg.org/documentation/manuals/gpgme/Creating-a-Signature.html#index-gpgme_005fop_005fsign)
     #[inline]
     pub fn sign_clear<'p, 't, P, T>(
-        &mut self, plaintext: P, signedtext: T,
+        &mut self,
+        plaintext: P,
+        signedtext: T,
     ) -> Result<results::SigningResult>
     where
         P: IntoData<'p>,
-        T: IntoData<'t>, {
+        T: IntoData<'t>,
+    {
         self.sign(SignMode::Clear, plaintext, signedtext)
     }
 
@@ -1439,11 +1438,14 @@ impl Context {
     /// [`gpgme_op_sign`](https://www.gnupg.org/documentation/manuals/gpgme/Creating-a-Signature.html#index-gpgme_005fop_005fsign)
     #[inline]
     pub fn sign_detached<'p, 's, P, S>(
-        &mut self, plaintext: P, signature: S,
+        &mut self,
+        plaintext: P,
+        signature: S,
     ) -> Result<results::SigningResult>
     where
         P: IntoData<'p>,
-        S: IntoData<'s>, {
+        S: IntoData<'s>,
+    {
         self.sign(SignMode::Detached, plaintext, signature)
     }
 
@@ -1453,11 +1455,14 @@ impl Context {
     /// [`gpgme_op_sign`](https://www.gnupg.org/documentation/manuals/gpgme/Creating-a-Signature.html#index-gpgme_005fop_005fsign)
     #[inline]
     pub fn sign_normal<'p, 't, P, T>(
-        &mut self, plaintext: P, signedtext: T,
+        &mut self,
+        plaintext: P,
+        signedtext: T,
     ) -> Result<results::SigningResult>
     where
         P: IntoData<'p>,
-        T: IntoData<'t>, {
+        T: IntoData<'t>,
+    {
         self.sign(SignMode::Normal, plaintext, signedtext)
     }
 
@@ -1475,11 +1480,15 @@ impl Context {
     /// [`gpgme_op_sign`](https://www.gnupg.org/documentation/manuals/gpgme/Creating-a-Signature.html#index-gpgme_005fop_005fsign)
     #[inline]
     pub fn sign<'p, 's, P, S>(
-        &mut self, mode: crate::SignMode, plaintext: P, signature: S,
+        &mut self,
+        mode: crate::SignMode,
+        plaintext: P,
+        signature: S,
     ) -> Result<results::SigningResult>
     where
         P: IntoData<'p>,
-        S: IntoData<'s>, {
+        S: IntoData<'s>,
+    {
         let mut signature = signature.into_data()?;
         let mut plain = plaintext.into_data()?;
         unsafe {
@@ -1497,11 +1506,14 @@ impl Context {
     /// [`gpgme_op_verify`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fop_005fverify)
     #[inline]
     pub fn verify_detached<'s, 't, S, T>(
-        &mut self, signature: S, signedtext: T,
+        &mut self,
+        signature: S,
+        signedtext: T,
     ) -> Result<results::VerificationResult>
     where
         S: IntoData<'s>,
-        T: IntoData<'t>, {
+        T: IntoData<'t>,
+    {
         let mut signature = signature.into_data()?;
         let mut signed = signedtext.into_data()?;
         self.verify(signature.borrow_mut(), Some(signed.borrow_mut()), None)
@@ -1511,18 +1523,23 @@ impl Context {
     /// [`gpgme_op_verify`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fop_005fverify)
     #[inline]
     pub fn verify_opaque<'s, 'p, S, P>(
-        &mut self, signedtext: S, plaintext: P,
+        &mut self,
+        signedtext: S,
+        plaintext: P,
     ) -> Result<results::VerificationResult>
     where
         S: IntoData<'s>,
-        P: IntoData<'p>, {
+        P: IntoData<'p>,
+    {
         let mut signed = signedtext.into_data()?;
         let mut plain = plaintext.into_data()?;
         self.verify(signed.borrow_mut(), None, Some(plain.borrow_mut()))
     }
 
     fn verify(
-        &mut self, signature: &mut Data<'_>, signedtext: Option<&mut Data<'_>>,
+        &mut self,
+        signature: &mut Data<'_>,
+        signedtext: Option<&mut Data<'_>>,
         plaintext: Option<&mut Data<'_>>,
     ) -> Result<results::VerificationResult> {
         unsafe {
@@ -1549,31 +1566,40 @@ impl Context {
     /// use gpgme::{Context, Data, Protocol};
     ///
     /// let mut ctx = Context::from_protocol(Protocol::OpenPgp)?;
-    /// let key = ctx.find_key("[some key fingerprint]")?;
+    /// let key = ctx.get_key("[some key fingerprint]")?;
     /// let (plaintext, mut ciphertext) = ("Hello, World!", Vec::new());
     /// ctx.encrypt(Some(&key), plaintext, &mut ciphertext)?;
     /// # Ok::<(), gpgme::Error>(())
     /// ```
     #[inline]
     pub fn encrypt<'k, 'p, 'c, I, P, C>(
-        &mut self, recp: I, plaintext: P, ciphertext: C,
+        &mut self,
+        recp: I,
+        plaintext: P,
+        ciphertext: C,
     ) -> Result<results::EncryptionResult>
     where
         I: IntoIterator<Item = &'k Key>,
         P: IntoData<'p>,
-        C: IntoData<'c>, {
+        C: IntoData<'c>,
+    {
         self.encrypt_with_flags(recp, plaintext, ciphertext, crate::EncryptFlags::empty())
     }
 
     /// Upstream documentation:
     /// [`gpgme_op_encrypt`](https://www.gnupg.org/documentation/manuals/gpgme/Encrypting-a-Plaintext.html#index-gpgme_005fop_005fencrypt)
     pub fn encrypt_with_flags<'k, 'p, 'c, I, P, C>(
-        &mut self, recp: I, plaintext: P, ciphertext: C, flags: crate::EncryptFlags,
+        &mut self,
+        recp: I,
+        plaintext: P,
+        ciphertext: C,
+        flags: crate::EncryptFlags,
     ) -> Result<results::EncryptionResult>
     where
         I: IntoIterator<Item = &'k Key>,
         P: IntoData<'p>,
-        C: IntoData<'c>, {
+        C: IntoData<'c>,
+    {
         let mut plain = plaintext.into_data()?;
         let mut cipher = ciphertext.into_data()?;
         let mut ptrs: SmallVec<_> = recp.into_iter().map(Key::as_raw).collect();
@@ -1602,7 +1628,8 @@ impl Context {
     pub fn encrypt_symmetric<'p, 'c, P, C>(&mut self, plaintext: P, ciphertext: C) -> Result<()>
     where
         P: IntoData<'p>,
-        C: IntoData<'c>, {
+        C: IntoData<'c>,
+    {
         self.encrypt_symmetric_with_flags(plaintext, ciphertext, crate::EncryptFlags::empty())
     }
 
@@ -1610,11 +1637,15 @@ impl Context {
     /// [`gpgme_op_encrypt`](https://www.gnupg.org/documentation/manuals/gpgme/Encrypting-a-Plaintext.html#index-gpgme_005fop_005fencrypt)
     #[inline]
     pub fn encrypt_symmetric_with_flags<'p, 'c, P, C>(
-        &mut self, plaintext: P, ciphertext: C, flags: crate::EncryptFlags,
+        &mut self,
+        plaintext: P,
+        ciphertext: C,
+        flags: crate::EncryptFlags,
     ) -> Result<()>
     where
         P: IntoData<'p>,
-        C: IntoData<'c>, {
+        C: IntoData<'c>,
+    {
         self.encrypt_with_flags(None, plaintext, ciphertext, flags)?;
         Ok(())
     }
@@ -1630,31 +1661,40 @@ impl Context {
     /// use gpgme::{Context, Protocol};
     ///
     /// let mut ctx = Context::from_protocol(Protocol::OpenPgp)?;
-    /// let key = ctx.find_key("[some key fingerprint]")?;
+    /// let key = ctx.get_key("[some key fingerprint]")?;
     /// let (plaintext, mut ciphertext) = ("Hello, World!", Vec::new());
     /// ctx.sign_and_encrypt(Some(&key), plaintext, &mut ciphertext)?;
     /// # Ok::<(), gpgme::Error>(())
     /// ```
     #[inline]
     pub fn sign_and_encrypt<'k, 'p, 'c, I, P, C>(
-        &mut self, recp: I, plaintext: P, ciphertext: C,
+        &mut self,
+        recp: I,
+        plaintext: P,
+        ciphertext: C,
     ) -> Result<(results::EncryptionResult, results::SigningResult)>
     where
         I: IntoIterator<Item = &'k Key>,
         P: IntoData<'p>,
-        C: IntoData<'c>, {
+        C: IntoData<'c>,
+    {
         self.sign_and_encrypt_with_flags(recp, plaintext, ciphertext, crate::EncryptFlags::empty())
     }
 
     /// Upstream documentation:
     /// [`gpgme_op_encrypt_sign`](https://www.gnupg.org/documentation/manuals/gpgme/Encrypting-a-Plaintext.html#index-gpgme_005fop_005fencrypt_005fsign)
     pub fn sign_and_encrypt_with_flags<'k, 'p, 'c, I, P, C>(
-        &mut self, recp: I, plaintext: P, ciphertext: C, flags: crate::EncryptFlags,
+        &mut self,
+        recp: I,
+        plaintext: P,
+        ciphertext: C,
+        flags: crate::EncryptFlags,
     ) -> Result<(results::EncryptionResult, results::SigningResult)>
     where
         I: IntoIterator<Item = &'k Key>,
         P: IntoData<'p>,
-        C: IntoData<'c>, {
+        C: IntoData<'c>,
+    {
         let mut plain = plaintext.into_data()?;
         let mut cipher = ciphertext.into_data()?;
         let mut ptrs: SmallVec<_> = recp.into_iter().map(Key::as_raw).collect();
@@ -1695,11 +1735,14 @@ impl Context {
     /// ```
     #[inline]
     pub fn decrypt<'c, 'p, C, P>(
-        &mut self, ciphertext: C, plaintext: P,
+        &mut self,
+        ciphertext: C,
+        plaintext: P,
     ) -> Result<results::DecryptionResult>
     where
         C: IntoData<'c>,
-        P: IntoData<'p>, {
+        P: IntoData<'p>,
+    {
         let mut cipher = ciphertext.into_data()?;
         let mut plain = plaintext.into_data()?;
         unsafe {
@@ -1716,11 +1759,15 @@ impl Context {
     /// [`gpgme_op_decrypt_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Decrypt.html#index-gpgme_005fop_005fdecrypt_005fext)
     #[inline]
     pub fn decrypt_with_flags<'c, 'p, C, P>(
-        &mut self, ciphertext: C, plaintext: P, flags: crate::DecryptFlags,
+        &mut self,
+        ciphertext: C,
+        plaintext: P,
+        flags: crate::DecryptFlags,
     ) -> Result<results::DecryptionResult>
     where
         C: IntoData<'c>,
-        P: IntoData<'p>, {
+        P: IntoData<'p>,
+    {
         let mut cipher = ciphertext.into_data()?;
         let mut plain = plaintext.into_data()?;
         unsafe {
@@ -1752,11 +1799,14 @@ impl Context {
     /// ```
     #[inline]
     pub fn decrypt_and_verify<'c, 'p, C, P>(
-        &mut self, ciphertext: C, plaintext: P,
+        &mut self,
+        ciphertext: C,
+        plaintext: P,
     ) -> Result<(results::DecryptionResult, results::VerificationResult)>
     where
         C: IntoData<'c>,
-        P: IntoData<'p>, {
+        P: IntoData<'p>,
+    {
         let mut cipher = ciphertext.into_data()?;
         let mut plain = plaintext.into_data()?;
         unsafe {
@@ -1773,11 +1823,15 @@ impl Context {
     /// [`gpgme_op_decrypt_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Decrypt.html#index-gpgme_005fop_005fdecrypt_005fext)
     #[inline]
     pub fn decrypt_and_verify_with_flags<'c, 'p, C, P>(
-        &mut self, ciphertext: C, plaintext: P, flags: crate::DecryptFlags,
+        &mut self,
+        ciphertext: C,
+        plaintext: P,
+        flags: crate::DecryptFlags,
     ) -> Result<(results::DecryptionResult, results::VerificationResult)>
     where
         C: IntoData<'c>,
-        P: IntoData<'p>, {
+        P: IntoData<'p>,
+    {
         self.decrypt_with_flags(ciphertext, plaintext, flags)?;
         Ok((self.get_result().unwrap(), self.get_result().unwrap()))
     }
@@ -1786,7 +1840,9 @@ impl Context {
     /// [`gpgme_op_query_swdb`](https://www.gnupg.org/documentation/manuals/gpgme/Checking-for-updates.html#index-gpgme_005fop_005fquery_005fswdb)
     #[inline]
     pub fn query_swdb(
-        &mut self, name: Option<impl CStrArgument>, installed_ver: Option<impl CStrArgument>,
+        &mut self,
+        name: Option<impl CStrArgument>,
+        installed_ver: Option<impl CStrArgument>,
     ) -> Result<results::QuerySwdbResult> {
         let name = name.map(|s| s.into_cstr());
         let iversion = installed_ver.map(|s| s.into_cstr());
@@ -1804,7 +1860,9 @@ impl Context {
     /// [`gpgme_op_getauditlog`](https://www.gnupg.org/documentation/manuals/gpgme/Additional-Logs.html#index-gpgme_005fop_005fgetauditlog)
     #[inline]
     pub fn get_audit_log<'a, D>(&mut self, dst: D, flags: crate::AuditLogFlags) -> Result<()>
-    where D: IntoData<'a> {
+    where
+        D: IntoData<'a>,
+    {
         let mut dst = dst.into_data()?;
         unsafe {
             return_err!(ffi::gpgme_op_getauditlog(
@@ -1847,7 +1905,8 @@ impl<'ctx> Keys<'ctx, ()> {
     pub fn from_data<'d, D>(ctx: &'ctx mut Context, src: D) -> Result<Keys<'d, D::Output>>
     where
         D: IntoData<'d>,
-        'ctx: 'd, {
+        'ctx: 'd,
+    {
         let mut src = src.into_data()?;
         unsafe {
             return_err!(ffi::gpgme_op_keylist_from_data_start(
@@ -1937,23 +1996,19 @@ impl Iterator for Signers<'_> {
         self.next()
     }
 
-    require_gpgme_ver! {
-        (1, 5) => {
-            #[inline]
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                self.current.map_or((0, Some(0)), |c| {
-                    let count = unsafe {
-                        (ffi::gpgme_signers_count(self.ctx.as_raw()) - c as libc::c_uint).value_into()
-                    };
-                    (count.unwrap_or_saturate(), count.ok())
-                })
-            }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.current.map_or((0, Some(0)), |c| {
+            let count = unsafe {
+                (ffi::gpgme_signers_count(self.ctx.as_raw()) - c as libc::c_uint).value_into()
+            };
+            (count.unwrap_or_saturate(), count.ok())
+        })
+    }
 
-            #[inline]
-            fn count(self) -> usize {
-                self.size_hint().0
-            }
-        }
+    #[inline]
+    fn count(self) -> usize {
+        self.size_hint().0
     }
 }
 
@@ -1989,7 +2044,9 @@ impl<'a> ContextWithCallbacks<'a> {
     /// [`gpgme_set_passphrase_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Passphrase-Callback.html#index-gpgme_005fset_005fpassphrase_005fcb)
     #[allow(deprecated)]
     pub fn set_passphrase_provider<P>(&mut self, provider: P)
-    where P: PassphraseProvider + 'a {
+    where
+        P: PassphraseProvider + 'a,
+    {
         let mut hook = Box::new(callbacks::Hook::from(provider));
         unsafe {
             ffi::gpgme_set_passphrase_cb(
@@ -2011,7 +2068,9 @@ impl<'a> ContextWithCallbacks<'a> {
     /// Upstream documentation:
     /// [`gpgme_set_progress_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fset_005fprogress_005fcb)
     pub fn set_progress_reporter<H>(&mut self, handler: H)
-    where H: ProgressReporter + 'a {
+    where
+        H: ProgressReporter + 'a,
+    {
         let mut hook = Box::new(callbacks::Hook::from(handler));
         unsafe {
             ffi::gpgme_set_progress_cb(
@@ -2033,7 +2092,9 @@ impl<'a> ContextWithCallbacks<'a> {
     /// Upstream documentation:
     /// [`gpgme_set_status_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Status-Message-Callback.html#index-gpgme_005fset_005fstatus_005fcb)
     pub fn set_status_handler<H>(&mut self, handler: H)
-    where H: StatusHandler + 'a {
+    where
+        H: StatusHandler + 'a,
+    {
         let mut hook = Box::new(callbacks::Hook::from(handler));
         unsafe {
             ffi::gpgme_set_status_cb(
@@ -2091,7 +2152,8 @@ fn with_joined_cstr<R, F, I>(strings: I, f: F) -> R
 where
     I: IntoIterator,
     I::Item: CStrArgument,
-    F: FnOnce(Option<&CStr>, usize) -> R, {
+    F: FnOnce(Option<&CStr>, usize) -> R,
+{
     let mut strings = strings.into_iter().fuse();
     match (strings.next(), strings.next()) {
         (Some(first), Some(second)) => {

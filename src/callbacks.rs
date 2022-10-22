@@ -13,10 +13,10 @@ use static_assertions::assert_obj_safe;
 
 use crate::{edit, utils::FdWriter, Data, Error};
 
-assert_obj_safe!(PassphraseProviderNew);
+assert_obj_safe!(PassphraseProvider);
 assert_obj_safe!(ProgressReporter);
 assert_obj_safe!(StatusHandler);
-assert_obj_safe!(InteractorNew);
+assert_obj_safe!(Interactor);
 
 #[derive(Debug, Copy, Clone)]
 pub struct PassphraseRequest<'a> {
@@ -46,41 +46,24 @@ impl<'a> PassphraseRequest<'a> {
 
 /// Upstream documentation:
 /// [`gpgme_passphrase_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Passphrase-Callback.html#index-gpgme_005fpassphrase_005fcb_005ft)
-#[deprecated(
-    since = "0.9.2",
-    note = "trait will be replaced with a new object safe trait of the same name"
-)]
 pub trait PassphraseProvider: UnwindSafe + Send {
-    fn get_passphrase<W: io::Write>(
-        &mut self, request: PassphraseRequest<'_>, out: W,
+    fn get_passphrase(
+        &mut self,
+        request: PassphraseRequest<'_>,
+        out: &mut dyn Write,
     ) -> Result<(), Error>;
 }
 
 impl<T: UnwindSafe + Send> PassphraseProvider for T
-where T: FnMut(PassphraseRequest<'_>, &mut dyn io::Write) -> Result<(), Error>
-{
-    fn get_passphrase<W: io::Write>(
-        &mut self, request: PassphraseRequest<'_>, mut out: W,
-    ) -> Result<(), Error> {
-        (*self)(request, &mut out)
-    }
-}
-
-/// Upstream documentation:
-/// [`gpgme_passphrase_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Passphrase-Callback.html#index-gpgme_005fpassphrase_005fcb_005ft)
-pub(crate) trait PassphraseProviderNew: UnwindSafe + Send {
-    fn get_passphrase(
-        &mut self, request: PassphraseRequest<'_>, out: &mut dyn Write,
-    ) -> Result<(), Error>;
-}
-
-impl<T> PassphraseProviderNew for T
-where T: PassphraseProvider
+where
+    T: FnMut(PassphraseRequest<'_>, &mut dyn io::Write) -> Result<(), Error>,
 {
     fn get_passphrase(
-        &mut self, request: PassphraseRequest<'_>, out: &mut dyn Write,
+        &mut self,
+        request: PassphraseRequest<'_>,
+        out: &mut dyn Write,
     ) -> Result<(), Error> {
-        <Self as PassphraseProvider>::get_passphrase(self, request, out)
+        (*self)(request, out)
     }
 }
 
@@ -104,31 +87,16 @@ impl<'a> ProgressInfo<'a> {
 
 /// Upstream documentation:
 /// [`gpgme_progress_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fprogress_005fcb_005ft)
-#[deprecated(
-    since = "0.9.2",
-    note = "trait will be replaced with the `ProgressReporter` trait"
-)]
-pub trait ProgressHandler: UnwindSafe + Send {
-    fn handle(&mut self, _info: ProgressInfo<'_>);
-}
-
-impl<T: UnwindSafe + Send> ProgressHandler for T
-where T: FnMut(ProgressInfo<'_>)
-{
-    fn handle(&mut self, info: ProgressInfo<'_>) {
-        (*self)(info);
-    }
-}
-
-/// Upstream documentation:
-/// [`gpgme_progress_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fprogress_005fcb_005ft)
 pub trait ProgressReporter: UnwindSafe + Send {
     fn report(&mut self, info: ProgressInfo<'_>);
 }
 
-impl<T: ProgressHandler> ProgressReporter for T {
+impl<T: UnwindSafe + Send> ProgressReporter for T
+where
+    T: FnMut(ProgressInfo<'_>),
+{
     fn report(&mut self, info: ProgressInfo<'_>) {
-        self.handle(info);
+        (*self)(info);
     }
 }
 
@@ -139,7 +107,8 @@ pub trait StatusHandler: UnwindSafe + Send {
 }
 
 impl<T: UnwindSafe + Send> StatusHandler for T
-where T: FnMut(Option<&CStr>, Option<&CStr>) -> Result<(), Error>
+where
+    T: FnMut(Option<&CStr>, Option<&CStr>) -> Result<(), Error>,
 {
     fn handle(&mut self, keyword: Option<&CStr>, args: Option<&CStr>) -> Result<(), Error> {
         (*self)(keyword, args)
@@ -171,7 +140,9 @@ impl<'a> EditInteractionStatus<'a> {
 #[deprecated(since = "0.9.2")]
 pub trait EditInteractor: UnwindSafe + Send {
     fn interact<W: io::Write>(
-        &mut self, status: EditInteractionStatus<'_>, out: Option<W>,
+        &mut self,
+        status: EditInteractionStatus<'_>,
+        out: Option<W>,
     ) -> Result<(), Error>;
 }
 
@@ -202,30 +173,12 @@ impl<'a> InteractionStatus<'a> {
 
 /// Upstream documentation:
 /// [`gpgme_interact_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Advanced-Key-Editing.html#index-gpgme_005finteract_005fcb_005ft)
-#[deprecated(
-    since = "0.9.2",
-    note = "trait will be replaced with a new object safe trait of the same name"
-)]
 pub trait Interactor: UnwindSafe + Send {
-    fn interact<W: io::Write>(
-        &mut self, status: InteractionStatus<'_>, out: Option<W>,
-    ) -> Result<(), Error>;
-}
-
-/// Upstream documentation:
-/// [`gpgme_interact_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Advanced-Key-Editing.html#index-gpgme_005finteract_005fcb_005ft)
-pub(crate) trait InteractorNew: UnwindSafe + Send {
     fn interact(
-        &mut self, status: InteractionStatus<'_>, out: Option<&mut dyn Write>,
+        &mut self,
+        status: InteractionStatus<'_>,
+        out: Option<&mut dyn Write>,
     ) -> Result<(), Error>;
-}
-
-impl<T: Interactor> InteractorNew for T {
-    fn interact(
-        &mut self, status: InteractionStatus<'_>, out: Option<&mut dyn Write>,
-    ) -> Result<(), Error> {
-        <Self as Interactor>::interact(self, status, out)
-    }
 }
 
 pub(crate) struct Hook<T>(Option<thread::Result<T>>);
@@ -291,7 +244,8 @@ pub(crate) struct InteractorHook<'a, I> {
 fn update_hook<T, F>(hook: &mut Option<thread::Result<T>>, f: F) -> ffi::gpgme_error_t
 where
     T: UnwindSafe,
-    F: UnwindSafe + FnOnce(&mut T) -> Result<(), Error>, {
+    F: UnwindSafe + FnOnce(&mut T) -> Result<(), Error>,
+{
     let mut provider = match hook.take() {
         Some(Ok(p)) => p,
         other => {
@@ -315,9 +269,12 @@ where
     }
 }
 
-pub(crate) extern "C" fn passphrase_cb<P: PassphraseProviderNew>(
-    hook: *mut libc::c_void, uid_hint: *const libc::c_char, info: *const libc::c_char,
-    was_bad: libc::c_int, fd: libc::c_int,
+pub(crate) extern "C" fn passphrase_cb<P: PassphraseProvider>(
+    hook: *mut libc::c_void,
+    uid_hint: *const libc::c_char,
+    info: *const libc::c_char,
+    was_bad: libc::c_int,
+    fd: libc::c_int,
 ) -> ffi::gpgme_error_t {
     let hook = unsafe { &mut *(hook as *mut Hook<P>) };
     update_hook(&mut hook.0, move |h| unsafe {
@@ -333,7 +290,10 @@ pub(crate) extern "C" fn passphrase_cb<P: PassphraseProviderNew>(
 }
 
 pub(crate) extern "C" fn progress_cb<H: ProgressReporter>(
-    hook: *mut libc::c_void, what: *const libc::c_char, typ: libc::c_int, current: libc::c_int,
+    hook: *mut libc::c_void,
+    what: *const libc::c_char,
+    typ: libc::c_int,
+    current: libc::c_int,
     total: libc::c_int,
 ) {
     let hook = unsafe { &mut *(hook as *mut Hook<H>) };
@@ -350,7 +310,9 @@ pub(crate) extern "C" fn progress_cb<H: ProgressReporter>(
 }
 
 pub(crate) extern "C" fn status_cb<H: StatusHandler>(
-    hook: *mut libc::c_void, keyword: *const libc::c_char, args: *const libc::c_char,
+    hook: *mut libc::c_void,
+    keyword: *const libc::c_char,
+    args: *const libc::c_char,
 ) -> ffi::gpgme_error_t {
     let hook = unsafe { &mut *(hook as *mut Hook<H>) };
     update_hook(&mut hook.0, move |h| unsafe {
@@ -361,7 +323,9 @@ pub(crate) extern "C" fn status_cb<H: StatusHandler>(
 }
 
 pub(crate) extern "C" fn edit_cb<E: EditInteractor>(
-    hook: *mut libc::c_void, status: ffi::gpgme_status_code_t, args: *const libc::c_char,
+    hook: *mut libc::c_void,
+    status: ffi::gpgme_status_code_t,
+    args: *const libc::c_char,
     fd: libc::c_int,
 ) -> ffi::gpgme_error_t {
     let hook = unsafe { &mut *(hook as *mut InteractorHook<'_, E>) };
@@ -380,8 +344,10 @@ pub(crate) extern "C" fn edit_cb<E: EditInteractor>(
     })
 }
 
-pub(crate) extern "C" fn interact_cb<I: InteractorNew>(
-    hook: *mut libc::c_void, keyword: *const libc::c_char, args: *const libc::c_char,
+pub(crate) extern "C" fn interact_cb<I: Interactor>(
+    hook: *mut libc::c_void,
+    keyword: *const libc::c_char,
+    args: *const libc::c_char,
     fd: libc::c_int,
 ) -> ffi::gpgme_error_t {
     let hook = unsafe { &mut *(hook as *mut InteractorHook<'_, I>) };

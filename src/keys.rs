@@ -6,7 +6,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use ffi::{self, require_gpgme_ver};
+use ffi;
 
 use crate::{
     notation::SignatureNotations, Error, KeyAlgorithm, KeyListMode, NonNull, Protocol, Validity,
@@ -205,18 +205,12 @@ impl Key {
 
     #[inline]
     pub fn fingerprint_raw(&self) -> Option<&CStr> {
-        require_gpgme_ver! {
-            (1, 7) => {
-                unsafe {
-                    (*self.as_raw())
-                        .fpr
-                        .as_ref()
-                        .map(|s| CStr::from_ptr(s))
-                        .or_else(|| self.primary_key()?.fingerprint_raw())
-                }
-            } else {
-                self.primary_key()?.fingerprint_raw()
-            }
+        unsafe {
+            (*self.as_raw())
+                .fpr
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
+                .or_else(|| self.primary_key()?.fingerprint_raw())
         }
     }
 
@@ -444,13 +438,7 @@ impl<'key> Subkey<'key> {
 
     #[inline]
     pub fn keygrip_raw(&self) -> Option<&'key CStr> {
-        require_gpgme_ver! {
-            (1, 7) => {
-                unsafe { (*self.as_raw()).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
-            } else {
-                None
-            }
-        }
+        unsafe { (*self.as_raw()).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -482,13 +470,7 @@ impl<'key> Subkey<'key> {
 
     #[inline]
     pub fn curve_raw(&self) -> Option<&'key CStr> {
-        require_gpgme_ver! {
-            (1,5) => {
-                unsafe { (*self.as_raw()).curve.as_ref().map(|s| CStr::from_ptr(s)) }
-            } else {
-                None
-            }
-        }
+        unsafe { (*self.as_raw()).curve.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 }
 
@@ -574,20 +556,16 @@ impl<'key> UserId<'key> {
     }
 
     #[inline]
+    #[cfg(feature = "v1_14")]
     pub fn uidhash(&self) -> Result<&'key str, Option<Utf8Error>> {
         self.uidhash_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
+    #[cfg(feature = "v1_14")]
     pub fn uidhash_raw(&self) -> Option<&'key CStr> {
-        require_gpgme_ver! {
-            (1, 14) => {
-                unsafe { (*self.as_raw()).uidhash.as_ref().map(|s| CStr::from_ptr(s)) }
-            } else {
-                None
-            }
-        }
+        unsafe { (*self.as_raw()).uidhash.as_ref().map(|s| CStr::from_ptr(s)) }
     }
 
     #[inline]
@@ -626,14 +604,10 @@ impl<'key> UserId<'key> {
         unsafe { crate::KeyOrigin::from_raw((*self.as_raw()).origin()) }
     }
 
-    require_gpgme_ver! {
-        (1, 8) => {
-            #[inline]
-            pub fn last_update(&self) -> SystemTime {
-                let timestamp = unsafe { (*self.as_raw()).last_update };
-                UNIX_EPOCH + Duration::from_secs(timestamp.into())
-            }
-        }
+    #[inline]
+    pub fn last_update(&self) -> SystemTime {
+        let timestamp = unsafe { (*self.as_raw()).last_update };
+        UNIX_EPOCH + Duration::from_secs(timestamp.into())
     }
 
     #[inline]
@@ -658,17 +632,11 @@ impl<'key> UserId<'key> {
 
     #[inline]
     pub fn tofu_info(&self) -> Option<crate::TofuInfo<'key>> {
-        require_gpgme_ver! {
-            (1,7) => {
-                unsafe {
-                    (*self.as_raw())
-                        .tofu
-                        .as_mut()
-                        .map(|t| crate::TofuInfo::from_raw(t))
-                }
-            } else {
-                None
-            }
+        unsafe {
+            (*self.as_raw())
+                .tofu
+                .as_mut()
+                .map(|t| crate::TofuInfo::from_raw(t))
         }
     }
 }
@@ -879,45 +847,46 @@ impl<'key> UserIdSignature<'key> {
         unsafe { SignatureNotations::from_list((*self.as_raw()).notations) }
     }
 
-    require_gpgme_ver! {
-        (1, 16) => {
-            #[inline]
-            pub fn is_trust_signature(&self) -> bool {
-                self.trust_depth() != 0
-            }
+    #[inline]
+    #[cfg(feature = "v1_16")]
+    pub fn is_trust_signature(&self) -> bool {
+        self.trust_depth() != 0
+    }
 
-            #[inline]
-            pub fn trust_value(&self) -> SignatureTrust {
-                let value = unsafe {
-                    (*self.as_raw()).trust_value()
-                };
-                if !self.is_trust_signature() {
-                    SignatureTrust::None
-                } else if value >= 120 {
-                    SignatureTrust::Complete
-                } else {
-                    SignatureTrust::Partial
-                }
-            }
+    #[inline]
+    #[cfg(feature = "v1_16")]
+    pub fn trust_value(&self) -> SignatureTrust {
+        let value = unsafe { (*self.as_raw()).trust_value() };
+        if !self.is_trust_signature() {
+            SignatureTrust::None
+        } else if value >= 120 {
+            SignatureTrust::Complete
+        } else {
+            SignatureTrust::Partial
+        }
+    }
 
-            #[inline]
-            pub fn trust_depth(&self) -> u8 {
-                unsafe {
-                    (*self.as_raw()).trust_depth()
-                }
-            }
+    #[inline]
+    #[cfg(feature = "v1_16")]
+    pub fn trust_depth(&self) -> u8 {
+        unsafe { (*self.as_raw()).trust_depth() }
+    }
 
-            #[inline]
-            pub fn trust_scope(&self) -> Result<&'key str, Option<Utf8Error>> {
-                self.trust_scope_raw().map_or(Err(None), |s| s.to_str().map_err(Some))
-            }
+    #[inline]
+    #[cfg(feature = "v1_16")]
+    pub fn trust_scope(&self) -> Result<&'key str, Option<Utf8Error>> {
+        self.trust_scope_raw()
+            .map_or(Err(None), |s| s.to_str().map_err(Some))
+    }
 
-            #[inline]
-            pub fn trust_scope_raw(&self) -> Option<&'key CStr> {
-                unsafe {
-                    (*self.as_raw()).trust_scope.as_ref().map(|s| CStr::from_ptr(s))
-                }
-            }
+    #[inline]
+    #[cfg(feature = "v1_16")]
+    pub fn trust_scope_raw(&self) -> Option<&'key CStr> {
+        unsafe {
+            (*self.as_raw())
+                .trust_scope
+                .as_ref()
+                .map(|s| CStr::from_ptr(s))
         }
     }
 }

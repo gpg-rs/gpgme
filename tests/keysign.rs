@@ -6,7 +6,6 @@ use self::common::passphrase_cb;
 mod common;
 
 test_case! {
-    #[requires((1, 7))]
     test_sign_key(test) {
         let mut ctx = test.create_context();
         if !ctx.engine_info().check_version("2.1.12") {

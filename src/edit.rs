@@ -148,7 +148,9 @@ pub trait Editor: UnwindSafe + Send {
     type State: fmt::Debug + Default + Eq + Copy + UnwindSafe + Send;
 
     fn next_state(
-        state: Result<Self::State>, status: EditInteractionStatus<'_>, need_response: bool,
+        state: Result<Self::State>,
+        status: EditInteractionStatus<'_>,
+        need_response: bool,
     ) -> Result<Self::State>;
     fn action<W: Write>(&self, state: Self::State, out: W) -> Result<()>;
 }
@@ -170,7 +172,9 @@ impl<E: Editor> EditorWrapper<E> {
 
 impl<E: Editor> EditInteractor for EditorWrapper<E> {
     fn interact<W: Write>(
-        &mut self, status: EditInteractionStatus<'_>, out: Option<W>,
+        &mut self,
+        status: EditInteractionStatus<'_>,
+        out: Option<W>,
     ) -> Result<()> {
         let old_state = self.state;
         self.state = status
