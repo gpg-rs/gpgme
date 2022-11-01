@@ -2,6 +2,7 @@
 name = "gpgme-sys"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 documentation = "https://docs.rs/gpgme-sys"
@@ -21,7 +22,7 @@ system-deps = "6.0.2"
 
 [dependencies]
 libc.workspace = true
-libgpg-error-sys = "0.5.1"
+libgpg-error-sys = "0.6.0"
 
 [target.'cfg(windows)'.build-dependencies]
 build-rs = "0.1.2"

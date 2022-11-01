@@ -2,12 +2,16 @@
 name = "gpgme"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 documentation = "https://docs.rs/gpgme"
 categories = ["api-bindings"]
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 description = "GPGme bindings for Rust"
+
+[package.metadata.docs.rs]
+all-features = true
 
 [badges]
 maintenance = { status = "experimental" }
@@ -26,9 +30,10 @@ tempfile = "3"
 
 [dependencies]
 bitflags = "1"
+cfg-if = "1"
 conv = "0.3"
 cstr-argument = "0.1"
-gpg-error = "0.5.1"
+gpg-error = "0.6.0"
 libc.workspace = true
 memoffset = "0.7.1"
 once_cell = "1"
@@ -47,6 +52,7 @@ test = false
 [workspace.package]
 version = "0.10.0"
 edition = "2021"
+rust-version = "1.64"
 license = "LGPL-2.1"
 repository = "https://github.com/gpg-rs/gpgme"
 

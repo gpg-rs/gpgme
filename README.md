@@ -17,7 +17,7 @@ $ cargo add gpgme
 ```
 
 ### Requirements
-These crates require the gpgme library and its development files to be
+These crates require the gpgme library (version 1.13 or later) and its development files to be
 installed. The build script uses the [system-deps] crate to attempt to locate
 them (or the registry on Windows).
 

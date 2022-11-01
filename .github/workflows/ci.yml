@@ -34,10 +34,10 @@ jobs:
           toolchain: ${{ matrix.rust }}
 
       - name: Build
-        run: cargo build --verbose --all-features
+        run: cargo build --verbose
 
       - name: Run tests
-        run: cargo test --verbose --no-fail-fast --all-features
+        run: cargo test --verbose --no-fail-fast
 
   docker-static:
     name: Test Suite (linux, docker, musl)
