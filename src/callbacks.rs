@@ -11,11 +11,12 @@ use ffi;
 use libc;
 use static_assertions::assert_obj_safe;
 
-use crate::{edit, utils::FdWriter, Data, Error};
+use crate::{edit, utils::FdWriter, Data, Error, Result};
 
 assert_obj_safe!(PassphraseProvider);
 assert_obj_safe!(ProgressReporter);
 assert_obj_safe!(StatusHandler);
+assert_obj_safe!(EditInteractor);
 assert_obj_safe!(Interactor);
 
 #[derive(Debug, Copy, Clone)]
@@ -47,22 +48,19 @@ impl<'a> PassphraseRequest<'a> {
 /// Upstream documentation:
 /// [`gpgme_passphrase_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Passphrase-Callback.html#index-gpgme_005fpassphrase_005fcb_005ft)
 pub trait PassphraseProvider: UnwindSafe + Send {
-    fn get_passphrase(
-        &mut self,
-        request: PassphraseRequest<'_>,
-        out: &mut dyn Write,
-    ) -> Result<(), Error>;
+    fn get_passphrase(&mut self, request: PassphraseRequest<'_>, out: &mut dyn Write)
+        -> Result<()>;
 }
 
 impl<T: UnwindSafe + Send> PassphraseProvider for T
 where
-    T: FnMut(PassphraseRequest<'_>, &mut dyn io::Write) -> Result<(), Error>,
+    T: FnMut(PassphraseRequest<'_>, &mut dyn io::Write) -> Result<()>,
 {
     fn get_passphrase(
         &mut self,
         request: PassphraseRequest<'_>,
         out: &mut dyn Write,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         (*self)(request, out)
     }
 }
@@ -103,14 +101,14 @@ where
 /// Upstream documentation:
 /// [`gpgme_status_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Status-Message-Callback.html#index-gpgme_005fstatus_005fcb_005ft)
 pub trait StatusHandler: UnwindSafe + Send {
-    fn handle(&mut self, keyword: Option<&CStr>, args: Option<&CStr>) -> Result<(), Error>;
+    fn handle(&mut self, keyword: Option<&CStr>, args: Option<&CStr>) -> Result<()>;
 }
 
 impl<T: UnwindSafe + Send> StatusHandler for T
 where
-    T: FnMut(Option<&CStr>, Option<&CStr>) -> Result<(), Error>,
+    T: FnMut(Option<&CStr>, Option<&CStr>) -> Result<()>,
 {
-    fn handle(&mut self, keyword: Option<&CStr>, args: Option<&CStr>) -> Result<(), Error> {
+    fn handle(&mut self, keyword: Option<&CStr>, args: Option<&CStr>) -> Result<()> {
         (*self)(keyword, args)
     }
 }
@@ -139,11 +137,11 @@ impl<'a> EditInteractionStatus<'a> {
 /// [`gpgme_edit_cb_t`](https://www.gnupg.org/documentation/manuals/gpgme/Deprecated-Functions.html#index-gpgme_005fedit_005fcb_005ft)
 #[deprecated(since = "0.9.2")]
 pub trait EditInteractor: UnwindSafe + Send {
-    fn interact<W: io::Write>(
+    fn interact(
         &mut self,
         status: EditInteractionStatus<'_>,
-        out: Option<W>,
-    ) -> Result<(), Error>;
+        out: Option<&mut dyn Write>,
+    ) -> Result<()>;
 }
 
 #[derive(Debug)]
@@ -183,16 +181,45 @@ pub trait Interactor: UnwindSafe + Send {
 
 pub(crate) struct Hook<T>(Option<thread::Result<T>>);
 
+impl<T> Drop for Hook<T> {
+    fn drop(&mut self) {
+        if let Some(Err(err)) = self.0.take() {
+            panic::resume_unwind(err);
+        }
+    }
+}
+
 impl<T> From<T> for Hook<T> {
     fn from(hook: T) -> Self {
         Self(Some(Ok(hook)))
     }
 }
 
-impl<T> Drop for Hook<T> {
-    fn drop(&mut self) {
-        if let Some(Err(err)) = self.0.take() {
-            panic::resume_unwind(err);
+impl<T: UnwindSafe> Hook<T> {
+    fn update<F>(&mut self, f: F) -> ffi::gpgme_error_t
+    where
+        F: UnwindSafe + FnOnce(&mut T) -> Result<()>,
+    {
+        let mut provider = match self.0.take() {
+            Some(Ok(p)) => p,
+            other => {
+                self.0 = other;
+                return ffi::GPG_ERR_GENERAL;
+            }
+        };
+
+        match panic::catch_unwind(move || {
+            let result = f(&mut provider);
+            (provider, result)
+        }) {
+            Ok((provider, result)) => {
+                self.0 = Some(Ok(provider));
+                result.err().map_or(0, |err| err.raw())
+            }
+            Err(err) => {
+                self.0 = Some(Err(err));
+                ffi::GPG_ERR_GENERAL
+            }
         }
     }
 }
@@ -241,43 +268,14 @@ pub(crate) struct InteractorHook<'a, I> {
     pub response: *mut Data<'a>,
 }
 
-fn update_hook<T, F>(hook: &mut Option<thread::Result<T>>, f: F) -> ffi::gpgme_error_t
-where
-    T: UnwindSafe,
-    F: UnwindSafe + FnOnce(&mut T) -> Result<(), Error>,
-{
-    let mut provider = match hook.take() {
-        Some(Ok(p)) => p,
-        other => {
-            *hook = other;
-            return ffi::GPG_ERR_GENERAL;
-        }
-    };
-
-    match panic::catch_unwind(move || {
-        let result = f(&mut provider);
-        (provider, result)
-    }) {
-        Ok((provider, result)) => {
-            *hook = Some(Ok(provider));
-            result.err().map_or(0, |err| err.raw())
-        }
-        Err(err) => {
-            *hook = Some(Err(err));
-            ffi::GPG_ERR_GENERAL
-        }
-    }
-}
-
-pub(crate) extern "C" fn passphrase_cb<P: PassphraseProvider>(
+pub(crate) unsafe extern "C" fn passphrase_cb<P: PassphraseProvider>(
     hook: *mut libc::c_void,
     uid_hint: *const libc::c_char,
     info: *const libc::c_char,
     was_bad: libc::c_int,
     fd: libc::c_int,
 ) -> ffi::gpgme_error_t {
-    let hook = unsafe { &mut *(hook as *mut Hook<P>) };
-    update_hook(&mut hook.0, move |h| unsafe {
+    (*hook.cast::<Hook<P>>()).update(move |h| {
         let info = PassphraseRequest {
             uid_hint: uid_hint.as_ref().map(|s| CStr::from_ptr(s)),
             desc: info.as_ref().map(|s| CStr::from_ptr(s)),
@@ -289,15 +287,14 @@ pub(crate) extern "C" fn passphrase_cb<P: PassphraseProvider>(
     })
 }
 
-pub(crate) extern "C" fn progress_cb<H: ProgressReporter>(
+pub(crate) unsafe extern "C" fn progress_cb<H: ProgressReporter>(
     hook: *mut libc::c_void,
     what: *const libc::c_char,
     typ: libc::c_int,
     current: libc::c_int,
     total: libc::c_int,
 ) {
-    let hook = unsafe { &mut *(hook as *mut Hook<H>) };
-    update_hook(&mut hook.0, move |h| unsafe {
+    (*hook.cast::<Hook<H>>()).update(move |h| {
         let info = ProgressInfo {
             what: what.as_ref().map(|s| CStr::from_ptr(s)),
             typ: typ.into(),
@@ -309,50 +306,49 @@ pub(crate) extern "C" fn progress_cb<H: ProgressReporter>(
     });
 }
 
-pub(crate) extern "C" fn status_cb<H: StatusHandler>(
+pub(crate) unsafe extern "C" fn status_cb<H: StatusHandler>(
     hook: *mut libc::c_void,
     keyword: *const libc::c_char,
     args: *const libc::c_char,
 ) -> ffi::gpgme_error_t {
-    let hook = unsafe { &mut *(hook as *mut Hook<H>) };
-    update_hook(&mut hook.0, move |h| unsafe {
+    (*hook.cast::<Hook<H>>()).update(move |h| {
         let keyword = keyword.as_ref().map(|s| CStr::from_ptr(s));
         let args = args.as_ref().map(|s| CStr::from_ptr(s));
         h.handle(args, keyword)
     })
 }
 
-pub(crate) extern "C" fn edit_cb<E: EditInteractor>(
+pub(crate) unsafe extern "C" fn edit_cb<E: EditInteractor>(
     hook: *mut libc::c_void,
     status: ffi::gpgme_status_code_t,
     args: *const libc::c_char,
     fd: libc::c_int,
 ) -> ffi::gpgme_error_t {
-    let hook = unsafe { &mut *(hook as *mut InteractorHook<'_, E>) };
+    let hook = &mut *hook.cast::<InteractorHook<'_, E>>();
     let response = hook.response;
-    update_hook(&mut hook.inner.0, move |h| unsafe {
+    hook.inner.update(move |h| {
         let status = EditInteractionStatus {
             code: edit::StatusCode::from_raw(status),
             args: args.as_ref().map(|s| CStr::from_ptr(s)),
             response: &mut *response,
         };
         if fd < 0 {
-            h.interact(status, None::<&mut dyn io::Write>)
+            h.interact(status, None)
         } else {
-            h.interact(status, Some(FdWriter::new(fd)))
+            h.interact(status, Some(&mut FdWriter::new(fd)))
         }
     })
 }
 
-pub(crate) extern "C" fn interact_cb<I: Interactor>(
+pub(crate) unsafe extern "C" fn interact_cb<I: Interactor>(
     hook: *mut libc::c_void,
     keyword: *const libc::c_char,
     args: *const libc::c_char,
     fd: libc::c_int,
 ) -> ffi::gpgme_error_t {
-    let hook = unsafe { &mut *(hook as *mut InteractorHook<'_, I>) };
+    let hook = &mut *hook.cast::<InteractorHook<'_, I>>();
     let response = hook.response;
-    update_hook(&mut hook.inner.0, move |h| unsafe {
+    hook.inner.update(move |h| {
         let status = InteractionStatus {
             keyword: keyword.as_ref().map(|s| CStr::from_ptr(s)),
             args: args.as_ref().map(|s| CStr::from_ptr(s)),

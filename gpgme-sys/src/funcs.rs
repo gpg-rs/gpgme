@@ -353,9 +353,9 @@ extern "C" {
 
     pub fn gpgme_op_receive_keys_start(
         ctx: gpgme_ctx_t,
-        keyids: *mut *const c_char,
+        keyids: *const *const c_char,
     ) -> gpgme_error_t;
-    pub fn gpgme_op_receive_keys(ctx: gpgme_ctx_t, keyids: *mut *const c_char) -> gpgme_error_t;
+    pub fn gpgme_op_receive_keys(ctx: gpgme_ctx_t, keyids: *const *const c_char) -> gpgme_error_t;
 
     pub fn gpgme_op_export_start(
         ctx: gpgme_ctx_t,

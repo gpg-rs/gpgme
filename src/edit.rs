@@ -8,6 +8,7 @@ use crate::{Error, Result};
 pub use crate::{EditInteractionStatus, EditInteractor};
 
 ffi_enum_wrapper! {
+    #[non_exhaustive]
     pub enum StatusCode: ffi::gpgme_status_code_t {
         Eof = ffi::GPGME_STATUS_EOF,
         Enter = ffi::GPGME_STATUS_ENTER,
@@ -112,11 +113,26 @@ ffi_enum_wrapper! {
 }
 
 impl StatusCode {
+    pub fn needs_response(&self) -> bool {
+        match self {
+            Self::AlreadySigned
+            | Self::Error
+            | Self::GetBool
+            | Self::GetLine
+            | Self::KeyCreated
+            | Self::NeedPassphraseSym
+            | Self::ScOpFailure
+            | Self::CardCtrl
+            | Self::BackupKeyCreated => true,
+            _ => false,
+        }
+    }
+
     pub fn into_result(self) -> Result<()> {
         match self {
-            StatusCode::MissingPassphrase => Err(Error::NO_PASSPHRASE),
-            StatusCode::AlreadySigned => Err(Error::USER_1),
-            StatusCode::SigExpired => Err(Error::SIG_EXPIRED),
+            Self::MissingPassphrase => Err(Error::NO_PASSPHRASE),
+            Self::AlreadySigned => Err(Error::USER_1),
+            Self::SigExpired => Err(Error::SIG_EXPIRED),
             _ => Ok(()),
         }
     }
@@ -152,7 +168,7 @@ pub trait Editor: UnwindSafe + Send {
         status: EditInteractionStatus<'_>,
         need_response: bool,
     ) -> Result<Self::State>;
-    fn action<W: Write>(&self, state: Self::State, out: W) -> Result<()>;
+    fn action(&self, state: Self::State, out: &mut dyn Write) -> Result<()>;
 }
 
 #[derive(Debug)]
@@ -171,10 +187,10 @@ impl<E: Editor> EditorWrapper<E> {
 }
 
 impl<E: Editor> EditInteractor for EditorWrapper<E> {
-    fn interact<W: Write>(
+    fn interact(
         &mut self,
         status: EditInteractionStatus<'_>,
-        out: Option<W>,
+        out: Option<&mut dyn Write>,
     ) -> Result<()> {
         let old_state = self.state;
         self.state = status
@@ -186,9 +202,9 @@ impl<E: Editor> EditInteractor for EditorWrapper<E> {
                     return Ok(state);
                 }
 
-                out.map_or(Ok(()), |mut out| {
+                out.map_or(Ok(()), |out| {
                     self.editor
-                        .action(state, &mut out)
+                        .action(state, out)
                         .and_then(|_| out.write_all(b"\n").map_err(Error::from))
                 })
                 .and(Ok(state))

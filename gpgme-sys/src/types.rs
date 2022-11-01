@@ -384,6 +384,7 @@ pub struct gpgme_data_cbs {
 pub type gpgme_data_cbs_t = *mut gpgme_data_cbs;
 
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct _gpgme_invalid_key {
     pub next: gpgme_invalid_key_t,
@@ -393,6 +394,7 @@ pub struct _gpgme_invalid_key {
 pub type gpgme_invalid_key_t = *mut _gpgme_invalid_key;
 
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct _gpgme_op_encrypt_result {
     pub invalid_recipients: gpgme_invalid_key_t,
@@ -400,6 +402,7 @@ pub struct _gpgme_op_encrypt_result {
 pub type gpgme_encrypt_result_t = *mut _gpgme_op_encrypt_result;
 
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct _gpgme_recipient {
     pub next: gpgme_recipient_t,
@@ -411,6 +414,7 @@ pub struct _gpgme_recipient {
 pub type gpgme_recipient_t = *mut _gpgme_recipient;
 
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct _gpgme_op_decrypt_result {
     pub unsupported_algorithm: *mut c_char,
@@ -445,6 +449,7 @@ impl _gpgme_op_decrypt_result {
 }
 
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct _gpgme_new_signature {
     pub next: gpgme_new_signature_t,
@@ -460,6 +465,7 @@ pub struct _gpgme_new_signature {
 pub type gpgme_new_signature_t = *mut _gpgme_new_signature;
 
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct _gpgme_op_sign_result {
     pub invalid_signers: gpgme_invalid_key_t,
@@ -468,6 +474,7 @@ pub struct _gpgme_op_sign_result {
 pub type gpgme_sign_result_t = *mut _gpgme_op_sign_result;
 
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct _gpgme_signature {
     pub next: gpgme_signature_t,
@@ -510,6 +517,7 @@ impl _gpgme_signature {
 }
 
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct _gpgme_op_verify_result {
     pub signatures: gpgme_signature_t,
@@ -526,6 +534,7 @@ impl _gpgme_op_verify_result {
 }
 
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct _gpgme_import_status {
     pub next: gpgme_import_status_t,
@@ -536,6 +545,7 @@ pub struct _gpgme_import_status {
 pub type gpgme_import_status_t = *mut _gpgme_import_status;
 
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct _gpgme_op_import_result {
     pub considered: c_int,
@@ -558,6 +568,7 @@ pub struct _gpgme_op_import_result {
 pub type gpgme_import_result_t = *mut _gpgme_op_import_result;
 
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct _gpgme_op_genkey_result {
     pub bitfield: u32,
@@ -585,6 +596,7 @@ impl _gpgme_op_genkey_result {
 }
 
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct _gpgme_op_keylist_result {
     pub bitfield: u32,
@@ -612,6 +624,7 @@ pub type gpgme_assuan_status_cb_t =
     Option<unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char) -> gpgme_error_t>;
 
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct _gpgme_op_vfs_mount_result {
     pub mount_dir: *mut c_char,
@@ -662,6 +675,7 @@ pub struct gpgme_conf_comp {
 pub type gpgme_conf_comp_t = *mut gpgme_conf_comp;
 
 #[repr(C)]
+#[non_exhaustive]
 #[derive(Copy, Clone)]
 pub struct _gpgme_op_query_swdb_result {
     pub next: *mut _gpgme_op_query_swdb_result,

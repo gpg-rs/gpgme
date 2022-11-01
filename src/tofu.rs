@@ -13,6 +13,7 @@ use crate::NonNull;
 ffi_enum_wrapper! {
     /// Upstream documentation:
     /// [`gpgme_tofu_policy_t`](https://www.gnupg.org/documentation/manuals/gpgme/Changing-TOFU-Data.html#index-gpgme_005ftofu_005fpolicy_005ft)
+    #[non_exhaustive]
     pub enum TofuPolicy: ffi::gpgme_tofu_policy_t {
         None = ffi::GPGME_TOFU_POLICY_NONE,
         Auto = ffi::GPGME_TOFU_POLICY_AUTO,

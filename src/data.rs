@@ -8,7 +8,7 @@ use std::{
     fs::File,
     io::{self, prelude::*, Cursor},
     marker::PhantomData,
-    ptr, result, slice,
+    ptr, slice,
     str::Utf8Error,
 };
 
@@ -25,6 +25,7 @@ assert_not_impl_any!(Data<'_>: Sync);
 ffi_enum_wrapper! {
     /// Upstream documentation:
     /// [`gpgme_data_encoding_t`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-enum-gpgme_005fdata_005fencoding_005ft)
+    #[non_exhaustive]
     pub enum Encoding: ffi::gpgme_data_encoding_t {
         None = ffi::GPGME_DATA_ENCODING_NONE,
         Binary = ffi::GPGME_DATA_ENCODING_BINARY,
@@ -40,6 +41,7 @@ ffi_enum_wrapper! {
 ffi_enum_wrapper! {
     /// Upstream documentation:
     /// [`gpgme_data_type_t`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Convenience.html#index-enum-gpgme_005fdata_005ftype_005ft)
+    #[non_exhaustive]
     pub enum Type: ffi::gpgme_data_type_t {
         Unknown = ffi::GPGME_DATA_TYPE_UNKNOWN,
         Invalid = ffi::GPGME_DATA_TYPE_INVALID,
@@ -173,9 +175,9 @@ impl<'data> Data<'data> {
         crate::init();
         let bytes = bytes.as_ref();
         unsafe {
-            let (buf, len) = (bytes.as_ptr() as *const _, bytes.len().into());
+            let (buf, len) = (bytes.as_ptr(), bytes.len());
             let mut data = ptr::null_mut();
-            return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf, len, 1));
+            return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf.cast(), len, 1));
             Ok(Data::from_raw(data))
         }
     }
@@ -189,9 +191,9 @@ impl<'data> Data<'data> {
         crate::init();
         let buf = buf.as_ref();
         unsafe {
-            let (buf, len) = (buf.as_ptr() as *const _, buf.len().into());
+            let (buf, len) = (buf.as_ptr(), buf.len());
             let mut data = ptr::null_mut();
-            return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf, len, 0));
+            return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf.cast(), len, 0));
             Ok(Data::from_raw(data))
         }
     }
@@ -219,18 +221,15 @@ impl<'data> Data<'data> {
         Ok(Data::from_raw(data))
     }
 
-    unsafe fn from_callbacks<S>(
-        cbs: ffi::gpgme_data_cbs,
-        src: S,
-    ) -> result::Result<Self, WrappedError<S>>
+    unsafe fn from_callbacks<S>(cbs: ffi::gpgme_data_cbs, src: S) -> Result<Self, WrappedError<S>>
     where
         S: Send + 'data,
     {
         crate::init();
         let src = Box::into_raw(Box::new(CallbackWrapper { inner: src, cbs }));
-        let cbs = &mut (*src).cbs as *mut _;
+        let cbs = ptr::addr_of_mut!((*src).cbs);
         let mut data = ptr::null_mut();
-        let result = ffi::gpgme_data_new_from_cbs(&mut data, cbs, src as *mut _);
+        let result = ffi::gpgme_data_new_from_cbs(&mut data, cbs, src.cast());
         if result == 0 {
             Ok(Data::from_raw(data))
         } else {
@@ -239,7 +238,7 @@ impl<'data> Data<'data> {
     }
 
     #[inline]
-    pub fn from_reader<R>(r: R) -> result::Result<Self, WrappedError<R>>
+    pub fn from_reader<R>(r: R) -> Result<Self, WrappedError<R>>
     where
         R: Read + Send + 'data,
     {
@@ -253,7 +252,7 @@ impl<'data> Data<'data> {
     }
 
     #[inline]
-    pub fn from_seekable_reader<R>(r: R) -> result::Result<Self, WrappedError<R>>
+    pub fn from_seekable_reader<R>(r: R) -> Result<Self, WrappedError<R>>
     where
         R: Read + Seek + Send + 'data,
     {
@@ -267,7 +266,7 @@ impl<'data> Data<'data> {
     }
 
     #[inline]
-    pub fn from_writer<W>(w: W) -> result::Result<Self, WrappedError<W>>
+    pub fn from_writer<W>(w: W) -> Result<Self, WrappedError<W>>
     where
         W: Write + Send + 'data,
     {
@@ -281,7 +280,7 @@ impl<'data> Data<'data> {
     }
 
     #[inline]
-    pub fn from_seekable_writer<W>(w: W) -> result::Result<Self, WrappedError<W>>
+    pub fn from_seekable_writer<W>(w: W) -> Result<Self, WrappedError<W>>
     where
         W: Write + Seek + Send + 'data,
     {
@@ -295,7 +294,7 @@ impl<'data> Data<'data> {
     }
 
     #[inline]
-    pub fn from_stream<S: Send>(s: S) -> result::Result<Self, WrappedError<S>>
+    pub fn from_stream<S: Send>(s: S) -> Result<Self, WrappedError<S>>
     where
         S: Read + Write + Send + 'data,
     {
@@ -309,7 +308,7 @@ impl<'data> Data<'data> {
     }
 
     #[inline]
-    pub fn from_seekable_stream<S>(s: S) -> result::Result<Self, WrappedError<S>>
+    pub fn from_seekable_stream<S>(s: S) -> Result<Self, WrappedError<S>>
     where
         S: Read + Write + Seek + Send + 'data,
     {
@@ -325,7 +324,7 @@ impl<'data> Data<'data> {
     /// Upstream documentation:
     /// [`gpgme_data_get_file_name`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-gpgme_005fdata_005fget_005ffile_005fname)
     #[inline]
-    pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn filename(&self) -> Result<&str, Option<Utf8Error>> {
         self.filename_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -412,8 +411,8 @@ impl<'data> Data<'data> {
             ffi::gpgme_data_release_and_get_mem(self.into_raw(), &mut len)
                 .as_mut()
                 .map(|b| {
-                    let r = slice::from_raw_parts(b as *const _ as *const _, len).to_vec();
-                    ffi::gpgme_free(b as *mut _ as *mut _);
+                    let r = slice::from_raw_parts(ptr::addr_of!(*b).cast(), len).to_vec();
+                    ffi::gpgme_free(ptr::addr_of_mut!(*b).cast());
                     r
                 })
         }
@@ -424,8 +423,8 @@ impl Read for Data<'_> {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let result = unsafe {
-            let (buf, len) = (buf.as_mut_ptr() as *mut _, buf.len());
-            ffi::gpgme_data_read(self.as_raw(), buf, len)
+            let (buf, len) = (buf.as_mut_ptr(), buf.len());
+            ffi::gpgme_data_read(self.as_raw(), buf.cast(), len)
         };
         if result >= 0 {
             Ok(result as usize)
@@ -439,14 +438,10 @@ impl Write for Data<'_> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let result = unsafe {
-            let (buf, len) = (buf.as_ptr() as *const _, buf.len());
-            ffi::gpgme_data_write(self.as_raw(), buf, len)
+            let (buf, len) = (buf.as_ptr(), buf.len());
+            ffi::gpgme_data_write(self.as_raw(), buf.cast(), len)
         };
-        if result >= 0 {
-            Ok(result as usize)
-        } else {
-            Err(Error::last_os_error().into())
-        }
+        Ok(usize::try_from(result).map_err(|_| Error::last_os_error())?)
     }
 
     #[inline]
@@ -464,11 +459,7 @@ impl Seek for Data<'_> {
             io::SeekFrom::Current(off) => (off.value_into().unwrap_or_saturate(), libc::SEEK_CUR),
         };
         let result = unsafe { ffi::gpgme_data_seek(self.as_raw(), off, whence) };
-        if result >= 0 {
-            Ok(result as u64)
-        } else {
-            Err(Error::last_os_error().into())
-        }
+        Ok(u64::try_from(result).map_err(|_| Error::last_os_error())?)
     }
 }
 
@@ -477,75 +468,67 @@ struct CallbackWrapper<S> {
     inner: S,
 }
 
-extern "C" fn read_callback<S: Read>(
+unsafe extern "C" fn read_callback<S: Read>(
     handle: *mut libc::c_void,
     buffer: *mut libc::c_void,
     size: libc::size_t,
 ) -> libc::ssize_t {
-    let handle = handle as *mut CallbackWrapper<S>;
-    unsafe {
-        let slice = slice::from_raw_parts_mut(buffer as *mut u8, size);
-        (*handle)
-            .inner
-            .read(slice)
-            .map(|n| n as libc::ssize_t)
-            .unwrap_or_else(|err| {
-                ffi::gpgme_err_set_errno(Error::from(err).to_errno());
-                -1
-            })
-    }
+    let handle = handle.cast::<CallbackWrapper<S>>();
+    let slice = slice::from_raw_parts_mut(buffer.cast::<u8>(), size);
+    (*handle)
+        .inner
+        .read(slice)
+        .map(|n| n as libc::ssize_t)
+        .unwrap_or_else(|err| {
+            ffi::gpgme_err_set_errno(Error::from(err).to_errno());
+            -1
+        })
 }
 
-extern "C" fn write_callback<S: Write>(
+unsafe extern "C" fn write_callback<S: Write>(
     handle: *mut libc::c_void,
     buffer: *const libc::c_void,
     size: libc::size_t,
 ) -> libc::ssize_t {
-    let handle = handle as *mut CallbackWrapper<S>;
-    unsafe {
-        let slice = slice::from_raw_parts(buffer as *const _, size);
-        (*handle)
-            .inner
-            .write(slice)
-            .map(|n| n as libc::ssize_t)
-            .unwrap_or_else(|err| {
-                ffi::gpgme_err_set_errno(Error::from(err).to_errno());
-                -1
-            })
-    }
+    let handle = handle.cast::<CallbackWrapper<S>>();
+    let slice = slice::from_raw_parts(buffer.cast::<u8>(), size);
+    (*handle)
+        .inner
+        .write(slice)
+        .map(|n| n as libc::ssize_t)
+        .unwrap_or_else(|err| {
+            ffi::gpgme_err_set_errno(Error::from(err).to_errno());
+            -1
+        })
 }
 
-extern "C" fn seek_callback<S: Seek>(
+unsafe extern "C" fn seek_callback<S: Seek>(
     handle: *mut libc::c_void,
     offset: libc::off_t,
     whence: libc::c_int,
 ) -> libc::off_t {
-    let handle = handle as *mut CallbackWrapper<S>;
+    let handle = handle.cast::<CallbackWrapper<S>>();
     let pos = match whence {
         libc::SEEK_SET => io::SeekFrom::Start(offset.value_into().unwrap_or_saturate()),
         libc::SEEK_END => io::SeekFrom::End(offset.value_into().unwrap_or_saturate()),
         libc::SEEK_CUR => io::SeekFrom::Current(offset.value_into().unwrap_or_saturate()),
-        _ => unsafe {
+        _ => {
             ffi::gpgme_err_set_errno(Error::EINVAL.to_errno());
             return -1;
-        },
+        }
     };
-    unsafe {
-        (*handle)
-            .inner
-            .seek(pos)
-            .map(|n| n.value_into().unwrap_or_saturate())
-            .unwrap_or_else(|err| {
-                ffi::gpgme_err_set_errno(Error::from(err).to_errno());
-                -1
-            })
-    }
+    (*handle)
+        .inner
+        .seek(pos)
+        .map(|n| n.value_into().unwrap_or_saturate())
+        .unwrap_or_else(|err| {
+            ffi::gpgme_err_set_errno(Error::from(err).to_errno());
+            -1
+        })
 }
 
-extern "C" fn release_callback<S>(handle: *mut libc::c_void) {
-    unsafe {
-        drop(Box::from_raw(handle as *mut CallbackWrapper<S>));
-    }
+unsafe extern "C" fn release_callback<S>(handle: *mut libc::c_void) {
+    drop(Box::from_raw(handle.cast::<CallbackWrapper<S>>()));
 }
 
 /// A trait for converting compatible types into data objects.

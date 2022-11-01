@@ -6,10 +6,12 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use cstr_argument::CStrArgument;
 use ffi;
 
 use crate::{
-    notation::SignatureNotations, Error, KeyAlgorithm, KeyListMode, NonNull, Protocol, Validity,
+    notation::SignatureNotations, Context, Error, KeyAlgorithm, KeyListMode, NonNull, Protocol,
+    Result, Validity,
 };
 
 /// Upstream documentation:
@@ -246,16 +248,22 @@ impl Key {
     }
 
     #[inline]
-    pub fn update(&mut self) -> crate::Result<()> {
+    pub fn update(&mut self) -> Result<()> {
         *self = self.updated()?;
         Ok(())
     }
 
     #[inline]
-    pub fn updated(&self) -> crate::Result<Key> {
-        let mut ctx = crate::Context::from_protocol(self.protocol())?;
+    pub fn updated(&self) -> Result<Key> {
+        let mut ctx = Context::from_protocol(self.protocol())?;
         let _ = ctx.set_key_list_mode(self.key_list_mode());
         ctx.refresh_key(self)
+    }
+
+    #[inline]
+    pub fn add_uid(&self, userid: impl CStrArgument) -> Result<()> {
+        let mut ctx = Context::from_protocol(self.protocol())?;
+        ctx.add_uid(self, userid)
     }
 }
 
@@ -414,7 +422,7 @@ impl<'key> Subkey<'key> {
 
     /// Upstream documentation: [`gpgme_pubkey_algo_string`](https://www.gnupg.org/documentation/manuals/gpgme/Public-Key-Algorithms.html#index-gpgme_005fpubkey_005falgo_005fstring)
     #[inline]
-    pub fn algorithm_name(&self) -> crate::Result<String> {
+    pub fn algorithm_name(&self) -> Result<String> {
         unsafe {
             match ffi::gpgme_pubkey_algo_string(self.as_raw()).as_mut() {
                 Some(raw) => {

@@ -3,7 +3,7 @@ use std::{
     ffi::CStr,
     fmt,
     marker::PhantomData,
-    result,
+    ptr,
     str::Utf8Error,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -28,7 +28,7 @@ macro_rules! impl_result {
             #[inline]
             fn drop(&mut self) {
                 unsafe {
-                    ffi::gpgme_result_unref(self.as_raw() as *mut libc::c_void);
+                    ffi::gpgme_result_unref(self.as_raw().cast());
                 }
             }
         }
@@ -37,7 +37,7 @@ macro_rules! impl_result {
             #[inline]
             fn clone(&self) -> Self {
                 unsafe {
-                    ffi::gpgme_result_ref(self.as_raw() as *mut libc::c_void);
+                    ffi::gpgme_result_ref(self.as_raw().cast());
                     Self::from_raw(self.as_raw())
                 }
             }
@@ -47,7 +47,7 @@ macro_rules! impl_result {
             fn from_context(ctx: &Context) -> Option<Self> {
                 unsafe {
                     $Constructor(ctx.as_raw()).as_mut().map(|r| {
-                        ffi::gpgme_result_ref(r as *mut _ as *mut libc::c_void);
+                        ffi::gpgme_result_ref(ptr::addr_of_mut!(*r).cast());
                         Self::from_raw(r)
                     })
                 }
@@ -85,7 +85,7 @@ impl_subresult! {
 
 impl<'a> InvalidKey<'a> {
     #[inline]
-    pub fn fingerprint(&self) -> result::Result<&'a str, Option<Utf8Error>> {
+    pub fn fingerprint(&self) -> Result<&'a str, Option<Utf8Error>> {
         self.fingerprint_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -158,7 +158,7 @@ impl KeyGenerationResult {
     }
 
     #[inline]
-    pub fn fingerprint(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn fingerprint(&self) -> Result<&str, Option<Utf8Error>> {
         self.fingerprint_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -288,7 +288,7 @@ impl_subresult! {
 }
 impl<'result> Import<'result> {
     #[inline]
-    pub fn fingerprint(&self) -> result::Result<&'result str, Option<Utf8Error>> {
+    pub fn fingerprint(&self) -> Result<&'result str, Option<Utf8Error>> {
         self.fingerprint_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -351,7 +351,7 @@ impl_result! {
 }
 impl DecryptionResult {
     #[inline]
-    pub fn unsupported_algorithm(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn unsupported_algorithm(&self) -> Result<&str, Option<Utf8Error>> {
         self.unsupported_algorithm_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -387,7 +387,7 @@ impl DecryptionResult {
     }
 
     #[inline]
-    pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn filename(&self) -> Result<&str, Option<Utf8Error>> {
         self.filename_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -403,7 +403,7 @@ impl DecryptionResult {
     }
 
     #[inline]
-    pub fn symmetric_key_algorithm(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn symmetric_key_algorithm(&self) -> Result<&str, Option<Utf8Error>> {
         self.symmetric_key_algorithm_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -445,7 +445,7 @@ impl_subresult! {
 }
 impl<'result> Recipient<'result> {
     #[inline]
-    pub fn key_id(&self) -> result::Result<&'result str, Option<Utf8Error>> {
+    pub fn key_id(&self) -> Result<&'result str, Option<Utf8Error>> {
         self.key_id_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -516,7 +516,7 @@ impl_subresult! {
 }
 impl<'result> NewSignature<'result> {
     #[inline]
-    pub fn fingerprint(&self) -> result::Result<&'result str, Option<Utf8Error>> {
+    pub fn fingerprint(&self) -> Result<&'result str, Option<Utf8Error>> {
         self.fingerprint_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -579,7 +579,7 @@ impl VerificationResult {
     }
 
     #[inline]
-    pub fn filename(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn filename(&self) -> Result<&str, Option<Utf8Error>> {
         self.filename_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -634,7 +634,7 @@ impl<'result> Signature<'result> {
     }
 
     #[inline]
-    pub fn fingerprint(&self) -> result::Result<&'result str, Option<Utf8Error>> {
+    pub fn fingerprint(&self) -> Result<&'result str, Option<Utf8Error>> {
         self.fingerprint_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -698,7 +698,7 @@ impl<'result> Signature<'result> {
     }
 
     #[inline]
-    pub fn pka_address(&self) -> result::Result<&'result str, Option<Utf8Error>> {
+    pub fn pka_address(&self) -> Result<&'result str, Option<Utf8Error>> {
         self.pka_address_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -739,7 +739,7 @@ impl<'result> Signature<'result> {
     }
 
     #[inline]
-    pub fn policy_url(&self) -> result::Result<&'result str, Option<Utf8Error>> {
+    pub fn policy_url(&self) -> Result<&'result str, Option<Utf8Error>> {
         self.policy_url_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -799,7 +799,7 @@ impl_result! {
 }
 impl QuerySwdbResult {
     #[inline]
-    pub fn name(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn name(&self) -> Result<&str, Option<Utf8Error>> {
         self.name_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -810,7 +810,7 @@ impl QuerySwdbResult {
     }
 
     #[inline]
-    pub fn installed_version(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn installed_version(&self) -> Result<&str, Option<Utf8Error>> {
         self.installed_version_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -826,7 +826,7 @@ impl QuerySwdbResult {
     }
 
     #[inline]
-    pub fn latest_version(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn latest_version(&self) -> Result<&str, Option<Utf8Error>> {
         self.latest_version_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }

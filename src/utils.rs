@@ -67,10 +67,10 @@ macro_rules! impl_list_iterator {
 
 macro_rules! ffi_enum_wrapper {
     ($(#[$Attr:meta])* $Vis:vis enum $Name:ident($Default:ident): $T:ty {
-        $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr),+
+        $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr),+ $(,)?
     }) => {
-        #[derive(Copy, Clone, Eq, PartialEq, Hash)]
         $(#[$Attr])*
+        #[derive(Copy, Clone, Eq, PartialEq, Hash)]
         $Vis enum $Name {
             $($(#[$ItemAttr])* $Item,)+
         }
@@ -104,21 +104,11 @@ macro_rules! ffi_enum_wrapper {
             }
         }
     };
-    ($(#[$Attr:meta])* $Vis:vis enum $Name:ident($Default:ident): $T:ty {
-        $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr,)+
-    }) => {
-        ffi_enum_wrapper! {
-            $(#[$Attr])*
-            $Vis enum $Name($Default): $T {
-                $($(#[$ItemAttr])* $Item = $Value),+
-            }
-        }
-    };
     ($(#[$Attr:meta])* $Vis:vis enum $Name:ident: $T:ty {
-        $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr),+
+        $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr),+ $(,)?
     }) => {
-        #[derive(Copy, Clone, Eq, PartialEq, Hash)]
         $(#[$Attr])*
+        #[derive(Copy, Clone, Eq, PartialEq, Hash)]
         $Vis enum $Name {
             $($(#[$ItemAttr])* $Item,)+
             Other($T),
@@ -155,16 +145,6 @@ macro_rules! ffi_enum_wrapper {
             }
         }
     };
-    ($(#[$Attr:meta])* $Vis:vis enum $Name:ident: $T:ty {
-        $($(#[$ItemAttr:meta])* $Item:ident = $Value:expr,)+
-    }) => {
-        ffi_enum_wrapper! {
-            $(#[$Attr])*
-            $Vis enum $Name: $T {
-                $($(#[$ItemAttr])* $Item = $Value),+
-            }
-        }
-    };
 }
 
 pub(crate) struct FdWriter(libc::c_int);
@@ -177,13 +157,8 @@ impl FdWriter {
 
 impl Write for FdWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let result =
-            unsafe { ffi::gpgme_io_write(self.0, buf.as_ptr() as *const _, buf.len().into()) };
-        if result >= 0 {
-            Ok(result as usize)
-        } else {
-            Err(Error::last_os_error().into())
-        }
+        let result = unsafe { ffi::gpgme_io_write(self.0, buf.as_ptr().cast(), buf.len()) };
+        usize::try_from(result).map_err(|_| Error::last_os_error().into())
     }
 
     fn flush(&mut self) -> io::Result<()> {

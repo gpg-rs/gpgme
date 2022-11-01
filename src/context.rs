@@ -3,9 +3,9 @@ use std::{
     ffi::CStr,
     fmt,
     iter::FusedIterator,
-    mem,
+    mem::ManuallyDrop,
     ops::{Deref, DerefMut},
-    ptr, result,
+    ptr,
     str::Utf8Error,
     time::Duration,
 };
@@ -125,7 +125,7 @@ impl Context {
     /// Upstream documentation:
     /// [`gpgme_get_ctx_flag`](https://www.gnupg.org/documentation/manuals/gpgme/Context-Flags.html#index-gpgme_005fget_005fctx_005fflag)
     #[inline]
-    pub fn get_flag(&self, name: impl CStrArgument) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn get_flag(&self, name: impl CStrArgument) -> Result<&str, Option<Utf8Error>> {
         self.get_flag_raw(name)
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -261,7 +261,6 @@ impl Context {
     /// Upstream documentation:
     /// [`gpgme_set_passphrase_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Passphrase-Callback.html#index-gpgme_005fset_005fpassphrase_005fcb)
     #[inline]
-    #[allow(deprecated)]
     pub fn set_passphrase_provider<'a, P>(self, provider: P) -> ContextWithCallbacks<'a>
     where
         P: PassphraseProvider + 'a,
@@ -293,7 +292,6 @@ impl Context {
     /// });
     /// # Ok::<(), gpgme::Error>(())
     /// ```
-    #[allow(deprecated)]
     pub fn with_passphrase_provider<R, P>(
         &mut self,
         provider: P,
@@ -313,7 +311,7 @@ impl Context {
             ffi::gpgme_set_passphrase_cb(
                 self.as_raw(),
                 Some(callbacks::passphrase_cb::<P>),
-                (&mut hook as *mut _) as *mut _,
+                ptr::addr_of_mut!(hook).cast(),
             );
             f(self)
         }
@@ -361,7 +359,7 @@ impl Context {
             ffi::gpgme_set_progress_cb(
                 self.as_raw(),
                 Some(callbacks::progress_cb::<H>),
-                (&mut hook as *mut _) as *mut _,
+                ptr::addr_of_mut!(hook).cast(),
             );
             f(self)
         }
@@ -404,7 +402,7 @@ impl Context {
             ffi::gpgme_set_status_cb(
                 self.as_raw(),
                 Some(callbacks::status_cb::<H>),
-                (&mut hook as *mut _) as *mut _,
+                ptr::addr_of_mut!(hook).cast(),
             );
             f(self)
         }
@@ -815,6 +813,11 @@ impl Context {
         Ok(())
     }
 
+    #[inline]
+    pub fn set_primary_uid(&mut self, key: &Key, userid: impl CStrArgument) -> Result<()> {
+        self.set_uid_flag(key, userid, "primary\0", None::<String>)
+    }
+
     /// Signs the given key with the default signing key, or the keys specified via
     /// [`add_signer`].
     ///
@@ -939,7 +942,7 @@ impl Context {
                 self.as_raw(),
                 key.as_raw(),
                 Some(callbacks::edit_cb::<E>),
-                (&mut hook as *mut _) as *mut _,
+                ptr::addr_of_mut!(hook).cast(),
                 (*hook.response).as_raw(),
             ));
         }
@@ -966,7 +969,7 @@ impl Context {
                 self.as_raw(),
                 key.as_raw(),
                 Some(callbacks::edit_cb::<E>),
-                (&mut hook as *mut _) as *mut _,
+                ptr::addr_of_mut!(hook).cast(),
                 (*hook.response).as_raw(),
             ));
         }
@@ -1010,35 +1013,35 @@ impl Context {
     /// Upstream documentation:
     /// [`gpgme_op_interact`](https://www.gnupg.org/documentation/manuals/gpgme/Advanced-Key-Editing.html#index-gpgme_005fop_005finteract)
     #[inline]
-    #[allow(deprecated)]
     pub fn interact<'a, I, D>(&mut self, key: &Key, interactor: I, data: D) -> Result<()>
     where
         I: Interactor,
         D: IntoData<'a>,
     {
-        let mut data = data.into_data()?;
-        let mut hook = callbacks::InteractorHook {
-            inner: interactor.into(),
-            response: data.borrow_mut(),
-        };
-        unsafe {
-            return_err!(ffi::gpgme_op_interact(
-                self.as_raw(),
-                key.as_raw(),
-                0,
-                Some(callbacks::interact_cb::<I>),
-                &mut hook as *mut _ as *mut _,
-                (*hook.response).as_raw(),
-            ));
-        }
-        Ok(())
+        self.interact_with_flags(Some(key), interactor, data, crate::InteractFlags::empty())
     }
 
     /// Upstream documentation:
     /// [`gpgme_op_interact`](https://www.gnupg.org/documentation/manuals/gpgme/Advanced-Key-Editing.html#index-gpgme_005fop_005finteract)
     #[inline]
-    #[allow(deprecated)]
     pub fn interact_with_card<'a, I, D>(&mut self, key: &Key, interactor: I, data: D) -> Result<()>
+    where
+        I: Interactor,
+        D: IntoData<'a>,
+    {
+        self.interact_with_flags(Some(key), interactor, data, crate::InteractFlags::CARD)
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_op_interact`](https://www.gnupg.org/documentation/manuals/gpgme/Advanced-Key-Editing.html#index-gpgme_005fop_005finteract)
+    #[inline]
+    pub fn interact_with_flags<'a, I, D>(
+        &mut self,
+        key: Option<&Key>,
+        interactor: I,
+        data: D,
+        flags: crate::InteractFlags,
+    ) -> Result<()>
     where
         I: Interactor,
         D: IntoData<'a>,
@@ -1051,10 +1054,10 @@ impl Context {
         unsafe {
             return_err!(ffi::gpgme_op_interact(
                 self.as_raw(),
-                key.as_raw(),
-                ffi::GPGME_INTERACT_CARD,
+                key.map_or(ptr::null_mut(), |k| k.as_raw()),
+                flags.bits(),
                 Some(callbacks::interact_cb::<I>),
-                &mut hook as *mut _ as *mut _,
+                ptr::addr_of_mut!(hook).cast(),
                 (*hook.response).as_raw(),
             ));
         }
@@ -1127,6 +1130,26 @@ impl Context {
         };
         unsafe {
             return_err!(ffi::gpgme_op_import_keys(self.as_raw(), keys));
+        }
+        Ok(self.get_result().unwrap())
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_op_receive_keys`](https://www.gnupg.org/documentation/manuals/gpgme/Importing-Keys.html#index-gpgme_005fop_005freceive_005fkeys)
+    #[cfg(feature = "v1_17")]
+    pub fn import_remote_keys<I>(&mut self, uids: I) -> Result<results::ImportResult>
+    where
+        I: IntoIterator,
+        I::Item: CStrArgument,
+    {
+        let uids: SmallVec<_> = uids.into_iter().map(|s| s.into_cstr()).collect();
+        let uids: SmallVec<_> = uids
+            .iter()
+            .map(|s| s.as_ref().as_ptr())
+            .chain(Some(ptr::null()))
+            .collect();
+        unsafe {
+            return_err!(ffi::gpgme_op_receive_keys(self.as_raw(), uids.as_ptr()));
         }
         Ok(self.get_result().unwrap())
     }
@@ -1285,7 +1308,7 @@ impl Context {
     /// Upstream documentation:
     /// [`gpgme_get_sender`](https://www.gnupg.org/documentation/manuals/gpgme/Setting-the-Sender.html#index-gpgme_005fget_005fsender)
     #[inline]
-    pub fn sender(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn sender(&self) -> Result<&str, Option<Utf8Error>> {
         self.sender_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -1387,7 +1410,7 @@ impl Context {
     /// Upstream documentation:
     /// [`gpgme_sig_notation_get`](https://www.gnupg.org/documentation/manuals/gpgme/Signature-Notation-Data.html#index-gpgme_005fsig_005fnotation_005fget)
     #[inline]
-    pub fn signature_policy_url(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn signature_policy_url(&self) -> Result<&str, Option<Utf8Error>> {
         self.signature_policy_url_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -1898,6 +1921,28 @@ pub struct Keys<'ctx, D = ()> {
     _src: D,
 }
 
+impl<D> Drop for Keys<'_, D> {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            ffi::gpgme_op_keylist_end(self.ctx.as_raw());
+        }
+    }
+}
+
+impl<D> Keys<'_, D> {
+    /// Upstream documentation:
+    /// [`gpgme_op_keylist_end`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fop_005fkeylist_005fend)
+    #[inline]
+    pub fn finish(self) -> Result<results::KeyListResult> {
+        let this = ManuallyDrop::new(self);
+        unsafe {
+            return_err!(ffi::gpgme_op_keylist_end(this.ctx.as_raw()));
+        }
+        Ok(this.ctx.get_result().unwrap())
+    }
+}
+
 impl<'ctx> Keys<'ctx, ()> {
     /// Upstream documentation:
     /// [`gpgme_op_keylist_from_data_start`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fop_005fkeylist_005ffrom_005fdata_005fstart)
@@ -1916,29 +1961,6 @@ impl<'ctx> Keys<'ctx, ()> {
             ));
         }
         Ok(Keys { _src: src, ctx })
-    }
-}
-
-impl<D> Keys<'_, D> {
-    /// Upstream documentation:
-    /// [`gpgme_op_keylist_end`](https://www.gnupg.org/documentation/manuals/gpgme/Listing-Keys.html#index-gpgme_005fop_005fkeylist_005fend)
-    #[inline]
-    pub fn finish(self) -> Result<results::KeyListResult> {
-        let ctx = self.ctx as *mut Context;
-        mem::forget(self);
-        unsafe {
-            return_err!(ffi::gpgme_op_keylist_end((*ctx).as_raw()));
-            Ok((*ctx).get_result().unwrap())
-        }
-    }
-}
-
-impl<D> Drop for Keys<'_, D> {
-    #[inline]
-    fn drop(&mut self) {
-        unsafe {
-            ffi::gpgme_op_keylist_end(self.ctx.as_raw());
-        }
     }
 }
 
@@ -1999,10 +2021,11 @@ impl Iterator for Signers<'_> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.current.map_or((0, Some(0)), |c| {
-            let count = unsafe {
-                (ffi::gpgme_signers_count(self.ctx.as_raw()) - c as libc::c_uint).value_into()
-            };
-            (count.unwrap_or_saturate(), count.ok())
+            let total = unsafe { ffi::gpgme_signers_count(self.ctx.as_raw()) };
+            match usize::try_from(total - (c as libc::c_uint)) {
+                Ok(v) => (v, Some(v)),
+                Err(_) => (usize::MAX, None),
+            }
         })
     }
 
@@ -2032,6 +2055,14 @@ pub struct ContextWithCallbacks<'a> {
     status_hook: Option<Box<dyn Send + 'a>>,
 }
 
+impl Drop for ContextWithCallbacks<'_> {
+    fn drop(&mut self) {
+        (**self).clear_passphrase_provider();
+        (**self).clear_progress_reporter();
+        (**self).clear_status_handler();
+    }
+}
+
 impl<'a> ContextWithCallbacks<'a> {
     /// Upstream documentation:
     /// [`gpgme_set_passphrase_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Passphrase-Callback.html#index-gpgme_005fset_005fpassphrase_005fcb)
@@ -2042,7 +2073,6 @@ impl<'a> ContextWithCallbacks<'a> {
 
     /// Upstream documentation:
     /// [`gpgme_set_passphrase_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Passphrase-Callback.html#index-gpgme_005fset_005fpassphrase_005fcb)
-    #[allow(deprecated)]
     pub fn set_passphrase_provider<P>(&mut self, provider: P)
     where
         P: PassphraseProvider + 'a,
@@ -2052,7 +2082,7 @@ impl<'a> ContextWithCallbacks<'a> {
             ffi::gpgme_set_passphrase_cb(
                 self.as_raw(),
                 Some(callbacks::passphrase_cb::<P>),
-                &mut *hook as *mut _ as *mut _,
+                ptr::addr_of_mut!(*hook).cast(),
             );
         }
         self.passphrase_hook = Some(hook);
@@ -2076,7 +2106,7 @@ impl<'a> ContextWithCallbacks<'a> {
             ffi::gpgme_set_progress_cb(
                 self.as_raw(),
                 Some(callbacks::progress_cb::<H>),
-                &mut *hook as *mut _ as *mut _,
+                ptr::addr_of_mut!(*hook).cast(),
             );
         }
         self.progress_hook = Some(hook);
@@ -2100,7 +2130,7 @@ impl<'a> ContextWithCallbacks<'a> {
             ffi::gpgme_set_status_cb(
                 self.as_raw(),
                 Some(callbacks::status_cb::<H>),
-                &mut *hook as *mut _ as *mut _,
+                ptr::addr_of_mut!(*hook).cast(),
             );
         }
         self.status_hook = Some(hook);
@@ -2113,7 +2143,8 @@ impl<'a> ContextWithCallbacks<'a> {
         self.clear_passphrase_provider();
         self.clear_progress_reporter();
         self.clear_status_handler();
-        self.inner
+        let this = ManuallyDrop::new(self);
+        unsafe { Context::from_raw(this.as_raw()) }
     }
 }
 

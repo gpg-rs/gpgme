@@ -2,7 +2,7 @@ use std::{
     ffi::CStr,
     fmt,
     marker::PhantomData,
-    ptr, result,
+    ptr,
     str::Utf8Error,
     sync::{RwLock, RwLockReadGuard},
 };
@@ -29,7 +29,7 @@ impl EngineInfo<'_> {
     }
 
     #[inline]
-    pub fn path(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn path(&self) -> Result<&str, Option<Utf8Error>> {
         self.path_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -45,7 +45,7 @@ impl EngineInfo<'_> {
     }
 
     #[inline]
-    pub fn home_dir(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn home_dir(&self) -> Result<&str, Option<Utf8Error>> {
         self.home_dir_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -72,7 +72,7 @@ impl EngineInfo<'_> {
     }
 
     #[inline]
-    pub fn version(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn version(&self) -> Result<&str, Option<Utf8Error>> {
         self.version_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -83,7 +83,7 @@ impl EngineInfo<'_> {
     }
 
     #[inline]
-    pub fn required_version(&self) -> result::Result<&str, Option<Utf8Error>> {
+    pub fn required_version(&self) -> Result<&str, Option<Utf8Error>> {
         self.required_version_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }

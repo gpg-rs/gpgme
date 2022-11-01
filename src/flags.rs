@@ -25,6 +25,12 @@ bitflags! {
 }
 
 bitflags! {
+    pub struct InteractFlags: libc::c_uint {
+        const CARD = ffi::GPGME_INTERACT_CARD;
+    }
+}
+
+bitflags! {
     /// Upstream documentation:
     /// [`gpgme_op_createkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fcreatekey)
     pub struct CreateKeyFlags: libc::c_uint {
@@ -155,6 +161,7 @@ bitflags! {
 ffi_enum_wrapper! {
     /// Upstream documentation:
     /// [`gpgme_keyorg_t`](https://www.gnupg.org/documentation/manuals/gpgme/Key-objects.html#index-gpgme_005fuser_005fid_005ft)
+    #[non_exhaustive]
     pub enum KeyOrigin: ffi::gpgme_keyorg_t {
         Unknown = ffi::GPGME_KEYORG_UNKNOWN,
         KeyServer = ffi::GPGME_KEYORG_KS,
@@ -179,6 +186,7 @@ ffi_enum_wrapper! {
 ffi_enum_wrapper! {
     /// Upstream documentation:
     /// [`gpgme_pubkey_algo_t`](https://www.gnupg.org/documentation/manuals/gpgme/Public-Key-Algorithms.html#index-gpgme_005fpubkey_005falgo_005ft)
+    #[non_exhaustive]
     pub enum KeyAlgorithm: ffi::gpgme_pubkey_algo_t {
         Rsa = ffi::GPGME_PK_RSA,
         RsaEncrypt = ffi::GPGME_PK_RSA_E,
@@ -224,6 +232,7 @@ impl fmt::Display for KeyAlgorithm {
 ffi_enum_wrapper! {
     /// Upstream documentation:
     /// [`gpgme_hash_algo_t`](https://www.gnupg.org/documentation/manuals/gpgme/Hash-Algorithms.html#index-enum-gpgme_005fhash_005falgo_005ft)
+    #[non_exhaustive]
     pub enum HashAlgorithm: ffi::gpgme_hash_algo_t {
         None = ffi::GPGME_MD_NONE,
         Md2 = ffi::GPGME_MD_MD2,

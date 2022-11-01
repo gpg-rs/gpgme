@@ -67,7 +67,7 @@ impl Editor for TestEditor {
         }
     }
 
-    fn action<W: Write>(&self, state: Self::State, mut out: W) -> Result<()> {
+    fn action(&self, state: Self::State, out: &mut dyn Write) -> Result<()> {
         use self::TestEditorState as State;
 
         match state {

@@ -1,7 +1,7 @@
 #![forbid(missing_debug_implementations)]
 use std::{
     ffi::CStr,
-    fmt, ptr, result,
+    fmt, ptr,
     str::Utf8Error,
     sync::{Mutex, RwLock},
 };
@@ -54,6 +54,7 @@ ffi_enum_wrapper! {
     ///
     /// Upstream documentation:
     /// [`gpgme_protocol_t`](https://www.gnupg.org/documentation/manuals/gpgme/Protocols-and-Engines.html#index-enum-gpgme_005fprotocol_005ft)
+    #[non_exhaustive]
     pub enum Protocol: ffi::gpgme_protocol_t {
         OpenPgp = ffi::GPGME_PROTOCOL_OpenPGP,
         Cms = ffi::GPGME_PROTOCOL_CMS,
@@ -71,7 +72,7 @@ impl Protocol {
     /// Upstream documentation:
     /// [`gpgme_get_protocol_name`](https://www.gnupg.org/documentation/manuals/gpgme/Protocols-and-Engines.html#index-gpgme_005fget_005fprotocol_005fname)
     #[inline]
-    pub fn name(&self) -> result::Result<&'static str, Option<Utf8Error>> {
+    pub fn name(&self) -> Result<&'static str, Option<Utf8Error>> {
         self.name_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -137,6 +138,22 @@ pub fn set_flag(name: impl CStrArgument, val: impl CStrArgument) -> Result<()> {
     }
 }
 
+cfg_if::cfg_if! {
+    if #[cfg(feature = "v1_18")] {
+        const MIN_VERSION: &[u8] = b"1.18.0\0";
+    } else if #[cfg(feature = "v1_17")] {
+        const MIN_VERSION: &[u8] = b"1.17.0\0";
+    } else if #[cfg(feature = "v1_16")] {
+        const MIN_VERSION: &[u8] = b"1.16.0\0";
+    } else if #[cfg(feature = "v1_15")] {
+        const MIN_VERSION: &[u8] = b"1.15.0\0";
+    } else if #[cfg(feature = "v1_14")] {
+        const MIN_VERSION: &[u8] = b"1.14.0\0";
+    } else {
+        const MIN_VERSION: &[u8] = b"1.13.0\0";
+    }
+}
+
 /// Initializes the gpgme library.
 ///
 /// Upstream documentation:
@@ -152,7 +169,7 @@ pub fn init() -> Gpgme {
     static TOKEN: Lazy<(&str, RwLock<()>)> = Lazy::new(|| unsafe {
         let offset = memoffset::offset_of!(ffi::_gpgme_signature, validity);
 
-        let result = ffi::gpgme_check_version_internal(ptr::null(), offset);
+        let result = ffi::gpgme_check_version_internal(MIN_VERSION.as_ptr().cast(), offset);
         assert!(
             !result.is_null(),
             "the library linked is not the correct version"
@@ -219,10 +236,7 @@ impl Gpgme {
     /// Upstream documentation:
     /// [`gpgme_get_dirinfo`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Version-Check.html#index-gpgme_005fget_005fdirinfo)
     #[inline]
-    pub fn get_dir_info(
-        &self,
-        what: impl CStrArgument,
-    ) -> result::Result<&'static str, Option<Utf8Error>> {
+    pub fn get_dir_info(&self, what: impl CStrArgument) -> Result<&'static str, Option<Utf8Error>> {
         self.get_dir_info_raw(what)
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
@@ -276,11 +290,11 @@ impl Gpgme {
     #[inline]
     pub fn set_engine_path(&self, proto: Protocol, path: impl CStrArgument) -> Result<()> {
         let path = path.into_cstr();
+        let _lock = self
+            .engine_lock
+            .write()
+            .expect("engine info lock was poisoned");
         unsafe {
-            let _lock = self
-                .engine_lock
-                .write()
-                .expect("engine info lock was poisoned");
             let home_dir = self
                 .get_engine_info(proto)
                 .as_ref()
@@ -297,11 +311,11 @@ impl Gpgme {
     #[inline]
     pub fn set_engine_home_dir(&self, proto: Protocol, home_dir: impl CStrArgument) -> Result<()> {
         let home_dir = home_dir.into_cstr();
+        let _lock = self
+            .engine_lock
+            .write()
+            .expect("engine info lock was poisoned");
         unsafe {
-            let _lock = self
-                .engine_lock
-                .write()
-                .expect("engine info lock was poisoned");
             let path = self
                 .get_engine_info(proto)
                 .as_ref()
@@ -326,11 +340,11 @@ impl Gpgme {
     ) -> Result<()> {
         let path = path.map(CStrArgument::into_cstr);
         let home_dir = home_dir.map(CStrArgument::into_cstr);
+        let path = path.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
+        let home_dir = home_dir
+            .as_ref()
+            .map_or(ptr::null(), |s| s.as_ref().as_ptr());
         unsafe {
-            let path = path.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
-            let home_dir = home_dir
-                .as_ref()
-                .map_or(ptr::null(), |s| s.as_ref().as_ptr());
             let _lock = self
                 .engine_lock
                 .write()
