@@ -16,6 +16,8 @@ fn try_registry() -> bool {
 
 #[cfg(windows)]
 fn try_registry() -> bool {
+    use std::{fs, path::PathBuf};
+
     use winreg::{enums::*, RegKey};
 
     if !build::cargo_cfg_windows() {
@@ -32,7 +34,7 @@ fn try_registry() -> bool {
                 Ok(k) => {
                     // found 32bit library
                     if build::cargo_cfg_pointer_width() == 32 {
-                        eprintln!("Compile using i586/686 target.");
+                        eprintln!("compile using i586/686 target.");
                         return false;
                     } else {
                         k
@@ -45,20 +47,25 @@ fn try_registry() -> bool {
             }
         }
     };
-    let root = PathBuf::from(
-        key.get_value::<String, _>("Install Directory")
-            .warn_err("unable to retrieve install location")?,
-    );
+    let root = match key.get_value::<String, _>("Install Directory") {
+        Ok(v) => PathBuf::from(v),
+        Err(_) => {
+            eprintln!("unable to retrieve install location");
+            return false;
+        }
+    };
     println!("detected install via registry: {}", root.display());
-    if root.join("lib/libgpgme.imp").exists() {
-        fs::copy(
-            root.join("lib/libgpgme.imp"),
-            build::out_dir().join("libgpgme.a"),
-        )
-        .warn_err("unable to rename library")?;
+    if root.join("lib/libgpg-error.imp").exists() {
+        if let Err(e) = fs::copy(
+            root.join("lib/libgpg-error.imp"),
+            build::out_dir().join("libgpg-error.a"),
+        ) {
+            eprintln!("unable to rename library: {e}");
+            return false;
+        }
     }
 
     build::rustc_link_search(build::out_dir());
-    build::rustc_link_lib("gpgme");
+    build::rustc_link_lib("gpg-error");
     true
 }
