@@ -23,7 +23,7 @@ them (or the registry on Windows).
 
 On Debian/Ubuntu based systems:
 ```sh
-$ sudo apt-get install libgpgme11-dev
+$ sudo apt-get install libgpgme-dev
 ```
 
 On Fedora/RHEL based systems:
