@@ -29,9 +29,7 @@ jobs:
         run: brew install gpgme
 
       - name: Install rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.rust }}
+        run: rustup default ${{ matrix.rust }}
 
       - name: Build
         run: cargo build --verbose

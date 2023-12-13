@@ -11,7 +11,7 @@
 
 ## Using
 
-To use the crate, add it to your depedencies:
+To use the crate, add it to your dependencies:
 ```sh
 $ cargo add gpgme
 ```
@@ -34,6 +34,11 @@ $ sudo dnf install gpgme-devel
 On MacOS systems:
 ```sh
 $ brew install gnupg
+```
+
+On Windows 10 (1709 or later) systems:
+```pwsh
+$ winget install --id GnuPG.Gpg4win
 ```
 
 On Windows systems, download and install the official [Gpg4win] installer. Only
@@ -60,8 +65,8 @@ valid  0: Unknown
 These crates are licensed under the [LGPL-2.1 license](./COPYING).
 
 [crate]: https://crates.io/crates/gpgme
-[ci]: https://github.com/gpg-rs/gpgme/actions?query=branch%3Amaster
-[build]: https://img.shields.io/github/workflow/status/gpg-rs/gpgme/Continuous%20Integration?style=flat-square
+[ci]: https://github.com/gpg-rs/gpgme/actions/workflows/ci.yml
+[build]: https://img.shields.io/github/actions/workflow/status/gpg-rs/gpgme/ci.yml?style=flat-square
 [version]: https://img.shields.io/crates/v/gpgme?style=flat-square
 [license]: https://img.shields.io/crates/l/gpgme?style=flat-square
 [downloads]: https://img.shields.io/crates/d/gpgme?style=flat-square

@@ -5,7 +5,6 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-documentation = "https://docs.rs/gpgme"
 categories = ["api-bindings"]
 keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 description = "GPGme bindings for Rust"
@@ -48,6 +47,12 @@ version = "0.11.0"
 [[bin]]
 name = "pinentry"
 test = false
+
+[lints.rust]
+missing_debug_implementations = "warn"
+
+[lints.clippy]
+useless_conversion = "allow"
 
 [workspace.package]
 version = "0.11.0"
