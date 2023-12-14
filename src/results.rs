@@ -308,7 +308,7 @@ impl<'result> Import<'result> {
 
     #[inline]
     pub fn status(&self) -> ImportFlags {
-        unsafe { ImportFlags::from_bits_truncate((*self.as_raw()).status) }
+        unsafe { ImportFlags::from_bits_retain((*self.as_raw()).status) }
     }
 }
 
@@ -630,7 +630,7 @@ impl_subresult! {
 impl<'result> Signature<'result> {
     #[inline]
     pub fn summary(&self) -> SignatureSummary {
-        unsafe { SignatureSummary::from_bits_truncate((*self.as_raw()).summary as u32) }
+        unsafe { SignatureSummary::from_bits_retain((*self.as_raw()).summary) }
     }
 
     #[inline]

@@ -13,11 +13,11 @@ test_case! {
         }
 
         ctx.add_key_list_mode(KeyListMode::SIGS).unwrap();
-        let signer = ctx.find_secret_keys(Some("alfa@example.net")).unwrap().nth(0).unwrap().unwrap();
+        let signer = ctx.find_secret_keys(Some("alfa@example.net")).unwrap().next().unwrap().unwrap();
         ctx.add_signer(&signer).unwrap();
 
-        let mut key = ctx.find_keys(Some("bravo@example.net")).unwrap().nth(0).unwrap().unwrap();
-        assert!(!key.user_ids().nth(0).unwrap().signatures().any(|s| {
+        let mut key = ctx.find_keys(Some("bravo@example.net")).unwrap().next().unwrap().unwrap();
+        assert!(!key.user_ids().next().unwrap().signatures().any(|s| {
             signer.id_raw() == s.signer_key_id_raw()
         }));
 
@@ -26,7 +26,7 @@ test_case! {
         });
 
         key.update().unwrap();
-        assert!(key.user_ids().nth(0).unwrap().signatures().any(|s| {
+        assert!(key.user_ids().next().unwrap().signatures().any(|s| {
             signer.id_raw() == s.signer_key_id_raw()
         }));
     }

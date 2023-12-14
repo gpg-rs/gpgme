@@ -1,23 +1,19 @@
-use gpgme;
-use structopt;
-
-use gpgme::{Context, Protocol, SignatureSummary};
 use std::{error::Error, fs::File, path::PathBuf};
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+use clap::Parser;
+use gpgme::{Context, Protocol, SignatureSummary};
+
+#[derive(Debug, Parser)]
 struct Cli {
-    #[structopt(long)]
+    #[arg(long)]
     /// Use the CMS protocol
     cms: bool,
-    #[structopt(parse(from_os_str))]
     sigfile: PathBuf,
-    #[structopt(parse(from_os_str))]
     filename: Option<PathBuf>,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let args = Cli::from_args();
+    let args = Cli::parse();
     let proto = if args.cms {
         Protocol::Cms
     } else {
@@ -27,15 +23,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut ctx = Context::from_protocol(proto)?;
     let sigfile = &args.sigfile;
     let signature =
-        File::open(sigfile).map_err(|e| format!("can't open '{}': {:?}", sigfile.display(), e))?;
+        File::open(sigfile).map_err(|e| format!("can't open '{}': {e:?}", sigfile.display()))?;
     let result = if let Some(filename) = args.filename.as_ref() {
         let signed = File::open(filename)
-            .map_err(|e| format!("can't open '{}': {:?}", filename.display(), e))?;
+            .map_err(|e| format!("can't open '{}': {e:?}", filename.display()))?;
         ctx.verify_detached(signature, signed)
     } else {
         ctx.verify_opaque(signature, &mut Vec::new())
     };
-    print_result(&result.map_err(|e| format!("verification failed: {:?}", e))?);
+    print_result(&result.map_err(|e| format!("verification failed: {e:?}"))?);
     Ok(())
 }
 
@@ -81,11 +77,11 @@ fn print_result(result: &gpgme::VerificationResult) {
         result.filename().unwrap_or("[none]")
     );
     for (i, sig) in result.signatures().enumerate() {
-        println!("Signature {}", i);
+        println!("Signature {i}");
         println!("  status ....: {:?}", sig.status());
         print!("  summary ...:");
         print_summary(sig.summary());
-        println!("");
+        println!();
         println!("  fingerprint: {}", sig.fingerprint().unwrap_or("[none]"));
         println!("  created ...: {:?}", sig.creation_time());
         println!("  expires ...: {:?}", sig.expiration_time());

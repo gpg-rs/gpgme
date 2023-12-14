@@ -2,12 +2,11 @@
 use std::{ffi::CStr, fmt, str::Utf8Error};
 
 use bitflags::bitflags;
-use ffi;
-use libc;
 
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_keylist_mode_t`](https://www.gnupg.org/documentation/manuals/gpgme/Key-Listing-Mode.html#Key-Listing-Mode)
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct KeyListMode: ffi::gpgme_keylist_mode_t {
         const LOCAL = ffi::GPGME_KEYLIST_MODE_LOCAL;
         const EXTERN = ffi::GPGME_KEYLIST_MODE_EXTERN;
@@ -19,12 +18,14 @@ bitflags! {
         const EPHEMERAL = ffi::GPGME_KEYLIST_MODE_EPHEMERAL;
         const VALIDATE = ffi::GPGME_KEYLIST_MODE_VALIDATE;
         const FORCE_EXTERN = ffi::GPGME_KEYLIST_MODE_FORCE_EXTERN;
+
         const LOCATE = ffi::GPGME_KEYLIST_MODE_LOCATE;
         const LOCATE_EXTERNAL = ffi::GPGME_KEYLIST_MODE_LOCATE_EXTERNAL;
     }
 }
 
 bitflags! {
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct InteractFlags: libc::c_uint {
         const CARD = ffi::GPGME_INTERACT_CARD;
     }
@@ -33,6 +34,7 @@ bitflags! {
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_op_createkey`](https://www.gnupg.org/documentation/manuals/gpgme/Generating-Keys.html#index-gpgme_005fop_005fcreatekey)
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct CreateKeyFlags: libc::c_uint {
         const SIGN = ffi::GPGME_CREATE_SIGN;
         const ENCR = ffi::GPGME_CREATE_ENCR;
@@ -51,6 +53,7 @@ bitflags! {
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_op_delete_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Deleting-Keys.html#index-gpgme_005fop_005fdelete_005fext)
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct DeleteKeyFlags: libc::c_uint {
         const ALLOW_SECRET = ffi::GPGME_DELETE_ALLOW_SECRET;
         const FORCE = ffi::GPGME_DELETE_FORCE;
@@ -60,6 +63,7 @@ bitflags! {
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_op_keysign`](https://www.gnupg.org/documentation/manuals/gpgme/Signing-Keys.html#index-gpgme_005fop_005fkeysign)
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct KeySigningFlags: libc::c_uint {
         const LOCAL = ffi::GPGME_KEYSIGN_LOCAL;
         const LFSEP = ffi::GPGME_KEYSIGN_LFSEP;
@@ -71,6 +75,7 @@ bitflags! {
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_import_status_t`](https://www.gnupg.org/documentation/manuals/gpgme/Importing-Keys.html#index-gpgme_005fimport_005fstatus_005ft)
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct ImportFlags: libc::c_uint {
         const NEW = ffi::GPGME_IMPORT_NEW;
         const UID = ffi::GPGME_IMPORT_UID;
@@ -83,6 +88,7 @@ bitflags! {
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_export_mode_t`](https://www.gnupg.org/documentation/manuals/gpgme/Exporting-Keys.html)
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct ExportMode: ffi::gpgme_export_mode_t {
         const EXTERN = ffi::GPGME_EXPORT_MODE_EXTERN;
         const MINIMAL = ffi::GPGME_EXPORT_MODE_MINIMAL;
@@ -97,6 +103,7 @@ bitflags! {
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_op_encrypt`](https://www.gnupg.org/documentation/manuals/gpgme/Encrypting-a-Plaintext.html#index-gpgme_005fop_005fencrypt)
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct EncryptFlags: ffi::gpgme_encrypt_flags_t {
         const ALWAYS_TRUST = ffi::GPGME_ENCRYPT_ALWAYS_TRUST;
         const NO_ENCRYPT_TO = ffi::GPGME_ENCRYPT_NO_ENCRYPT_TO;
@@ -113,6 +120,7 @@ bitflags! {
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_op_decrypt_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Decrypt.html#index-gpgme_005fop_005fdecrypt_005fext)
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct DecryptFlags: ffi::gpgme_decrypt_flags_t {
         const VERIFY = ffi::GPGME_DECRYPT_VERIFY;
         const UNWRAP = ffi::GPGME_DECRYPT_UNWRAP;
@@ -122,6 +130,7 @@ bitflags! {
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_sigsum_t`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fsignature_005ft)
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct SignatureSummary: ffi::gpgme_sigsum_t {
         const VALID = ffi::GPGME_SIGSUM_VALID;
         const GREEN = ffi::GPGME_SIGSUM_GREEN;
@@ -141,6 +150,7 @@ bitflags! {
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_sig_notation_flags_t`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fsig_005fnotation_005ft)
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct SignatureNotationFlags: ffi::gpgme_sig_notation_flags_t {
         const HUMAN_READABLE = ffi::GPGME_SIG_NOTATION_HUMAN_READABLE;
         const CRITICAL = ffi::GPGME_SIG_NOTATION_CRITICAL;
@@ -150,6 +160,7 @@ bitflags! {
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_op_getauditlog`](https://www.gnupg.org/documentation/manuals/gpgme/Additional-Logs.html#index-gpgme_005fop_005fgetauditlog)
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct AuditLogFlags: libc::c_uint {
         const DEFAULT = ffi::GPGME_AUDITLOG_DEFAULT;
         const HTML = ffi::GPGME_AUDITLOG_HTML;

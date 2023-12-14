@@ -218,7 +218,7 @@ impl Key {
 
     #[inline]
     pub fn key_list_mode(&self) -> KeyListMode {
-        unsafe { KeyListMode::from_bits_truncate((*self.as_raw()).keylist_mode) }
+        unsafe { KeyListMode::from_bits_retain((*self.as_raw()).keylist_mode) }
     }
 
     #[inline]

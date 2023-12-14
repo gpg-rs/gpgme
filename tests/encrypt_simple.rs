@@ -1,5 +1,3 @@
-use gpgme;
-
 use self::common::passphrase_cb;
 
 #[macro_use]
@@ -9,7 +7,7 @@ test_case! {
     test_simple_encrypt_decrypt(test) {
         let mut ctx = test.create_context();
 
-        let key = ctx.find_keys(Some("alfa@example.net")).unwrap().nth(0).unwrap().unwrap();
+        let key = ctx.find_keys(Some("alfa@example.net")).unwrap().next().unwrap().unwrap();
 
         ctx.set_armor(true);
         ctx.set_text_mode(true);

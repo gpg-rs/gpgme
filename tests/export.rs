@@ -11,7 +11,7 @@ test_case! {
         ctx.set_offline(true);
         ctx.set_armor(true);
 
-        let key = ctx.find_keys(Some("alfa@example.net")).unwrap().nth(0).unwrap().unwrap();
+        let key = ctx.find_keys(Some("alfa@example.net")).unwrap().next().unwrap().unwrap();
 
         let mut data = Vec::new();
         ctx.export(key.fingerprint_raw(), ExportMode::empty(), &mut data).unwrap();

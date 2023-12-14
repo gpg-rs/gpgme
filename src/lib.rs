@@ -1,13 +1,11 @@
-#![forbid(missing_debug_implementations)]
 use std::{
     ffi::CStr,
     fmt, ptr,
     str::Utf8Error,
-    sync::{Mutex, RwLock},
+    sync::{Mutex, OnceLock, RwLock},
 };
 
 use self::{engine::EngineInfoGuard, error::return_err, utils::CStrArgument};
-use once_cell::sync::Lazy;
 
 #[doc(inline)]
 #[allow(deprecated)]
@@ -121,14 +119,17 @@ impl fmt::Display for Validity {
     }
 }
 
-static FLAG_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::default());
+fn get_flag_lock() -> &'static Mutex<()> {
+    static FLAG_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    FLAG_LOCK.get_or_init(Mutex::default)
+}
 
 /// Upstream documentation:
 /// [`gpgme_set_global_flag`](https://www.gnupg.org/documentation/manuals/gpgme/Library-Version-Check.html#index-gpgme_005fset_005fglobal_005fflag)
 pub fn set_flag(name: impl CStrArgument, val: impl CStrArgument) -> Result<()> {
     let name = name.into_cstr();
     let val = val.into_cstr();
-    let _lock = FLAG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _lock = get_flag_lock().lock().unwrap_or_else(|e| e.into_inner());
     unsafe {
         if ffi::gpgme_set_global_flag(name.as_ref().as_ptr(), val.as_ref().as_ptr()) == 0 {
             Ok(())
@@ -166,7 +167,8 @@ cfg_if::cfg_if! {
 /// ```
 #[inline]
 pub fn init() -> Gpgme {
-    static TOKEN: Lazy<(&str, RwLock<()>)> = Lazy::new(|| unsafe {
+    static TOKEN: OnceLock<(&str, RwLock<()>)> = OnceLock::new();
+    let token = TOKEN.get_or_init(|| unsafe {
         let offset = memoffset::offset_of!(ffi::_gpgme_signature, validity);
 
         let result = ffi::gpgme_check_version_internal(MIN_VERSION.as_ptr().cast(), offset);
@@ -182,8 +184,8 @@ pub fn init() -> Gpgme {
         )
     });
     Gpgme {
-        version: TOKEN.0,
-        engine_lock: &TOKEN.1,
+        version: token.0,
+        engine_lock: &token.1,
     }
 }
 

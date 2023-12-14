@@ -27,7 +27,7 @@ impl<'a> SignatureNotation<'a> {
 
     #[inline]
     pub fn flags(&self) -> SignatureNotationFlags {
-        unsafe { SignatureNotationFlags::from_bits_truncate((*self.as_raw()).flags) }
+        unsafe { SignatureNotationFlags::from_bits_retain((*self.as_raw()).flags) }
     }
 
     #[inline]

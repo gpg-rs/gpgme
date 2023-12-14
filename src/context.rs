@@ -412,9 +412,7 @@ impl Context {
     /// [`gpgme_get_keylist_mode`](https://www.gnupg.org/documentation/manuals/gpgme/Key-Listing-Mode.html#index-gpgme_005fget_005fkeylist_005fmode)
     #[inline]
     pub fn key_list_mode(&self) -> KeyListMode {
-        unsafe {
-            crate::KeyListMode::from_bits_truncate(ffi::gpgme_get_keylist_mode(self.as_raw()))
-        }
+        unsafe { crate::KeyListMode::from_bits_retain(ffi::gpgme_get_keylist_mode(self.as_raw())) }
     }
 
     /// Adds all flags set in the provided key listing mode to the `Context`'s current mode.

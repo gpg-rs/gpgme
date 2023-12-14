@@ -1,6 +1,4 @@
 #![allow(deprecated)]
-use gpgme;
-
 use std::io::prelude::*;
 
 use gpgme::{
@@ -13,8 +11,9 @@ use self::common::passphrase_cb;
 #[macro_use]
 mod common;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
 enum TestEditorState {
+    #[default]
     Start,
     Fingerprint,
     Expire,
@@ -23,12 +22,6 @@ enum TestEditorState {
     Primary,
     Quit,
     Save,
-}
-
-impl Default for TestEditorState {
-    fn default() -> Self {
-        TestEditorState::Start
-    }
 }
 
 struct TestEditor;

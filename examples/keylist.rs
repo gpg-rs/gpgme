@@ -1,37 +1,36 @@
-use structopt;
-
-use gpgme::{Context, KeyListMode, Protocol};
 use std::error::Error;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+use clap::Parser;
+use gpgme::{Context, KeyListMode, Protocol};
+
+#[derive(Debug, Parser)]
 struct Cli {
-    #[structopt(long)]
+    #[arg(long)]
     /// Use the CMS protocol
     cms: bool,
-    #[structopt(long)]
+    #[arg(long)]
     /// Use GPGME_KEYLIST_MODE_LOCAL
     local: bool,
-    #[structopt(long = "extern")]
+    #[arg(long = "extern")]
     /// Use GPGME_KEYLIST_MODE_EXTERN
     external: bool,
-    #[structopt(long)]
+    #[arg(long)]
     /// Use GPGME_KEYLIST_MODE_SIGS
     sigs: bool,
-    #[structopt(long = "sig-notations")]
+    #[arg(long = "sig-notations")]
     /// Use GPGME_KEYLIST_MODE_SIG_NOTATIONS
     notations: bool,
-    #[structopt(long)]
+    #[arg(long)]
     /// Use GPGME_KEYLIST_MODE_EPHEMERAL
     ephemeral: bool,
-    #[structopt(long)]
+    #[arg(long)]
     /// Use GPGME_KEYLIST_MODE_VALIDATE
     validate: bool,
     users: Vec<String>,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let args = Cli::from_args();
+    let args = Cli::parse();
     let proto = if args.cms {
         Protocol::Cms
     } else {
@@ -81,10 +80,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             if key.is_qualified() { " qualified" } else { "" }
         );
         for (i, user) in key.user_ids().enumerate() {
-            println!("userid {}: {}", i, user.id().unwrap_or("[none]"));
-            println!("valid  {}: {:?}", i, user.validity())
+            println!("userid {i}: {}", user.id().unwrap_or("[none]"));
+            println!("valid  {i}: {:?}", user.validity())
         }
-        println!("");
+        println!();
     }
 
     if keys.finish()?.is_truncated() {

@@ -1,24 +1,23 @@
-use structopt;
-
-use gpgme::{Context, ExportMode, Protocol};
 use std::{
     error::Error,
     io::{self, prelude::*},
 };
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+use clap::Parser;
+use gpgme::{Context, ExportMode, Protocol};
+
+#[derive(Debug, Parser)]
 struct Cli {
-    #[structopt(long = "extern")]
+    #[arg(long = "extern")]
     /// Send keys to the keyserver
     external: bool,
-    #[structopt(min_values(1))]
+    #[arg(num_args(1..))]
     /// Keys to export
     users: Vec<String>,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let args = Cli::from_args();
+    let args = Cli::parse();
     let mode = if args.external {
         ExportMode::EXTERN
     } else {
@@ -47,11 +46,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     if mode.contains(ExportMode::EXTERN) {
         println!("sending keys to keyserver");
         ctx.export_keys_extern(&keys, mode)
-            .map_err(|e| format!("export failed: {:?}", e))?;
+            .map_err(|e| format!("export failed: {e:?}"))?;
     } else {
         let mut output = Vec::new();
         ctx.export_keys(&keys, mode, &mut output)
-            .map_err(|e| format!("export failed: {:?}", e))?;
+            .map_err(|e| format!("export failed: {e:?}"))?;
 
         println!("Begin Result:");
         io::stdout().write_all(&output)?;

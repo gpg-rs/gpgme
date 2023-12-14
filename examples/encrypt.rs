@@ -1,29 +1,27 @@
-use structopt;
-
-use gpgme::{Context, Protocol};
 use std::{
     error::Error,
     fs::File,
     io::{self, prelude::*},
     path::PathBuf,
 };
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+use clap::Parser;
+use gpgme::{Context, Protocol};
+
+#[derive(Debug, Parser)]
 struct Cli {
-    #[structopt(long)]
+    #[arg(long)]
     /// Use the CMS protocol
     cms: bool,
-    #[structopt(short, long = "recipient")]
+    #[arg(short, long = "recipient")]
     /// For whom to encrypt the messages
     recipients: Vec<String>,
-    #[structopt(parse(from_os_str))]
     /// Files to encrypt
     filename: PathBuf,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let args = Cli::from_args();
+    let args = Cli::parse();
     let proto = if args.cms {
         Protocol::Cms
     } else {
@@ -44,10 +42,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let filename = &args.filename;
     let mut input = File::open(&args.filename)
-        .map_err(|e| format!("can't open file `{}': {:?}", filename.display(), e))?;
+        .map_err(|e| format!("can't open file `{}': {e:?}", filename.display()))?;
     let mut output = Vec::new();
     ctx.encrypt(&keys, &mut input, &mut output)
-        .map_err(|e| format!("encrypting failed: {:?}", e))?;
+        .map_err(|e| format!("encrypting failed: {e:?}"))?;
 
     println!("Begin Output:");
     io::stdout().write_all(&output)?;

@@ -38,7 +38,7 @@ test_case! {
 
         assert_eq!(key.subkeys().count(), 1);
         assert_eq!(key.user_ids().count(), 1);
-        let uid = key.user_ids().nth(0).unwrap();
+        let uid = key.user_ids().next().unwrap();
         assert!(!uid.is_bad());
         assert_eq!(uid.name(), Ok("test user"));
         assert_eq!(uid.email(), Ok("test@example.com"));

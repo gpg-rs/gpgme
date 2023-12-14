@@ -1,37 +1,33 @@
-use gpgme;
-use structopt;
-
-use gpgme::{Context, Protocol};
 use std::{
     error::Error,
     fs::File,
     io::{self, prelude::*},
     path::PathBuf,
 };
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+use clap::Parser;
+use gpgme::{Context, Protocol};
+
+#[derive(Debug, Parser)]
 struct Cli {
-    #[structopt(long)]
+    #[arg(long)]
     /// Use the CMS protocol
     cms: bool,
-    #[structopt(long)]
-    #[structopt(long, conflicts_with = "normal")]
+    #[arg(long)]
     /// Create a detached signature
     detach: bool,
-    #[structopt(long, conflicts_with = "normal", conflicts_with = "detach")]
+    #[arg(long, conflicts_with = "detach")]
     /// Create a clear text signature
     clear: bool,
-    #[structopt(long)]
+    #[arg(long)]
     /// Key to use for signing. Default key is used otherwise
     key: Option<String>,
-    #[structopt(parse(from_os_str))]
     /// File to sign
     filename: PathBuf,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let args = Cli::from_args();
+    let args = Cli::parse();
     let proto = if args.cms {
         Protocol::Cms
     } else {
@@ -52,18 +48,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     if let Some(key) = args.key {
         let key = ctx
             .get_secret_key(key)
-            .map_err(|e| format!("unable to find signing key: {:?}", e))?;
+            .map_err(|e| format!("unable to find signing key: {e:?}"))?;
         ctx.add_signer(&key)
-            .map_err(|e| format!("add_signer() failed: {:?}", e))?;
+            .map_err(|e| format!("add_signer() failed: {e:?}"))?;
     }
 
     let filename = &args.filename;
     let mut input = File::open(filename)
-        .map_err(|e| format!("can't open file `{}': {:?}", filename.display(), e))?;
+        .map_err(|e| format!("can't open file `{}': {e:?}", filename.display()))?;
     let mut output = Vec::new();
     let result = ctx
         .sign(mode, &mut input, &mut output)
-        .map_err(|e| format!("signing failed {:?}", e))?;
+        .map_err(|e| format!("signing failed {e:?}"))?;
     print_result(&result);
 
     println!("Begin Output:");

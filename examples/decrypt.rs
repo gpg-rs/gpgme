@@ -1,26 +1,24 @@
-use structopt;
-
-use gpgme::{Context, Protocol};
 use std::{
     error::Error,
     fs::File,
     io::{self, prelude::*},
     path::PathBuf,
 };
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+use clap::Parser;
+use gpgme::{Context, Protocol};
+
+#[derive(Debug, Parser)]
 struct Cli {
-    #[structopt(long)]
+    #[arg(long)]
     /// Use the CMS protocol
     cms: bool,
-    #[structopt(parse(from_os_str))]
     /// File to decrypt
     filename: PathBuf,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let args = Cli::from_args();
+    let args = Cli::parse();
     let proto = if args.cms {
         Protocol::Cms
     } else {
@@ -31,7 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut input = File::open(&args.filename)?;
     let mut output = Vec::new();
     ctx.decrypt(&mut input, &mut output)
-        .map_err(|e| format!("decrypting failed: {:?}", e))?;
+        .map_err(|e| format!("decrypting failed: {e:?}"))?;
 
     println!("Begin Output:");
     io::stdout().write_all(&output)?;

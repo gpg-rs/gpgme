@@ -1,5 +1,3 @@
-use gpgme;
-
 #[macro_use]
 mod common;
 

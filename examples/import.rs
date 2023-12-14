@@ -1,24 +1,22 @@
-use gpgme;
-use structopt;
-
-use gpgme::{data, Context, Data, ImportFlags};
 use std::{error::Error, fs::File, path::PathBuf};
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+use clap::Parser;
+use gpgme::{data, Context, Data, ImportFlags};
+
+#[derive(Debug, Parser)]
 struct Cli {
-    #[structopt(long)]
+    #[arg(long)]
     /// Import from given URLs
     url: bool,
-    #[structopt(short = "0")]
+    #[arg(short = '0')]
     /// URLS are delimited by a null
     nul: bool,
-    #[structopt(min_values(1), parse(from_os_str))]
+    #[arg(num_args(1..))]
     filenames: Vec<PathBuf>,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let args = Cli::from_args();
+    let args = Cli::parse();
     let mode = if args.url {
         if args.nul {
             Some(data::Encoding::Url0)
@@ -31,14 +29,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut ctx = Context::from_protocol(gpgme::Protocol::OpenPgp)?;
     for file in args.filenames {
-        println!("reading file `{}'", &file.display());
+        println!("reading file `{}'", file.display());
 
         let input = File::open(file)?;
         let mut data = Data::from_seekable_stream(input)?;
         mode.map(|m| data.set_encoding(m));
         print_import_result(
             ctx.import(&mut data)
-                .map_err(|e| format!("import failed {:?}", e))?,
+                .map_err(|e| format!("import failed {e:?}"))?,
         );
     }
     Ok(())
@@ -67,7 +65,7 @@ fn print_import_result(result: gpgme::ImportResult) {
         if status.contains(ImportFlags::SECRET) {
             print!(" secret");
         }
-        println!("");
+        println!();
     }
     println!("key import summary:");
     println!("        considered: {}", result.considered());

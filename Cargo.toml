@@ -24,18 +24,17 @@ maintenance = { status = "experimental" }
 "v1_13" = []
 
 [dev-dependencies]
-structopt = "0.3"
+clap = { version = "4.4.11", features = ["derive"] }
 tempfile = "3"
 
 [dependencies]
-bitflags = "1"
+bitflags = "2"
 cfg-if = "1"
 conv = "0.3"
 cstr-argument = "0.1"
 gpg-error = "0.6.0"
 libc.workspace = true
-memoffset = "0.7.1"
-once_cell = "1"
+memoffset = "0.9.0"
 smallvec = "1"
 static_assertions = "1.1"
 
