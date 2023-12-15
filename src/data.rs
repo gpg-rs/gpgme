@@ -396,6 +396,13 @@ impl<'data> Data<'data> {
     }
 
     /// Upstream documentation:
+    /// [`gpgme_data_set_flag`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-gpgme_005fdata_005fset_005fflag)
+    #[inline]
+    pub fn set_size_hint(&mut self, value: u64) -> Result<()> {
+        self.set_flag("size-hint\0", value.to_string())
+    }
+
+    /// Upstream documentation:
     /// [`gpgme_data_identify`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Convenience.html#index-gpgme_005fdata_005fidentify)
     #[inline]
     pub fn identify(&mut self) -> Type {
@@ -454,8 +461,10 @@ impl Seek for Data<'_> {
     #[inline]
     fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
         let (off, whence) = match pos {
-            io::SeekFrom::Start(off) => (off.value_into().unwrap_or_saturate(), libc::SEEK_SET),
-            io::SeekFrom::End(off) => (off.value_into().unwrap_or_saturate(), libc::SEEK_END),
+            io::SeekFrom::Start(off) => {
+                (off.try_into().unwrap_or(gpgme_off_t::MAX), libc::SEEK_SET)
+            }
+            io::SeekFrom::End(off) => (off.try_into().unwrap_or(gpgme_off_t::MAX), libc::SEEK_END),
             io::SeekFrom::Current(off) => (off.value_into().unwrap_or_saturate(), libc::SEEK_CUR),
         };
         let result = unsafe { ffi::gpgme_data_seek(self.as_raw(), off, whence) };
@@ -478,7 +487,7 @@ unsafe extern "C" fn read_callback<S: Read>(
     (*handle)
         .inner
         .read(slice)
-        .map(|n| n as libc::ssize_t)
+        .map(|n| n.try_into().unwrap_or(-1))
         .unwrap_or_else(|err| {
             ffi::gpgme_err_set_errno(Error::from(err).to_errno());
             -1
@@ -495,7 +504,7 @@ unsafe extern "C" fn write_callback<S: Write>(
     (*handle)
         .inner
         .write(slice)
-        .map(|n| n as libc::ssize_t)
+        .map(|n| n.try_into().unwrap_or(-1))
         .unwrap_or_else(|err| {
             ffi::gpgme_err_set_errno(Error::from(err).to_errno());
             -1
@@ -504,9 +513,9 @@ unsafe extern "C" fn write_callback<S: Write>(
 
 unsafe extern "C" fn seek_callback<S: Seek>(
     handle: *mut libc::c_void,
-    offset: libc::off_t,
+    offset: gpgme_off_t,
     whence: libc::c_int,
-) -> libc::off_t {
+) -> gpgme_off_t {
     let handle = handle.cast::<CallbackWrapper<S>>();
     let pos = match whence {
         libc::SEEK_SET => io::SeekFrom::Start(offset.value_into().unwrap_or_saturate()),
@@ -520,7 +529,7 @@ unsafe extern "C" fn seek_callback<S: Seek>(
     (*handle)
         .inner
         .seek(pos)
-        .map(|n| n.value_into().unwrap_or_saturate())
+        .map(|n| n.try_into().unwrap_or(-1))
         .unwrap_or_else(|err| {
             ffi::gpgme_err_set_errno(Error::from(err).to_errno());
             -1

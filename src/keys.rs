@@ -104,6 +104,30 @@ impl Key {
     }
 
     #[inline]
+    #[cfg(feature = "v1_23")]
+    pub fn has_encrypt(&self) -> bool {
+        unsafe { (*self.as_raw()).has_encrypt() }
+    }
+
+    #[inline]
+    #[cfg(feature = "v1_23")]
+    pub fn has_sign(&self) -> bool {
+        unsafe { (*self.as_raw()).has_sign() }
+    }
+
+    #[inline]
+    #[cfg(feature = "v1_23")]
+    pub fn has_certify(&self) -> bool {
+        unsafe { (*self.as_raw()).has_certify() }
+    }
+
+    #[inline]
+    #[cfg(feature = "v1_23")]
+    pub fn has_authenticate(&self) -> bool {
+        unsafe { (*self.as_raw()).has_authenticate() }
+    }
+
+    #[inline]
     pub fn is_root(&self) -> bool {
         if let (Some(fpr), Some(chain_id)) = (self.fingerprint_raw(), self.chain_id_raw()) {
             fpr.to_bytes().eq_ignore_ascii_case(chain_id.to_bytes())
@@ -415,6 +439,24 @@ impl<'key> Subkey<'key> {
         unsafe { (*self.as_raw()).is_de_vs() }
     }
 
+    #[cfg(feature = "v1_20")]
+    #[inline]
+    pub fn can_renc(&self) -> bool {
+        unsafe { (*self.as_raw()).can_renc() }
+    }
+
+    #[cfg(feature = "v1_20")]
+    #[inline]
+    pub fn can_timestamp(&self) -> bool {
+        unsafe { (*self.as_raw()).can_timestamp() }
+    }
+
+    #[cfg(feature = "v1_20")]
+    #[inline]
+    pub fn is_group_owned(&self) -> bool {
+        unsafe { (*self.as_raw()).is_group_owned() }
+    }
+
     #[inline]
     pub fn algorithm(&self) -> KeyAlgorithm {
         unsafe { KeyAlgorithm::from_raw((*self.as_raw()).pubkey_algo) }
@@ -669,7 +711,7 @@ impl fmt::Debug for UserId<'_> {
 impl fmt::Display for UserId<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(
-            &*self
+            &self
                 .id_raw()
                 .map(|s| s.to_string_lossy())
                 .unwrap_or("".into()),

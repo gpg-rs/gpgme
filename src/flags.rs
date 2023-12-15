@@ -15,6 +15,7 @@ bitflags! {
         const WITH_SECRET = ffi::GPGME_KEYLIST_MODE_WITH_SECRET;
         const WITH_KEYGRIP = ffi::GPGME_KEYLIST_MODE_WITH_KEYGRIP;
         const WITH_TOFU = ffi::GPGME_KEYLIST_MODE_WITH_TOFU;
+        const WITH_V5FPR = ffi::GPGME_KEYLIST_MODE_WITH_V5FPR;
         const EPHEMERAL = ffi::GPGME_KEYLIST_MODE_EPHEMERAL;
         const VALIDATE = ffi::GPGME_KEYLIST_MODE_VALIDATE;
         const FORCE_EXTERN = ffi::GPGME_KEYLIST_MODE_FORCE_EXTERN;
@@ -114,6 +115,7 @@ bitflags! {
         const THROW_KEYIDS = ffi::GPGME_ENCRYPT_THROW_KEYIDS;
         const WRAP = ffi::GPGME_ENCRYPT_WRAP;
         const WANT_ADDRESS = ffi::GPGME_ENCRYPT_WANT_ADDRESS;
+        const ARCHIVE = ffi::GPGME_ENCRYPT_ARCHIVE;
     }
 }
 
@@ -123,7 +125,17 @@ bitflags! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct DecryptFlags: ffi::gpgme_decrypt_flags_t {
         const VERIFY = ffi::GPGME_DECRYPT_VERIFY;
+        const ARCHIVE = ffi::GPGME_DECRYPT_ARCHIVE;
         const UNWRAP = ffi::GPGME_DECRYPT_UNWRAP;
+    }
+}
+
+bitflags! {
+    /// Upstream documentation:
+    /// [`gpgme_op_verify_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fop_005fverify_005fext)
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+    pub struct VerifyFlags: ffi::gpgme_verify_flags_t {
+        const ARCHIVE = ffi::GPGME_VERIFY_ARCHIVE;
     }
 }
 
@@ -191,6 +203,8 @@ ffi_enum_wrapper! {
         Normal = ffi::GPGME_SIG_MODE_NORMAL,
         Detached = ffi::GPGME_SIG_MODE_DETACH,
         Clear = ffi::GPGME_SIG_MODE_CLEAR,
+        // FIXME: breaking change needed to convert to bitflags
+        // Archive = ffi::GPGME_SIG_MODE_ARCHIVE,
     }
 }
 

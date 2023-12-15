@@ -1576,6 +1576,30 @@ impl Context {
         Ok(self.get_result().unwrap())
     }
 
+    /// Upstream documentation:
+    /// [`gpgme_op_verify_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fop_005fverify_005fext)
+    #[cfg(feature = "v1_19")]
+    fn verify_with_flags(
+        &mut self,
+        signature: &mut Data<'_>,
+        signedtext: Option<&mut Data<'_>>,
+        plaintext: Option<&mut Data<'_>>,
+        flags: crate::VerifyFlags,
+    ) -> Result<results::VerificationResult> {
+        unsafe {
+            let signed = signedtext.map_or(ptr::null_mut(), |d| d.as_raw());
+            let plain = plaintext.map_or(ptr::null_mut(), |d| d.as_raw());
+            return_err!(ffi::gpgme_op_verify_ext(
+                self.as_raw(),
+                flags.bits(),
+                signature.as_raw(),
+                signed,
+                plain,
+            ));
+        }
+        Ok(self.get_result().unwrap())
+    }
+
     /// Encrypts a message for the specified recipients.
     ///
     /// Upstream documentation:
