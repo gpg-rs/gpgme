@@ -30,7 +30,7 @@ maintenance = { status = "experimental" }
 
 [dev-dependencies]
 clap = { version = "4.4.11", features = ["derive"] }
-tempfile = "3"
+sealed_test = "1.0.0"
 
 [dependencies]
 bitflags = "2"

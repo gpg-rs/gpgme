@@ -16,7 +16,7 @@ ENV SYSTEM_DEPS_LINK static
 # RUN ./configure --host "$TARGET" --prefix="$PREFIX" --with-pic --enable-fast-install --disable-dependency-tracking --without-emacs --disable-java --disable-csharp --disable-c++
 # RUN make -j$(nproc) install
 
-ARG LIBGPG_ERROR_VER=1.46
+ARG LIBGPG_ERROR_VER=1.47
 WORKDIR /usr/src
 ADD https://www.gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-${LIBGPG_ERROR_VER}.tar.bz2 ./
 RUN tar -xjf libgpg-error-${LIBGPG_ERROR_VER}.tar.bz2
@@ -24,7 +24,7 @@ WORKDIR libgpg-error-$LIBGPG_ERROR_VER
 RUN ./configure --host "$TARGET" --prefix="$PREFIX" --with-pic --enable-fast-install --disable-dependency-tracking --enable-static --disable-shared --disable-nls --disable-doc --disable-languages --disable-tests --enable-install-gpg-error-config
 RUN make -j$(nproc) install
 
-ARG LIBASSUAN_VER=2.5.5
+ARG LIBASSUAN_VER=2.5.6
 WORKDIR /usr/src
 ADD https://www.gnupg.org/ftp/gcrypt/libassuan/libassuan-${LIBASSUAN_VER}.tar.bz2 ./
 RUN tar -xjf libassuan-${LIBASSUAN_VER}.tar.bz2
@@ -32,7 +32,7 @@ WORKDIR libassuan-$LIBASSUAN_VER
 RUN ./configure --host "$TARGET" --prefix="$PREFIX" --with-pic --enable-fast-install --disable-dependency-tracking --enable-static --disable-shared --disable-doc --with-gpg-error-prefix="$PREFIX"
 RUN make -j$(nproc) install
 
-ARG GPGME_VER=1.18.0
+ARG GPGME_VER=1.23.2
 WORKDIR /usr/src
 ADD https://www.gnupg.org/ftp/gcrypt/gpgme/gpgme-${GPGME_VER}.tar.bz2 ./
 RUN tar -xjf gpgme-${GPGME_VER}.tar.bz2

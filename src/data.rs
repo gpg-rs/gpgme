@@ -1,5 +1,3 @@
-#[cfg(unix)]
-use std::os::unix::io::AsRawFd;
 use std::{
     borrow::BorrowMut,
     error::Error as StdError,
@@ -12,8 +10,11 @@ use std::{
     str::Utf8Error,
 };
 
+#[cfg(unix)]
+use std::os::fd::{AsRawFd, BorrowedFd};
+
 use conv::{UnwrapOrSaturate, ValueInto};
-use ffi;
+use ffi::{self, gpgme_off_t};
 use libc;
 use static_assertions::{assert_impl_all, assert_not_impl_any};
 
@@ -202,6 +203,20 @@ impl<'data> Data<'data> {
     /// [`gpgme_data_new_from_fd`](https://www.gnupg.org/documentation/manuals/gpgme/File-Based-Data-Buffers.html#index-gpgme_005fdata_005fnew_005ffrom_005ffd)
     #[inline]
     #[cfg(unix)]
+    pub fn from_borrowed_fd(fd: BorrowedFd<'data>) -> Result<Self> {
+        crate::init();
+        unsafe {
+            let mut data = ptr::null_mut();
+            convert_err(ffi::gpgme_data_new_from_fd(&mut data, fd.as_raw_fd()))?;
+            Ok(Data::from_raw(data))
+        }
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_data_new_from_fd`](https://www.gnupg.org/documentation/manuals/gpgme/File-Based-Data-Buffers.html#index-gpgme_005fdata_005fnew_005ffrom_005ffd)
+    #[inline]
+    #[cfg(unix)]
+    #[deprecated(note = "Use from_borrowed_fd")]
     pub fn from_fd(file: &'data (impl AsRawFd + ?Sized)) -> Result<Self> {
         crate::init();
         unsafe {
@@ -433,11 +448,7 @@ impl Read for Data<'_> {
             let (buf, len) = (buf.as_mut_ptr(), buf.len());
             ffi::gpgme_data_read(self.as_raw(), buf.cast(), len)
         };
-        if result >= 0 {
-            Ok(result as usize)
-        } else {
-            Err(Error::last_os_error().into())
-        }
+        Ok(usize::try_from(result).map_err(|_| Error::last_os_error())?)
     }
 }
 
@@ -464,7 +475,7 @@ impl Seek for Data<'_> {
             io::SeekFrom::Start(off) => {
                 (off.try_into().unwrap_or(gpgme_off_t::MAX), libc::SEEK_SET)
             }
-            io::SeekFrom::End(off) => (off.try_into().unwrap_or(gpgme_off_t::MAX), libc::SEEK_END),
+            io::SeekFrom::End(off) => (off.value_into().unwrap_or_saturate(), libc::SEEK_END),
             io::SeekFrom::Current(off) => (off.value_into().unwrap_or_saturate(), libc::SEEK_CUR),
         };
         let result = unsafe { ffi::gpgme_data_seek(self.as_raw(), off, whence) };
@@ -487,9 +498,10 @@ unsafe extern "C" fn read_callback<S: Read>(
     (*handle)
         .inner
         .read(slice)
-        .map(|n| n.try_into().unwrap_or(-1))
+        .map_err(Error::from)
+        .and_then(|n| n.try_into().or(Err(Error::EOVERFLOW)))
         .unwrap_or_else(|err| {
-            ffi::gpgme_err_set_errno(Error::from(err).to_errno());
+            ffi::gpgme_err_set_errno(err.to_errno());
             -1
         })
 }
@@ -504,9 +516,10 @@ unsafe extern "C" fn write_callback<S: Write>(
     (*handle)
         .inner
         .write(slice)
-        .map(|n| n.try_into().unwrap_or(-1))
+        .map_err(Error::from)
+        .and_then(|n| n.try_into().or(Err(Error::EOVERFLOW)))
         .unwrap_or_else(|err| {
-            ffi::gpgme_err_set_errno(Error::from(err).to_errno());
+            ffi::gpgme_err_set_errno(err.to_errno());
             -1
         })
 }
@@ -529,9 +542,10 @@ unsafe extern "C" fn seek_callback<S: Seek>(
     (*handle)
         .inner
         .seek(pos)
-        .map(|n| n.try_into().unwrap_or(-1))
+        .map_err(Error::from)
+        .and_then(|n| n.try_into().or(Err(Error::EOVERFLOW)))
         .unwrap_or_else(|err| {
-            ffi::gpgme_err_set_errno(Error::from(err).to_errno());
+            ffi::gpgme_err_set_errno(err.to_errno());
             -1
         })
 }

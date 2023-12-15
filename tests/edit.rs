@@ -1,10 +1,11 @@
 #![allow(deprecated)]
-use std::io::prelude::*;
+use std::io::{prelude::*, stdout};
 
 use gpgme::{
     edit::{self, EditInteractionStatus, Editor},
     Error, Result,
 };
+use sealed_test::prelude::*;
 
 use self::common::passphrase_cb;
 
@@ -77,11 +78,15 @@ impl Editor for TestEditor {
     }
 }
 
-test_case! {
-    test_edit(test) {
-        test.create_context().with_passphrase_provider(passphrase_cb, |ctx| {
-            let key = ctx.find_keys(Some("Alpha")).unwrap().next().unwrap().unwrap();
-            ctx.edit_key_with(&key, TestEditor, &mut Vec::new()).unwrap();
-        });
-    }
+#[sealed_test(before = common::setup(), after = common::teardown())]
+fn test_edit() {
+    common::create_context().with_passphrase_provider(passphrase_cb, |ctx| {
+        let key = ctx
+            .find_keys(Some("Alpha"))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap();
+        ctx.edit_key_with(&key, TestEditor, stdout()).unwrap();
+    });
 }
