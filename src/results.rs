@@ -12,8 +12,9 @@ use ffi;
 use libc;
 
 use crate::{
-    error::return_err, notation::SignatureNotations, Context, Error, HashAlgorithm, ImportFlags,
-    KeyAlgorithm, NonNull, OpResult, Result, SignMode, SignatureSummary, Validity,
+    notation::SignatureNotations, utils::convert_err, Context, Error, HashAlgorithm, ImportFlags,
+    KeyAlgorithm, NonNull, OpResult, Result, SignMode, SignatureNotation, SignatureSummary,
+    Validity,
 };
 
 macro_rules! impl_result {
@@ -300,10 +301,7 @@ impl<'result> Import<'result> {
 
     #[inline]
     pub fn result(&self) -> Result<()> {
-        unsafe {
-            return_err!((*self.as_raw()).result);
-            Ok(())
-        }
+        unsafe { convert_err((*self.as_raw()).result) }
     }
 
     #[inline]
@@ -462,10 +460,7 @@ impl<'result> Recipient<'result> {
 
     #[inline]
     pub fn status(&self) -> Result<()> {
-        unsafe {
-            return_err!((*self.as_raw()).status);
-            Ok(())
-        }
+        unsafe { convert_err((*self.as_raw()).status) }
     }
 }
 
@@ -646,10 +641,7 @@ impl<'result> Signature<'result> {
 
     #[inline]
     pub fn status(&self) -> Result<()> {
-        unsafe {
-            return_err!((*self.as_raw()).status);
-            Ok(())
-        }
+        unsafe { convert_err((*self.as_raw()).status) }
     }
 
     #[inline]

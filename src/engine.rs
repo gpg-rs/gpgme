@@ -9,7 +9,7 @@ use std::{
 
 use ffi;
 
-use crate::{error::return_err, NonNull, Protocol, Result};
+use crate::{utils::convert_err, NonNull, Protocol, Result};
 
 /// Upstream documentation:
 /// [`gpgme_engine_info_t`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Information.html#index-gpgme_005fengine_005finfo_005ft)
@@ -123,7 +123,7 @@ impl EngineInfoGuard {
         let lock = lock.read().expect("engine info lock was poisoned");
         unsafe {
             let mut info = ptr::null_mut();
-            return_err!(ffi::gpgme_get_engine_info(&mut info));
+            convert_err(ffi::gpgme_get_engine_info(&mut info))?;
         }
         Ok(EngineInfoGuard(lock))
     }

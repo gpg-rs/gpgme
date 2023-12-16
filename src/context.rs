@@ -18,10 +18,9 @@ use libc;
 use crate::{
     callbacks, edit,
     engine::EngineInfo,
-    error::return_err,
     notation::SignatureNotations,
     results,
-    utils::{CStrArgument, SmallVec},
+    utils::{convert_err, CStrArgument, SmallVec},
     Data, EditInteractor, Error, ExportMode, Interactor, IntoData, Key, KeyListMode, NonNull,
     PassphraseProvider, ProgressReporter, Protocol, Result, SignMode, StatusHandler,
 };
@@ -47,7 +46,7 @@ impl Context {
         crate::init();
         unsafe {
             let mut ctx = ptr::null_mut();
-            return_err!(ffi::gpgme_new(&mut ctx));
+            convert_err(ffi::gpgme_new(&mut ctx))?;
             Ok(Context::from_raw(ctx))
         }
     }
@@ -62,7 +61,7 @@ impl Context {
     pub fn from_protocol(proto: Protocol) -> Result<Self> {
         let ctx = Context::new()?;
         unsafe {
-            return_err!(ffi::gpgme_set_protocol(ctx.as_raw(), proto.raw()));
+            convert_err(ffi::gpgme_set_protocol(ctx.as_raw(), proto.raw()))?;
         }
         Ok(ctx)
     }
@@ -149,13 +148,12 @@ impl Context {
         let name = name.into_cstr();
         let value = value.into_cstr();
         unsafe {
-            return_err!(ffi::gpgme_set_ctx_flag(
+            convert_err(ffi::gpgme_set_ctx_flag(
                 self.as_raw(),
                 name.as_ref().as_ptr(),
                 value.as_ref().as_ptr(),
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
@@ -173,14 +171,13 @@ impl Context {
             .home_dir_raw()
             .map_or(ptr::null(), CStr::as_ptr);
         unsafe {
-            return_err!(ffi::gpgme_ctx_set_engine_info(
+            convert_err(ffi::gpgme_ctx_set_engine_info(
                 self.as_raw(),
                 self.protocol().raw(),
                 path.as_ref().as_ptr(),
                 home_dir,
-            ));
+            ))
         }
-        Ok(())
     }
 
     #[inline]
@@ -191,14 +188,13 @@ impl Context {
             .map_or(ptr::null(), CStr::as_ptr);
         let home_dir = home_dir.into_cstr();
         unsafe {
-            return_err!(ffi::gpgme_ctx_set_engine_info(
+            convert_err(ffi::gpgme_ctx_set_engine_info(
                 self.as_raw(),
                 self.protocol().raw(),
                 path,
                 home_dir.as_ref().as_ptr(),
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
@@ -216,14 +212,13 @@ impl Context {
             let home_dir = home_dir
                 .as_ref()
                 .map_or(ptr::null(), |s| s.as_ref().as_ptr());
-            return_err!(ffi::gpgme_ctx_set_engine_info(
+            convert_err(ffi::gpgme_ctx_set_engine_info(
                 self.as_raw(),
                 self.protocol().raw(),
                 path,
                 home_dir,
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
@@ -243,10 +238,7 @@ impl Context {
         {
             return Err(Error::NOT_SUPPORTED);
         }
-        unsafe {
-            return_err!(ffi::gpgme_set_pinentry_mode(self.as_raw(), mode.raw()));
-        }
-        Ok(())
+        unsafe { convert_err(ffi::gpgme_set_pinentry_mode(self.as_raw(), mode.raw())) }
     }
 
     /// Upstream documentation:
@@ -412,7 +404,7 @@ impl Context {
     /// [`gpgme_get_keylist_mode`](https://www.gnupg.org/documentation/manuals/gpgme/Key-Listing-Mode.html#index-gpgme_005fget_005fkeylist_005fmode)
     #[inline]
     pub fn key_list_mode(&self) -> KeyListMode {
-        unsafe { crate::KeyListMode::from_bits_retain(ffi::gpgme_get_keylist_mode(self.as_raw())) }
+        unsafe { KeyListMode::from_bits_retain(ffi::gpgme_get_keylist_mode(self.as_raw())) }
     }
 
     /// Adds all flags set in the provided key listing mode to the `Context`'s current mode.
@@ -423,22 +415,18 @@ impl Context {
     pub fn add_key_list_mode(&mut self, mask: KeyListMode) -> Result<()> {
         unsafe {
             let old = ffi::gpgme_get_keylist_mode(self.as_raw());
-            return_err!(ffi::gpgme_set_keylist_mode(
+            convert_err(ffi::gpgme_set_keylist_mode(
                 self.as_raw(),
                 mask.bits() | old,
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
     /// [`gpgme_set_keylist_mode`](https://www.gnupg.org/documentation/manuals/gpgme/Key-Listing-Mode.html#index-gpgme_005fset_005fkeylist_005fmode)
     #[inline]
     pub fn set_key_list_mode(&mut self, mode: KeyListMode) -> Result<()> {
-        unsafe {
-            return_err!(ffi::gpgme_set_keylist_mode(self.as_raw(), mode.bits()));
-        }
-        Ok(())
+        unsafe { convert_err(ffi::gpgme_set_keylist_mode(self.as_raw(), mode.bits())) }
     }
 
     /// Returns an iterator over all public keys available in the keyring.
@@ -475,12 +463,12 @@ impl Context {
         let fingerprint = fpr.into_cstr();
         unsafe {
             let mut key = ptr::null_mut();
-            return_err!(ffi::gpgme_get_key(
+            convert_err(ffi::gpgme_get_key(
                 self.as_raw(),
                 fingerprint.as_ref().as_ptr(),
                 &mut key,
                 0,
-            ));
+            ))?;
             Ok(Key::from_raw(key))
         }
     }
@@ -495,12 +483,12 @@ impl Context {
         let fingerprint = fpr.into_cstr();
         unsafe {
             let mut key = ptr::null_mut();
-            return_err!(ffi::gpgme_get_key(
+            convert_err(ffi::gpgme_get_key(
                 self.as_raw(),
                 fingerprint.as_ref().as_ptr(),
                 &mut key,
                 1,
-            ));
+            ))?;
             Ok(Key::from_raw(key))
         }
     }
@@ -555,12 +543,12 @@ impl Context {
             ptr::null_mut()
         };
         unsafe {
-            return_err!(ffi::gpgme_op_keylist_ext_start(
+            convert_err(ffi::gpgme_op_keylist_ext_start(
                 self.as_raw(),
                 ptr,
                 if secret_only { 1 } else { 0 },
                 0,
-            ));
+            ))?;
         }
         Ok(Keys {
             ctx: self,
@@ -611,7 +599,7 @@ impl Context {
         let mut public = public.map_or(Ok(None), |d| d.into_data().map(Some))?;
         let mut secret = secret.map_or(Ok(None), |d| d.into_data().map(Some))?;
         unsafe {
-            return_err!(ffi::gpgme_op_genkey(
+            convert_err(ffi::gpgme_op_genkey(
                 self.as_raw(),
                 params.as_ref().as_ptr(),
                 public
@@ -620,7 +608,7 @@ impl Context {
                 secret
                     .as_mut()
                     .map_or(ptr::null_mut(), |d| d.borrow_mut().as_raw()),
-            ));
+            ))?;
         }
         Ok(self.get_result().unwrap())
     }
@@ -664,7 +652,7 @@ impl Context {
         let algo = algo.into_cstr();
         let expires = expires.as_secs().value_into().unwrap_or_saturate();
         unsafe {
-            return_err!(ffi::gpgme_op_createkey(
+            convert_err(ffi::gpgme_op_createkey(
                 self.as_raw(),
                 userid.as_ref().as_ptr(),
                 algo.as_ref().as_ptr(),
@@ -672,7 +660,7 @@ impl Context {
                 expires,
                 ptr::null_mut(),
                 flags.bits(),
-            ));
+            ))?;
         }
         Ok(self.get_result().unwrap())
     }
@@ -702,14 +690,14 @@ impl Context {
         let algo = algo.into_cstr();
         let expires = expires.as_secs().value_into().unwrap_or_saturate();
         unsafe {
-            return_err!(ffi::gpgme_op_createsubkey(
+            convert_err(ffi::gpgme_op_createsubkey(
                 self.as_raw(),
                 key.as_raw(),
                 algo.as_ref().as_ptr(),
                 0,
                 expires,
                 flags.bits(),
-            ));
+            ))?;
         }
         Ok(self.get_result().unwrap())
     }
@@ -720,15 +708,14 @@ impl Context {
     pub fn set_expire_all(&mut self, key: &Key, expires: Duration) -> Result<()> {
         let expires = expires.as_secs().value_into().unwrap_or_saturate();
         unsafe {
-            return_err!(ffi::gpgme_op_setexpire(
+            convert_err(ffi::gpgme_op_setexpire(
                 self.as_raw(),
                 key.as_raw(),
                 expires,
                 b"*\0".into_cstr().as_ref().as_ptr(),
                 0,
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
@@ -740,17 +727,14 @@ impl Context {
         I::Item: CStrArgument,
     {
         let expires = expires.as_secs().value_into().unwrap_or_saturate();
-        self::with_joined_cstr(subkeys, |subkeys, _| {
-            unsafe {
-                return_err!(ffi::gpgme_op_setexpire(
+        self::with_joined_cstr(subkeys, |subkeys, _| unsafe {
+            convert_err(ffi::gpgme_op_setexpire(
                     self.as_raw(),
                     key.as_raw(),
                     expires,
                     subkeys.map_or(ptr::null(), |subkeys| subkeys.as_ptr()),
                     0,
-                ));
-            }
-            Ok(())
+            ))
         })
     }
 
@@ -760,14 +744,13 @@ impl Context {
     pub fn add_uid(&mut self, key: &Key, userid: impl CStrArgument) -> Result<()> {
         let userid = userid.into_cstr();
         unsafe {
-            return_err!(ffi::gpgme_op_adduid(
+            convert_err(ffi::gpgme_op_adduid(
                 self.as_raw(),
                 key.as_raw(),
                 userid.as_ref().as_ptr(),
                 0,
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
@@ -776,14 +759,13 @@ impl Context {
     pub fn revoke_uid(&mut self, key: &Key, userid: impl CStrArgument) -> Result<()> {
         let userid = userid.into_cstr();
         unsafe {
-            return_err!(ffi::gpgme_op_revuid(
+            convert_err(ffi::gpgme_op_revuid(
                 self.as_raw(),
                 key.as_raw(),
                 userid.as_ref().as_ptr(),
                 0,
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
@@ -800,15 +782,14 @@ impl Context {
         let name = name.into_cstr();
         let value = value.map(CStrArgument::into_cstr);
         unsafe {
-            return_err!(ffi::gpgme_op_set_uid_flag(
+            convert_err(ffi::gpgme_op_set_uid_flag(
                 self.as_raw(),
                 key.as_raw(),
                 userid.as_ref().as_ptr(),
                 name.as_ref().as_ptr(),
                 value.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr()),
-            ));
+            ))
         }
-        Ok(())
     }
 
     #[inline]
@@ -817,12 +798,10 @@ impl Context {
     }
 
     /// Signs the given key with the default signing key, or the keys specified via
-    /// [`add_signer`].
+    /// [`Context::add_signer()`].
     ///
     /// Upstream documentation:
     /// [`gpgme_op_keysign`](https://www.gnupg.org/documentation/manuals/gpgme/Signing-Keys.html#index-gpgme_005fop_005fkeysign)
-    ///
-    /// [`add_signer`]: struct.Context.html#method.add_signer
     #[inline]
     pub fn sign_key<I>(&mut self, key: &Key, userids: I, expires: Duration) -> Result<()>
     where
@@ -833,12 +812,10 @@ impl Context {
     }
 
     /// Signs the given key with the default signing key, or the keys specified via
-    /// [`add_signer`].
+    /// [`Context::add_signer()`].
     ///
     /// Upstream documentation:
     /// [`gpgme_op_keysign`](https://www.gnupg.org/documentation/manuals/gpgme/Signing-Keys.html#index-gpgme_005fop_005fkeysign)
-    ///
-    /// [`add_signer`]: struct.Context.html#method.add_signer
     pub fn sign_key_with_flags<I>(
         &mut self,
         key: &Key,
@@ -856,15 +833,14 @@ impl Context {
                 flags |= crate::KeySigningFlags::LFSEP;
             }
             unsafe {
-                return_err!(ffi::gpgme_op_keysign(
+                convert_err(ffi::gpgme_op_keysign(
                     self.as_raw(),
                     key.as_raw(),
                     userids.map_or(ptr::null(), |uid| uid.as_ptr()),
                     expires,
                     flags.bits(),
-                ));
+                ))
             }
-            Ok(())
         })
     }
 
@@ -884,15 +860,14 @@ impl Context {
                 0
             };
             unsafe {
-                return_err!(ffi::gpgme_op_revsig(
+                convert_err(ffi::gpgme_op_revsig(
                     self.as_raw(),
                     key.as_raw(),
                     signing_key.as_raw(),
                     userids.map_or(ptr::null(), |uid| uid.as_ptr()),
                     flags,
-                ));
+                ))
             }
-            Ok(())
         })
     }
 
@@ -901,23 +876,19 @@ impl Context {
     #[inline]
     pub fn change_key_tofu_policy(&mut self, key: &Key, policy: crate::TofuPolicy) -> Result<()> {
         unsafe {
-            return_err!(ffi::gpgme_op_tofu_policy(
+            convert_err(ffi::gpgme_op_tofu_policy(
                 self.as_raw(),
                 key.as_raw(),
                 policy.raw(),
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
     /// [`gpgme_op_passwd`](https://www.gnupg.org/documentation/manuals/gpgme/Changing-Passphrases.html#index-gpgme_005fop_005fpasswd)
     #[inline]
     pub fn change_key_passphrase(&mut self, key: &Key) -> Result<()> {
-        unsafe {
-            return_err!(ffi::gpgme_op_passwd(self.as_raw(), key.as_raw(), 0));
-        }
-        Ok(())
+        unsafe { convert_err(ffi::gpgme_op_passwd(self.as_raw(), key.as_raw(), 0)) }
     }
 
     /// Upstream documentation:
@@ -936,15 +907,14 @@ impl Context {
             response: data.borrow_mut(),
         };
         unsafe {
-            return_err!(ffi::gpgme_op_edit(
+            convert_err(ffi::gpgme_op_edit(
                 self.as_raw(),
                 key.as_raw(),
                 Some(callbacks::edit_cb::<E>),
                 ptr::addr_of_mut!(hook).cast(),
                 (*hook.response).as_raw(),
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
@@ -963,15 +933,14 @@ impl Context {
             response: data.borrow_mut(),
         };
         unsafe {
-            return_err!(ffi::gpgme_op_card_edit(
+            convert_err(ffi::gpgme_op_card_edit(
                 self.as_raw(),
                 key.as_raw(),
                 Some(callbacks::edit_cb::<E>),
                 ptr::addr_of_mut!(hook).cast(),
                 (*hook.response).as_raw(),
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
@@ -1050,36 +1019,29 @@ impl Context {
             response: data.borrow_mut(),
         };
         unsafe {
-            return_err!(ffi::gpgme_op_interact(
+            convert_err(ffi::gpgme_op_interact(
                 self.as_raw(),
                 key.map_or(ptr::null_mut(), |k| k.as_raw()),
                 flags.bits(),
                 Some(callbacks::interact_cb::<I>),
                 ptr::addr_of_mut!(hook).cast(),
                 (*hook.response).as_raw(),
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
     /// [`gpgme_op_delete`](https://www.gnupg.org/documentation/manuals/gpgme/Deleting-Keys.html#index-gpgme_005fop_005fdelete)
     #[inline]
     pub fn delete_key(&mut self, key: &Key) -> Result<()> {
-        unsafe {
-            return_err!(ffi::gpgme_op_delete(self.as_raw(), key.as_raw(), 0));
-        }
-        Ok(())
+        unsafe { convert_err(ffi::gpgme_op_delete(self.as_raw(), key.as_raw(), 0)) }
     }
 
     /// Upstream documentation:
     /// [`gpgme_op_delete`](https://www.gnupg.org/documentation/manuals/gpgme/Deleting-Keys.html#index-gpgme_005fop_005fdelete)
     #[inline]
     pub fn delete_secret_key(&mut self, key: &Key) -> Result<()> {
-        unsafe {
-            return_err!(ffi::gpgme_op_delete(self.as_raw(), key.as_raw(), 1));
-        }
-        Ok(())
+        unsafe { convert_err(ffi::gpgme_op_delete(self.as_raw(), key.as_raw(), 1)) }
     }
 
     /// Upstream documentation:
@@ -1087,13 +1049,12 @@ impl Context {
     #[inline]
     pub fn delete_key_with_flags(&mut self, key: &Key, flags: crate::DeleteKeyFlags) -> Result<()> {
         unsafe {
-            return_err!(ffi::gpgme_op_delete_ext(
+            convert_err(ffi::gpgme_op_delete_ext(
                 self.as_raw(),
                 key.as_raw(),
-                flags.bits()
-            ));
+                flags.bits(),
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
@@ -1105,10 +1066,10 @@ impl Context {
     {
         let mut src = src.into_data()?;
         unsafe {
-            return_err!(ffi::gpgme_op_import(
+            convert_err(ffi::gpgme_op_import(
                 self.as_raw(),
                 src.borrow_mut().as_raw(),
-            ));
+            ))?;
         }
         Ok(self.get_result().unwrap())
     }
@@ -1127,7 +1088,7 @@ impl Context {
             ptr::null_mut()
         };
         unsafe {
-            return_err!(ffi::gpgme_op_import_keys(self.as_raw(), keys));
+            convert_err(ffi::gpgme_op_import_keys(self.as_raw(), keys))?;
         }
         Ok(self.get_result().unwrap())
     }
@@ -1147,7 +1108,7 @@ impl Context {
             .chain(Some(ptr::null()))
             .collect();
         unsafe {
-            return_err!(ffi::gpgme_op_receive_keys(self.as_raw(), uids.as_ptr()));
+            convert_err(ffi::gpgme_op_receive_keys(self.as_raw(), uids.as_ptr()))?;
         }
         Ok(self.get_result().unwrap())
     }
@@ -1219,14 +1180,13 @@ impl Context {
             ptr::null_mut()
         };
         unsafe {
-            return_err!(ffi::gpgme_op_export_ext(
+            convert_err(ffi::gpgme_op_export_ext(
                 self.as_raw(),
                 ptr,
                 mode.bits(),
                 dst,
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
@@ -1269,24 +1229,20 @@ impl Context {
             ptr::null_mut()
         };
         unsafe {
-            return_err!(ffi::gpgme_op_export_keys(
+            convert_err(ffi::gpgme_op_export_keys(
                 self.as_raw(),
                 keys,
                 mode.bits(),
                 dst,
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
     /// [`gpgme_set_sender`](https://www.gnupg.org/documentation/manuals/gpgme/Setting-the-Sender.html#index-gpgme_005fset_005fsender)
     #[inline]
     pub fn clear_sender(&mut self) -> Result<()> {
-        unsafe {
-            return_err!(ffi::gpgme_set_sender(self.as_raw(), ptr::null()));
-        }
-        Ok(())
+        unsafe { convert_err(ffi::gpgme_set_sender(self.as_raw(), ptr::null())) }
     }
 
     /// Upstream documentation:
@@ -1295,12 +1251,11 @@ impl Context {
     pub fn set_sender(&mut self, sender: impl CStrArgument) -> Result<()> {
         let sender = sender.into_cstr();
         unsafe {
-            return_err!(ffi::gpgme_set_sender(
+            convert_err(ffi::gpgme_set_sender(
                 self.as_raw(),
                 sender.as_ref().as_ptr(),
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
@@ -1333,10 +1288,7 @@ impl Context {
     /// [`gpgme_signers_add`](https://www.gnupg.org/documentation/manuals/gpgme/Selecting-Signers.html#index-gpgme_005fsigners_005fadd)
     #[inline]
     pub fn add_signer(&mut self, key: &Key) -> Result<()> {
-        unsafe {
-            return_err!(ffi::gpgme_signers_add(self.as_raw(), key.as_raw()));
-        }
-        Ok(())
+        unsafe { convert_err(ffi::gpgme_signers_add(self.as_raw(), key.as_raw())) }
     }
 
     /// Upstream documentation:
@@ -1370,14 +1322,13 @@ impl Context {
         let name = name.into_cstr();
         let value = value.into_cstr();
         unsafe {
-            return_err!(ffi::gpgme_sig_notation_add(
+            convert_err(ffi::gpgme_sig_notation_add(
                 self.as_raw(),
                 name.as_ref().as_ptr(),
                 value.as_ref().as_ptr(),
                 flags.bits(),
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
@@ -1395,14 +1346,13 @@ impl Context {
             } else {
                 0
             };
-            return_err!(ffi::gpgme_sig_notation_add(
+            convert_err(ffi::gpgme_sig_notation_add(
                 self.as_raw(),
                 ptr::null(),
                 url.as_ref().as_ptr(),
                 critical,
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
@@ -1513,12 +1463,12 @@ impl Context {
         let mut signature = signature.into_data()?;
         let mut plain = plaintext.into_data()?;
         unsafe {
-            return_err!(ffi::gpgme_op_sign(
+            convert_err(ffi::gpgme_op_sign(
                 self.as_raw(),
                 plain.borrow_mut().as_raw(),
                 signature.borrow_mut().as_raw(),
                 mode.raw(),
-            ));
+            ))?;
         }
         Ok(self.get_result().unwrap())
     }
@@ -1566,12 +1516,12 @@ impl Context {
         unsafe {
             let signed = signedtext.map_or(ptr::null_mut(), |d| d.as_raw());
             let plain = plaintext.map_or(ptr::null_mut(), |d| d.as_raw());
-            return_err!(ffi::gpgme_op_verify(
+            convert_err(ffi::gpgme_op_verify(
                 self.as_raw(),
                 signature.as_raw(),
                 signed,
                 plain,
-            ));
+            ))?;
         }
         Ok(self.get_result().unwrap())
     }
@@ -1589,13 +1539,13 @@ impl Context {
         unsafe {
             let signed = signedtext.map_or(ptr::null_mut(), |d| d.as_raw());
             let plain = plaintext.map_or(ptr::null_mut(), |d| d.as_raw());
-            return_err!(ffi::gpgme_op_verify_ext(
+            convert_err(ffi::gpgme_op_verify_ext(
                 self.as_raw(),
                 flags.bits(),
                 signature.as_raw(),
                 signed,
                 plain,
-            ));
+            ))?;
         }
         Ok(self.get_result().unwrap())
     }
@@ -1656,13 +1606,13 @@ impl Context {
         };
 
         unsafe {
-            return_err!(ffi::gpgme_op_encrypt(
+            convert_err(ffi::gpgme_op_encrypt(
                 self.as_raw(),
                 keys,
                 flags.bits(),
                 plain.borrow_mut().as_raw(),
                 cipher.borrow_mut().as_raw(),
-            ));
+            ))?;
         }
         Ok(self.get_result().unwrap())
     }
@@ -1751,13 +1701,13 @@ impl Context {
         };
 
         unsafe {
-            return_err!(ffi::gpgme_op_encrypt_sign(
+            convert_err(ffi::gpgme_op_encrypt_sign(
                 self.as_raw(),
                 keys,
                 flags.bits(),
                 plain.borrow_mut().as_raw(),
                 cipher.borrow_mut().as_raw(),
-            ))
+            ))?;
         }
         Ok((self.get_result().unwrap(), self.get_result().unwrap()))
     }
@@ -1791,11 +1741,11 @@ impl Context {
         let mut cipher = ciphertext.into_data()?;
         let mut plain = plaintext.into_data()?;
         unsafe {
-            return_err!(ffi::gpgme_op_decrypt(
+            convert_err(ffi::gpgme_op_decrypt(
                 self.as_raw(),
                 cipher.borrow_mut().as_raw(),
                 plain.borrow_mut().as_raw(),
-            ));
+            ))?;
         }
         Ok(self.get_result().unwrap())
     }
@@ -1816,12 +1766,12 @@ impl Context {
         let mut cipher = ciphertext.into_data()?;
         let mut plain = plaintext.into_data()?;
         unsafe {
-            return_err!(ffi::gpgme_op_decrypt_ext(
+            convert_err(ffi::gpgme_op_decrypt_ext(
                 self.as_raw(),
                 flags.bits(),
                 cipher.borrow_mut().as_raw(),
                 plain.borrow_mut().as_raw(),
-            ));
+            ))?;
         }
         Ok(self.get_result().unwrap())
     }
@@ -1855,11 +1805,11 @@ impl Context {
         let mut cipher = ciphertext.into_data()?;
         let mut plain = plaintext.into_data()?;
         unsafe {
-            return_err!(ffi::gpgme_op_decrypt_verify(
+            convert_err(ffi::gpgme_op_decrypt_verify(
                 self.as_raw(),
                 cipher.borrow_mut().as_raw(),
                 plain.borrow_mut().as_raw(),
-            ))
+            ))?;
         }
         Ok((self.get_result().unwrap(), self.get_result().unwrap()))
     }
@@ -1896,7 +1846,7 @@ impl Context {
             let iversion = iversion
                 .as_ref()
                 .map_or(ptr::null(), |s| s.as_ref().as_ptr());
-            return_err!(ffi::gpgme_op_query_swdb(self.as_raw(), name, iversion, 0));
+            convert_err(ffi::gpgme_op_query_swdb(self.as_raw(), name, iversion, 0))?;
         }
         Ok(self.get_result().unwrap())
     }
@@ -1910,13 +1860,12 @@ impl Context {
     {
         let mut dst = dst.into_data()?;
         unsafe {
-            return_err!(ffi::gpgme_op_getauditlog(
+            convert_err(ffi::gpgme_op_getauditlog(
                 self.as_raw(),
                 dst.borrow_mut().as_raw(),
                 flags.bits(),
-            ));
+            ))
         }
-        Ok(())
     }
 
     fn get_result<R: crate::OpResult>(&self) -> Option<R> {
@@ -1959,7 +1908,7 @@ impl<D> Keys<'_, D> {
     pub fn finish(self) -> Result<results::KeyListResult> {
         let this = ManuallyDrop::new(self);
         unsafe {
-            return_err!(ffi::gpgme_op_keylist_end(this.ctx.as_raw()));
+            convert_err(ffi::gpgme_op_keylist_end(this.ctx.as_raw()))?;
         }
         Ok(this.ctx.get_result().unwrap())
     }
@@ -1976,11 +1925,11 @@ impl<'ctx> Keys<'ctx, ()> {
     {
         let mut src = src.into_data()?;
         unsafe {
-            return_err!(ffi::gpgme_op_keylist_from_data_start(
+            convert_err(ffi::gpgme_op_keylist_from_data_start(
                 ctx.as_raw(),
                 src.borrow_mut().as_raw(),
                 0,
-            ));
+            ))?;
         }
         Ok(Keys { _src: src, ctx })
     }

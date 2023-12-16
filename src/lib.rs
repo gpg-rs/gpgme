@@ -5,7 +5,10 @@ use std::{
     sync::{Mutex, OnceLock, RwLock},
 };
 
-use self::{engine::EngineInfoGuard, error::return_err, utils::CStrArgument};
+use self::{
+    engine::EngineInfoGuard,
+    utils::{convert_err, CStrArgument},
+};
 
 #[doc(inline)]
 #[allow(deprecated)]
@@ -259,13 +262,13 @@ impl Gpgme {
         }
     }
 
-    /// Checks that the engine implementing the specified protocol is supported by the library.
+    /// Checks that the engine implementing the specified protocol is available.
     ///
     /// Upstream documentation:
     /// [`gpgme_engine_check_version`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Version-Check.html#index-gpgme_005fengine_005fcheck_005fversion)
     pub fn check_engine_version(&self, proto: Protocol) -> Result<()> {
         unsafe {
-            return_err!(ffi::gpgme_engine_check_version(proto.raw()));
+            convert_err(ffi::gpgme_engine_check_version(proto.raw()))?;
         }
         Ok(())
     }
@@ -300,12 +303,12 @@ impl Gpgme {
             let home_dir = self
                 .get_engine_info(proto)
                 .as_ref()
-                .map_or(ptr::null(), |e| (*e).home_dir);
-            return_err!(ffi::gpgme_set_engine_info(
+                .map_or(ptr::null(), |x| x.home_dir);
+            convert_err(ffi::gpgme_set_engine_info(
                 proto.raw(),
                 path.as_ref().as_ptr(),
                 home_dir,
-            ));
+            ))?;
         }
         Ok(())
     }
@@ -321,12 +324,12 @@ impl Gpgme {
             let path = self
                 .get_engine_info(proto)
                 .as_ref()
-                .map_or(ptr::null(), |e| (*e).file_name);
-            return_err!(ffi::gpgme_set_engine_info(
+                .map_or(ptr::null(), |x| x.file_name);
+            convert_err(ffi::gpgme_set_engine_info(
                 proto.raw(),
                 path,
                 home_dir.as_ref().as_ptr(),
-            ));
+            ))?;
         }
         Ok(())
     }
@@ -351,7 +354,7 @@ impl Gpgme {
                 .engine_lock
                 .write()
                 .expect("engine info lock was poisoned");
-            return_err!(ffi::gpgme_set_engine_info(proto.raw(), path, home_dir));
+            convert_err(ffi::gpgme_set_engine_info(proto.raw(), path, home_dir))?;
         }
         Ok(())
     }

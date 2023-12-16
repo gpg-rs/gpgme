@@ -22,9 +22,7 @@ macro_rules! impl_wrapper {
 
         #[inline]
         pub fn into_raw(self) -> $T {
-            let raw = self.as_raw();
-            ::std::mem::forget(self);
-            raw
+            ::std::mem::ManuallyDrop::new(self).as_raw()
         }
     };
 }
@@ -77,7 +75,7 @@ macro_rules! ffi_enum_wrapper {
 
         impl $Name {
             #[inline]
-            pub unsafe fn from_raw(raw: $T) -> $Name {
+            pub fn from_raw(raw: $T) -> $Name {
                 $(if raw == $Value {
                     $Name::$Item
                 } else )+ {
@@ -116,7 +114,7 @@ macro_rules! ffi_enum_wrapper {
 
         impl $Name {
             #[inline]
-            pub unsafe fn from_raw(raw: $T) -> $Name {
+            pub fn from_raw(raw: $T) -> $Name {
                 $(if raw == $Value {
                     $Name::$Item
                 } else )+ {
@@ -176,4 +174,12 @@ impl<T> Ptr for *mut T {
 
 impl<T> Ptr for *const T {
     type Inner = T;
+}
+
+#[inline(always)]
+pub(crate) fn convert_err(err: ffi::gpgme_error_t) -> Result<(), Error> {
+    match err {
+        0 => Ok(()),
+        _ => Err(Error::new(err)),
+    }
 }

@@ -18,7 +18,7 @@ use ffi::{self, gpgme_off_t};
 use libc;
 use static_assertions::{assert_impl_all, assert_not_impl_any};
 
-use crate::{error::return_err, utils::CStrArgument, Error, NonNull, Result};
+use crate::{utils::convert_err, utils::CStrArgument, Error, NonNull, Result};
 
 assert_impl_all!(Data<'_>: Send);
 assert_not_impl_any!(Data<'_>: Sync);
@@ -142,7 +142,7 @@ impl<'data> Data<'data> {
         crate::init();
         unsafe {
             let mut data = ptr::null_mut();
-            return_err!(ffi::gpgme_data_new(&mut data));
+            convert_err(ffi::gpgme_data_new(&mut data))?;
             Ok(Data::from_raw(data))
         }
     }
@@ -158,11 +158,11 @@ impl<'data> Data<'data> {
         let path = path.into_cstr();
         unsafe {
             let mut data = ptr::null_mut();
-            return_err!(ffi::gpgme_data_new_from_file(
+            convert_err(ffi::gpgme_data_new_from_file(
                 &mut data,
                 path.as_ref().as_ptr(),
                 1,
-            ));
+            ))?;
             Ok(Data::from_raw(data))
         }
     }
@@ -178,7 +178,7 @@ impl<'data> Data<'data> {
         unsafe {
             let (buf, len) = (bytes.as_ptr(), bytes.len());
             let mut data = ptr::null_mut();
-            return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf.cast(), len, 1));
+            convert_err(ffi::gpgme_data_new_from_mem(&mut data, buf.cast(), len, 1))?;
             Ok(Data::from_raw(data))
         }
     }
@@ -194,7 +194,7 @@ impl<'data> Data<'data> {
         unsafe {
             let (buf, len) = (buf.as_ptr(), buf.len());
             let mut data = ptr::null_mut();
-            return_err!(ffi::gpgme_data_new_from_mem(&mut data, buf.cast(), len, 0));
+            convert_err(ffi::gpgme_data_new_from_mem(&mut data, buf.cast(), len, 0))?;
             Ok(Data::from_raw(data))
         }
     }
@@ -221,7 +221,7 @@ impl<'data> Data<'data> {
         crate::init();
         unsafe {
             let mut data = ptr::null_mut();
-            return_err!(ffi::gpgme_data_new_from_fd(&mut data, file.as_raw_fd()));
+            convert_err(ffi::gpgme_data_new_from_fd(&mut data, file.as_raw_fd()))?;
             Ok(Data::from_raw(data))
         }
     }
@@ -232,7 +232,7 @@ impl<'data> Data<'data> {
     pub unsafe fn from_raw_file(file: *mut libc::FILE) -> Result<Self> {
         crate::init();
         let mut data = ptr::null_mut();
-        return_err!(ffi::gpgme_data_new_from_stream(&mut data, file));
+        convert_err(ffi::gpgme_data_new_from_stream(&mut data, file))?;
         Ok(Data::from_raw(data))
     }
 
@@ -244,11 +244,9 @@ impl<'data> Data<'data> {
         let src = Box::into_raw(Box::new(CallbackWrapper { inner: src, cbs }));
         let cbs = ptr::addr_of_mut!((*src).cbs);
         let mut data = ptr::null_mut();
-        let result = ffi::gpgme_data_new_from_cbs(&mut data, cbs, src.cast());
-        if result == 0 {
-            Ok(Data::from_raw(data))
-        } else {
-            Err(WrappedError(Error::new(result), Box::from_raw(src).inner))
+        match convert_err(ffi::gpgme_data_new_from_cbs(&mut data, cbs, src.cast())) {
+            Ok(()) => Ok(Data::from_raw(data)),
+            Err(e) => Err(WrappedError(e, Box::from_raw(src).inner)),
         }
     }
 
@@ -359,10 +357,7 @@ impl<'data> Data<'data> {
     /// [`gpgme_data_set_file_name`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-gpgme_005fdata_005fset_005ffile_005fname)
     #[inline]
     pub fn clear_filename(&mut self) -> Result<()> {
-        unsafe {
-            return_err!(ffi::gpgme_data_set_file_name(self.as_raw(), ptr::null()));
-        }
-        Ok(())
+        unsafe { convert_err(ffi::gpgme_data_set_file_name(self.as_raw(), ptr::null())) }
     }
 
     /// Upstream documentation:
@@ -371,12 +366,11 @@ impl<'data> Data<'data> {
     pub fn set_filename(&mut self, name: impl CStrArgument) -> Result<()> {
         let name = name.into_cstr();
         unsafe {
-            return_err!(ffi::gpgme_data_set_file_name(
+            convert_err(ffi::gpgme_data_set_file_name(
                 self.as_raw(),
                 name.as_ref().as_ptr(),
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
@@ -390,8 +384,7 @@ impl<'data> Data<'data> {
     /// [`gpgme_data_set_encoding`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-gpgme_005fdata_005fset_005fencoding)
     #[inline]
     pub fn set_encoding(&mut self, enc: Encoding) -> Result<()> {
-        unsafe { return_err!(ffi::gpgme_data_set_encoding(self.as_raw(), enc.raw())) }
-        Ok(())
+        unsafe { convert_err(ffi::gpgme_data_set_encoding(self.as_raw(), enc.raw())) }
     }
 
     /// Upstream documentation:
@@ -401,13 +394,12 @@ impl<'data> Data<'data> {
         let name = name.into_cstr();
         let value = value.into_cstr();
         unsafe {
-            return_err!(ffi::gpgme_data_set_flag(
+            convert_err(ffi::gpgme_data_set_flag(
                 self.as_raw(),
                 name.as_ref().as_ptr(),
                 value.as_ref().as_ptr(),
-            ));
+            ))
         }
-        Ok(())
     }
 
     /// Upstream documentation:
