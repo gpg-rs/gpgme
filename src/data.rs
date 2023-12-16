@@ -561,90 +561,140 @@ impl<'a> IntoData<'a> for &mut Data<'a> {
     }
 }
 
-impl<'a> IntoData<'a> for Data<'a> {
-    type Output = Self;
-
-    fn into_data(self) -> Result<Self> {
-        Ok(self)
-    }
-}
-
-impl<'a> IntoData<'a> for &'a [u8] {
+impl<'a, T> IntoData<'a> for T
+where
+    T: TryInto<Data<'a>, Error = Error>,
+{
     type Output = Data<'a>;
 
-    fn into_data(self) -> Result<Data<'a>> {
-        Data::from_seekable_reader(Cursor::new(self)).map_err(|e| e.error())
+    fn into_data(self) -> Result<Self::Output> {
+        self.try_into()
     }
 }
 
-impl<'a> IntoData<'a> for &'a mut [u8] {
-    type Output = Data<'a>;
+impl<'a> TryFrom<&'a [u8]> for Data<'a> {
+    type Error = Error;
 
-    fn into_data(self) -> Result<Data<'a>> {
-        Data::from_seekable_stream(Cursor::new(self)).map_err(|e| e.error())
+    #[inline]
+    fn try_from(value: &'a [u8]) -> Result<Self> {
+        Self::from_buffer(value)
     }
 }
 
-impl<'a> IntoData<'a> for &'a Vec<u8> {
-    type Output = Data<'a>;
+impl<'a> TryFrom<&'a mut [u8]> for Data<'a> {
+    type Error = Error;
 
-    fn into_data(self) -> Result<Data<'a>> {
-        self.as_slice().into_data()
+    #[inline]
+    fn try_from(value: &'a mut [u8]) -> Result<Self> {
+        Self::from_seekable_stream(Cursor::new(value)).map_err(|e| e.error())
     }
 }
 
-impl<'a> IntoData<'a> for &'a mut Vec<u8> {
-    type Output = Data<'a>;
+impl<'a> TryFrom<&'a str> for Data<'a> {
+    type Error = Error;
 
-    fn into_data(self) -> Result<Data<'a>> {
-        Data::from_seekable_stream(Cursor::new(self)).map_err(|e| e.error())
+    #[inline]
+    fn try_from(value: &'a str) -> Result<Self> {
+        value.as_bytes().try_into()
     }
 }
 
-impl IntoData<'static> for Vec<u8> {
-    type Output = Data<'static>;
+impl<'a> TryFrom<&'a Vec<u8>> for Data<'a> {
+    type Error = Error;
 
-    fn into_data(self) -> Result<Data<'static>> {
-        Data::from_seekable_stream(Cursor::new(self)).map_err(|e| e.error())
+    #[inline]
+    fn try_from(value: &'a Vec<u8>) -> Result<Self> {
+        value.as_slice().try_into()
     }
 }
 
-impl<'a> IntoData<'a> for &'a str {
-    type Output = Data<'a>;
+impl<'a> TryFrom<&'a mut Vec<u8>> for Data<'a> {
+    type Error = Error;
 
-    fn into_data(self) -> Result<Data<'a>> {
-        self.as_bytes().into_data()
+    #[inline]
+    fn try_from(value: &'a mut Vec<u8>) -> Result<Self> {
+        Self::from_seekable_stream(Cursor::new(value)).map_err(|e| e.error())
     }
 }
 
-impl IntoData<'static> for String {
-    type Output = Data<'static>;
+impl<'a> TryFrom<Vec<u8>> for Data<'a> {
+    type Error = Error;
 
-    fn into_data(self) -> Result<Data<'static>> {
-        self.into_bytes().into_data()
+    #[inline]
+    fn try_from(value: Vec<u8>) -> Result<Self> {
+        Self::from_seekable_stream(Cursor::new(value)).map_err(|e| e.error())
     }
 }
 
-impl<'a> IntoData<'a> for &'a File {
-    type Output = Data<'a>;
+impl<'a> TryFrom<String> for Data<'a> {
+    type Error = Error;
 
-    fn into_data(self) -> Result<Data<'a>> {
-        Data::from_seekable_stream(self).map_err(|e| e.error())
+    #[inline]
+    fn try_from(value: String) -> Result<Self> {
+        value.into_bytes().try_into()
     }
 }
 
-impl<'a> IntoData<'a> for &'a mut File {
-    type Output = Data<'a>;
+impl<'a> TryFrom<&'a File> for Data<'a> {
+    type Error = Error;
 
-    fn into_data(self) -> Result<Data<'a>> {
-        Data::from_seekable_stream(self).map_err(|e| e.error())
+    #[inline]
+    fn try_from(value: &'a File) -> Result<Self> {
+        Self::from_seekable_stream(value).map_err(|e| e.error())
     }
 }
 
-impl IntoData<'static> for File {
-    type Output = Data<'static>;
+impl<'a> TryFrom<&'a mut File> for Data<'a> {
+    type Error = Error;
 
-    fn into_data(self) -> Result<Data<'static>> {
-        Data::from_seekable_stream(self).map_err(|e| e.error())
+    #[inline]
+    fn try_from(value: &'a mut File) -> Result<Self> {
+        Self::try_from(&*value)
+    }
+}
+
+impl<'a> TryFrom<File> for Data<'a> {
+    type Error = Error;
+
+    #[inline]
+    fn try_from(value: File) -> Result<Self> {
+        Self::from_seekable_stream(value).map_err(|e| e.error())
+    }
+}
+
+impl TryFrom<io::Stdout> for Data<'static> {
+    type Error = Error;
+
+    #[inline]
+    fn try_from(value: io::Stdout) -> Result<Self> {
+        Self::from_writer(value).map_err(|e| e.error())
+    }
+}
+
+impl TryFrom<io::Stderr> for Data<'static> {
+    type Error = Error;
+
+    #[inline]
+    fn try_from(value: io::Stderr) -> Result<Self> {
+        Self::from_writer(value).map_err(|e| e.error())
+    }
+}
+
+impl TryFrom<io::Stdin> for Data<'static> {
+    type Error = Error;
+
+    #[inline]
+    fn try_from(value: io::Stdin) -> Result<Self> {
+        Self::from_reader(value).map_err(|e| e.error())
+    }
+}
+
+#[cfg(unix)]
+impl<'a> TryFrom<BorrowedFd<'a>> for Data<'a> {
+    type Error = Error;
+
+    #[inline]
+    fn try_from(value: BorrowedFd<'a>) -> Result<Self> {
+        Data::from_borrowed_fd(value)
     }
 }
