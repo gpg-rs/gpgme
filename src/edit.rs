@@ -114,18 +114,18 @@ ffi_enum_wrapper! {
 
 impl StatusCode {
     pub fn needs_response(&self) -> bool {
-        match self {
+        matches!(
+            self,
             Self::AlreadySigned
-            | Self::Error
-            | Self::GetBool
-            | Self::GetLine
-            | Self::KeyCreated
-            | Self::NeedPassphraseSym
-            | Self::ScOpFailure
-            | Self::CardCtrl
-            | Self::BackupKeyCreated => true,
-            _ => false,
-        }
+                | Self::Error
+                | Self::GetBool
+                | Self::GetLine
+                | Self::KeyCreated
+                | Self::NeedPassphraseSym
+                | Self::ScOpFailure
+                | Self::CardCtrl
+                | Self::BackupKeyCreated
+        )
     }
 
     pub fn into_result(self) -> Result<()> {

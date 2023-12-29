@@ -143,7 +143,17 @@ pub fn set_flag(name: impl CStrArgument, val: impl CStrArgument) -> Result<()> {
 }
 
 cfg_if::cfg_if! {
-    if #[cfg(feature = "v1_18")] {
+    if #[cfg(feature = "v1_23")] {
+        const MIN_VERSION: &[u8] = b"1.23.0\0";
+    } else if #[cfg(feature = "v1_22")] {
+        const MIN_VERSION: &[u8] = b"1.22.0\0";
+    } else if #[cfg(feature = "v1_21")] {
+        const MIN_VERSION: &[u8] = b"1.21.0\0";
+    } else if #[cfg(feature = "v1_20")] {
+        const MIN_VERSION: &[u8] = b"1.20.0\0";
+    } else if #[cfg(feature = "v1_19")] {
+        const MIN_VERSION: &[u8] = b"1.19.0\0";
+    } else if #[cfg(feature = "v1_18")] {
         const MIN_VERSION: &[u8] = b"1.18.0\0";
     } else if #[cfg(feature = "v1_17")] {
         const MIN_VERSION: &[u8] = b"1.17.0\0";

@@ -7,8 +7,6 @@ use std::{
     thread,
 };
 
-use ffi;
-use libc;
 use static_assertions::assert_obj_safe;
 
 use crate::{edit, utils::FdWriter, Data, Error, Result};

@@ -1,8 +1,5 @@
 use std::io::{self, prelude::*};
 
-use ffi;
-use libc;
-
 use crate::Error;
 
 pub use cstr_argument::CStrArgument;
