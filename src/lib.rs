@@ -2,7 +2,7 @@ use std::{
     ffi::CStr,
     fmt, ptr,
     str::Utf8Error,
-    sync::{Mutex, OnceLock, RwLock},
+    sync::{Mutex, OnceLock},
 };
 
 use self::{
@@ -180,7 +180,7 @@ cfg_if::cfg_if! {
 /// ```
 #[inline]
 pub fn init() -> Gpgme {
-    static TOKEN: OnceLock<(&str, RwLock<()>)> = OnceLock::new();
+    static TOKEN: OnceLock<&str> = OnceLock::new();
     let token = TOKEN.get_or_init(|| unsafe {
         let offset = memoffset::offset_of!(ffi::_gpgme_signature, validity);
 
@@ -189,24 +189,17 @@ pub fn init() -> Gpgme {
             !result.is_null(),
             "the library linked is not the correct version"
         );
-        (
-            CStr::from_ptr(result)
-                .to_str()
-                .expect("gpgme version string is not valid utf-8"),
-            RwLock::default(),
-        )
+        CStr::from_ptr(result)
+            .to_str()
+            .expect("gpgme version string is not valid utf-8")
     });
-    Gpgme {
-        version: token.0,
-        engine_lock: &token.1,
-    }
+    Gpgme { version: token }
 }
 
 /// A type for managing the library's configuration.
 #[derive(Debug, Clone)]
 pub struct Gpgme {
     version: &'static str,
-    engine_lock: &'static RwLock<()>,
 }
 
 impl Gpgme {
@@ -289,31 +282,19 @@ impl Gpgme {
     /// [`gpgme_get_engine_info`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Information.html#index-gpgme_005fget_005fengine_005finfo)
     #[inline]
     pub fn engine_info(&self) -> Result<EngineInfoGuard> {
-        EngineInfoGuard::new(self.engine_lock)
-    }
-
-    // Requires the engine_lock to be held by the current thread when called
-    unsafe fn get_engine_info(&self, proto: Protocol) -> ffi::gpgme_engine_info_t {
-        let mut info = ptr::null_mut();
-        assert_eq!(ffi::gpgme_get_engine_info(&mut info), 0);
-        while !info.is_null() && ((*info).protocol != proto.raw()) {
-            info = (*info).next;
-        }
-        info
+        EngineInfoGuard::new()
     }
 
     #[inline]
     pub fn set_engine_path(&self, proto: Protocol, path: impl CStrArgument) -> Result<()> {
         let path = path.into_cstr();
-        let _lock = self
-            .engine_lock
-            .write()
-            .expect("engine info lock was poisoned");
         unsafe {
             let home_dir = self
-                .get_engine_info(proto)
+                .engine_info()?
+                .get(proto)
                 .as_ref()
-                .map_or(ptr::null(), |x| x.home_dir);
+                .and_then(|x| x.home_dir_raw())
+                .map_or(ptr::null(), |x| x.as_ptr());
             convert_err(ffi::gpgme_set_engine_info(
                 proto.raw(),
                 path.as_ref().as_ptr(),
@@ -326,15 +307,13 @@ impl Gpgme {
     #[inline]
     pub fn set_engine_home_dir(&self, proto: Protocol, home_dir: impl CStrArgument) -> Result<()> {
         let home_dir = home_dir.into_cstr();
-        let _lock = self
-            .engine_lock
-            .write()
-            .expect("engine info lock was poisoned");
         unsafe {
             let path = self
-                .get_engine_info(proto)
+                .engine_info()?
+                .get(proto)
                 .as_ref()
-                .map_or(ptr::null(), |x| x.file_name);
+                .and_then(|x| x.path_raw())
+                .map_or(ptr::null(), |x| x.as_ptr());
             convert_err(ffi::gpgme_set_engine_info(
                 proto.raw(),
                 path,
@@ -360,10 +339,6 @@ impl Gpgme {
             .as_ref()
             .map_or(ptr::null(), |s| s.as_ref().as_ptr());
         unsafe {
-            let _lock = self
-                .engine_lock
-                .write()
-                .expect("engine info lock was poisoned");
             convert_err(ffi::gpgme_set_engine_info(proto.raw(), path, home_dir))?;
         }
         Ok(())

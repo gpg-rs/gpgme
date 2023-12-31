@@ -17,7 +17,7 @@ use libc;
 #[allow(deprecated)]
 use crate::{
     callbacks, edit,
-    engine::EngineInfo,
+    engine::{EngineInfo, EngineInfos},
     notation::SignatureNotations,
     results,
     utils::{convert_err, CStrArgument, SmallVec},
@@ -42,7 +42,7 @@ impl Drop for Context {
 impl Context {
     impl_wrapper!(ffi::gpgme_ctx_t);
 
-    fn new() -> Result<Self> {
+    pub(crate) fn new() -> Result<Self> {
         crate::init();
         unsafe {
             let mut ctx = ptr::null_mut();
@@ -161,6 +161,13 @@ impl Context {
     #[inline]
     pub fn engine_info(&self) -> EngineInfo<'_> {
         unsafe { EngineInfo::from_raw(ffi::gpgme_ctx_get_engine_info(self.as_raw())) }
+    }
+
+    /// Upstream documentation:
+    /// [`gpgme_ctx_get_engine_info`](https://www.gnupg.org/documentation/manuals/gpgme/Crypto-Engine.html#index-gpgme_005fctx_005fget_005fengine_005finfo)
+    #[inline]
+    pub fn engines(&self) -> EngineInfos<'_> {
+        unsafe { EngineInfos::from_list(ffi::gpgme_ctx_get_engine_info(self.as_raw())) }
     }
 
     #[inline]
@@ -729,11 +736,11 @@ impl Context {
         let expires = expires.as_secs().value_into().unwrap_or_saturate();
         self::with_joined_cstr(subkeys, |subkeys, _| unsafe {
             convert_err(ffi::gpgme_op_setexpire(
-                    self.as_raw(),
-                    key.as_raw(),
-                    expires,
-                    subkeys.map_or(ptr::null(), |subkeys| subkeys.as_ptr()),
-                    0,
+                self.as_raw(),
+                key.as_raw(),
+                expires,
+                subkeys.map_or(ptr::null(), |subkeys| subkeys.as_ptr()),
+                0,
             ))
         })
     }

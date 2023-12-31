@@ -9,7 +9,7 @@ use std::{
 
 use ffi;
 
-use crate::{utils::convert_err, NonNull, Protocol, Result};
+use crate::{utils::convert_err, Context, NonNull, Protocol, Result};
 
 /// Upstream documentation:
 /// [`gpgme_engine_info_t`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Information.html#index-gpgme_005fengine_005finfo_005ft)
@@ -116,16 +116,15 @@ impl_list_iterator!(pub struct EngineInfos(EngineInfo: ffi::gpgme_engine_info_t)
 
 /// A RAII guard type that ensures the global engine information list is not modified
 /// while it is being iterated.
-pub struct EngineInfoGuard(RwLockReadGuard<'static, ()>);
+pub struct EngineInfoGuard {
+    snapshot: Context,
+}
 
 impl EngineInfoGuard {
-    pub fn new(lock: &'static RwLock<()>) -> Result<EngineInfoGuard> {
-        let lock = lock.read().expect("engine info lock was poisoned");
-        unsafe {
-            let mut info = ptr::null_mut();
-            convert_err(ffi::gpgme_get_engine_info(&mut info))?;
-        }
-        Ok(EngineInfoGuard(lock))
+    pub(crate) fn new() -> Result<Self> {
+        Ok(Self {
+            snapshot: Context::new()?,
+        })
     }
 
     #[inline]
@@ -145,11 +144,7 @@ impl<'a> IntoIterator for &'a EngineInfoGuard {
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        unsafe {
-            let mut first = ptr::null_mut();
-            assert_eq!(ffi::gpgme_get_engine_info(&mut first), 0);
-            EngineInfos::from_list(first)
-        }
+        self.snapshot.engines()
     }
 }
 
