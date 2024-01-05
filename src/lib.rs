@@ -345,8 +345,4 @@ impl Gpgme {
     }
 }
 
-unsafe trait OpResult: Clone {
-    fn from_context(ctx: &Context) -> Option<Self>;
-}
-
 type NonNull<T> = ptr::NonNull<<T as utils::Ptr>::Inner>;

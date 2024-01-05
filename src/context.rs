@@ -5,7 +5,7 @@ use std::{
     iter::FusedIterator,
     mem::ManuallyDrop,
     ops::{Deref, DerefMut},
-    ptr,
+    ptr::{self, NonNull as CoreNonNull},
     str::Utf8Error,
     time::Duration,
 };
@@ -1875,7 +1875,7 @@ impl Context {
         }
     }
 
-    fn get_result<R: crate::OpResult>(&self) -> Option<R> {
+    fn get_result<R: results::OpResult>(&self) -> Option<R> {
         R::from_context(self)
     }
 }
@@ -2028,9 +2028,9 @@ impl fmt::Debug for Signers<'_> {
 /// [`gpgme_ctx_t`](https://www.gnupg.org/documentation/manuals/gpgme/Contexts.html#Contexts)
 pub struct ContextWithCallbacks<'a> {
     inner: Context,
-    passphrase_hook: Option<Box<dyn Send + 'a>>,
-    progress_hook: Option<Box<dyn Send + 'a>>,
-    status_hook: Option<Box<dyn Send + 'a>>,
+    passphrase_hook: Option<CoreNonNull<dyn Send + 'a>>,
+    progress_hook: Option<CoreNonNull<dyn Send + 'a>>,
+    status_hook: Option<CoreNonNull<dyn Send + 'a>>,
 }
 
 impl Drop for ContextWithCallbacks<'_> {
@@ -2046,7 +2046,11 @@ impl<'a> ContextWithCallbacks<'a> {
     /// [`gpgme_set_passphrase_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Passphrase-Callback.html#index-gpgme_005fset_005fpassphrase_005fcb)
     pub fn clear_passphrase_provider(&mut self) {
         (**self).clear_passphrase_provider();
-        self.passphrase_hook.take();
+        if let Some(hook) = self.passphrase_hook.take() {
+            unsafe {
+                drop(Box::from_raw(hook.as_ptr()));
+            }
+        }
     }
 
     /// Upstream documentation:
@@ -2062,15 +2066,19 @@ impl<'a> ContextWithCallbacks<'a> {
                 Some(callbacks::passphrase_cb::<P>),
                 ptr::addr_of_mut!(*hook).cast(),
             );
+            self.passphrase_hook = Some(CoreNonNull::new_unchecked(Box::into_raw(hook)));
         }
-        self.passphrase_hook = Some(hook);
     }
 
     /// Upstream documentation:
     /// [`gpgme_set_progress_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Progress-Meter-Callback.html#index-gpgme_005fset_005fprogress_005fcb)
     pub fn clear_progress_reporter(&mut self) {
         (**self).clear_progress_reporter();
-        self.progress_hook.take();
+        if let Some(hook) = self.progress_hook.take() {
+            unsafe {
+                drop(Box::from_raw(hook.as_ptr()));
+            }
+        }
     }
 
     /// Upstream documentation:
@@ -2086,15 +2094,19 @@ impl<'a> ContextWithCallbacks<'a> {
                 Some(callbacks::progress_cb::<H>),
                 ptr::addr_of_mut!(*hook).cast(),
             );
+            self.progress_hook = Some(CoreNonNull::new_unchecked(Box::into_raw(hook)));
         }
-        self.progress_hook = Some(hook);
     }
 
     /// Upstream documentation:
     /// [`gpgme_set_status_cb`](https://www.gnupg.org/documentation/manuals/gpgme/Status-Message-Callback.html#index-gpgme_005fset_005fstatus_005fcb)
     pub fn clear_status_handler(&mut self) {
         (**self).clear_status_handler();
-        self.status_hook.take();
+        if let Some(hook) = self.status_hook.take() {
+            unsafe {
+                drop(Box::from_raw(hook.as_ptr()));
+            }
+        }
     }
 
     /// Upstream documentation:
@@ -2110,8 +2122,8 @@ impl<'a> ContextWithCallbacks<'a> {
                 Some(callbacks::status_cb::<H>),
                 ptr::addr_of_mut!(*hook).cast(),
             );
+            self.status_hook = Some(CoreNonNull::new_unchecked(Box::into_raw(hook)));
         }
-        self.status_hook = Some(hook);
     }
 
     /// Returns the inner `Context` object.

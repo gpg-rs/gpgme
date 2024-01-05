@@ -13,9 +13,12 @@ use libc;
 
 use crate::{
     notation::SignatureNotations, utils::convert_err, Context, Error, HashAlgorithm, ImportFlags,
-    KeyAlgorithm, NonNull, OpResult, Result, SignMode, SignatureNotation, SignatureSummary,
-    Validity,
+    KeyAlgorithm, NonNull, Result, SignMode, SignatureSummary, Validity,
 };
+
+pub(crate) trait OpResult: Clone {
+    fn from_context(ctx: &Context) -> Option<Self>;
+}
 
 macro_rules! impl_result {
     ($(#[$Attr:meta])* $Name:ident : $T:ty = $Constructor:expr) => {
@@ -44,7 +47,7 @@ macro_rules! impl_result {
             }
         }
 
-        unsafe impl OpResult for $Name {
+        impl OpResult for $Name {
             fn from_context(ctx: &Context) -> Option<Self> {
                 unsafe {
                     $Constructor(ctx.as_raw()).as_mut().map(|r| {

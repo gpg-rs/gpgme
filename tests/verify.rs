@@ -11,7 +11,7 @@ const TEST_MSG1: &[u8] = b"-----BEGIN PGP MESSAGE-----\n\
                            =Crq6\n\
                            -----END PGP MESSAGE-----\n";
 
-#[sealed_test(before = common::setup(), after = common::teardown())]
+#[sealed_test(before = common::setup())]
 fn test_signature_key() {
     let mut ctx = common::create_context();
     let mut output = Vec::new();
@@ -25,5 +25,6 @@ fn test_signature_key() {
             return;
         }
     }
+    common::teardown();
     panic!();
 }

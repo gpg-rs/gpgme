@@ -3,10 +3,12 @@ use std::io::{self, prelude::*};
 use crate::Error;
 
 pub use cstr_argument::CStrArgument;
-pub type SmallVec<T> = ::smallvec::SmallVec<[T; 4]>;
+pub type SmallVec<T> = ::smallvec::SmallVec<[T; 8]>;
 
 macro_rules! impl_wrapper {
     ($T:ty$(, $Args:expr)*) => {
+        /// # Safety
+        /// The provided instance must be valid.
         #[inline]
         pub unsafe fn from_raw(raw: $T) -> Self {
             Self(NonNull::<$T>::new(raw).unwrap()$(, $Args)*)
@@ -30,6 +32,8 @@ macro_rules! impl_list_iterator {
         $Vis struct $Name<'a>(Option<$Item<'a>>);
 
         impl $Name<'_> {
+            /// # Safety
+            /// The provided instance must be valid.
             #[inline]
             pub unsafe fn from_list(first: $Raw) -> Self {
                 $Name(first.as_mut().map(|r| $Item::from_raw(r)))

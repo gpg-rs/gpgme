@@ -1,15 +1,8 @@
-use std::{
-    ffi::CStr,
-    fmt,
-    marker::PhantomData,
-    ptr,
-    str::Utf8Error,
-    sync::{RwLock, RwLockReadGuard},
-};
+use std::{ffi::CStr, fmt, marker::PhantomData, str::Utf8Error};
 
 use ffi;
 
-use crate::{utils::convert_err, Context, NonNull, Protocol, Result};
+use crate::{Context, NonNull, Protocol, Result};
 
 /// Upstream documentation:
 /// [`gpgme_engine_info_t`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Information.html#index-gpgme_005fengine_005finfo_005ft)

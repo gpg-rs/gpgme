@@ -7,7 +7,7 @@ fn main() {
     let stdin = io::stdin();
     let mut lines = stdin.lock().lines();
     while let Some(Ok(cmd)) = lines.next() {
-        match cmd.split(' ').nth(0) {
+        match cmd.split(' ').next() {
             Some("GETPIN") => {
                 println!("D abc");
                 println!("OK");

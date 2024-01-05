@@ -228,6 +228,10 @@ impl<'data> Data<'data> {
 
     /// Upstream documentation:
     /// [`gpgme_data_new_from_stream`](https://www.gnupg.org/documentation/manuals/gpgme/File-Based-Data-Buffers.html#index-gpgme_005fdata_005fnew_005ffrom_005fstream)
+    ///
+    /// # Safety
+    ///
+    /// The provided `FILE` object must be valid.
     #[inline]
     pub unsafe fn from_raw_file(file: *mut libc::FILE) -> Result<Self> {
         crate::init();
