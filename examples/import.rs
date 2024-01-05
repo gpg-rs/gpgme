@@ -32,7 +32,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("reading file `{}'", file.display());
 
         let input = File::open(file)?;
-        let mut data = Data::from_seekable_stream(input)?;
+        let mut data = Data::try_from(input)?;
         mode.map(|m| data.set_encoding(m));
         print_import_result(
             ctx.import(&mut data)

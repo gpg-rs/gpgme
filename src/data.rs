@@ -101,6 +101,7 @@ impl<S> StdError for WrappedError<S> {
 
 /// Upstream documentation:
 /// [`gpgme_data_t`](https://www.gnupg.org/documentation/manuals/gpgme/Exchanging-Data.html#Exchanging-Data)
+#[must_use]
 #[derive(Debug)]
 pub struct Data<'data>(NonNull<ffi::gpgme_data_t>, PhantomData<&'data mut ()>);
 
@@ -119,18 +120,18 @@ impl<'data> Data<'data> {
     impl_wrapper!(ffi::gpgme_data_t, PhantomData);
 
     #[inline]
-    pub fn stdin() -> Result<Data<'static>> {
-        Data::from_reader(io::stdin()).map_err(|err| err.error())
+    pub fn stdin() -> Result<Self> {
+        Self::try_from(io::stdin())
     }
 
     #[inline]
-    pub fn stdout() -> Result<Data<'static>> {
-        Data::from_writer(io::stdout()).map_err(|err| err.error())
+    pub fn stdout() -> Result<Self> {
+        Self::try_from(io::stdout())
     }
 
     #[inline]
-    pub fn stderr() -> Result<Data<'static>> {
-        Data::from_writer(io::stderr()).map_err(|err| err.error())
+    pub fn stderr() -> Result<Self> {
+        Self::try_from(io::stderr())
     }
 
     /// Constructs an empty data object.
@@ -138,7 +139,7 @@ impl<'data> Data<'data> {
     /// Upstream documentation:
     /// [`gpgme_data_new`](https://www.gnupg.org/documentation/manuals/gpgme/Memory-Based-Data-Buffers.html#index-gpgme_005fdata_005fnew)
     #[inline]
-    pub fn new() -> Result<Data<'static>> {
+    pub fn new() -> Result<Self> {
         crate::init();
         unsafe {
             let mut data = ptr::null_mut();
@@ -153,7 +154,7 @@ impl<'data> Data<'data> {
     /// Upstream documentation:
     /// [`gpgme_data_new_from_file`](https://www.gnupg.org/documentation/manuals/gpgme/Memory-Based-Data-Buffers.html#index-gpgme_005fdata_005fnew_005ffrom_005ffile)
     #[inline]
-    pub fn load(path: impl CStrArgument) -> Result<Data<'static>> {
+    pub fn load(path: impl CStrArgument) -> Result<Self> {
         crate::init();
         let path = path.into_cstr();
         unsafe {
@@ -172,7 +173,7 @@ impl<'data> Data<'data> {
     /// Upstream documentation:
     /// [`gpgme_data_new_from_mem`](https://www.gnupg.org/documentation/manuals/gpgme/Memory-Based-Data-Buffers.html#index-gpgme_005fdata_005fnew_005ffrom_005fmem)
     #[inline]
-    pub fn from_bytes(bytes: impl AsRef<[u8]>) -> Result<Data<'static>> {
+    pub fn from_bytes(bytes: impl AsRef<[u8]>) -> Result<Self> {
         crate::init();
         let bytes = bytes.as_ref();
         unsafe {
@@ -216,7 +217,7 @@ impl<'data> Data<'data> {
     /// [`gpgme_data_new_from_fd`](https://www.gnupg.org/documentation/manuals/gpgme/File-Based-Data-Buffers.html#index-gpgme_005fdata_005fnew_005ffrom_005ffd)
     #[inline]
     #[cfg(unix)]
-    #[deprecated(note = "Use from_borrowed_fd")]
+    #[deprecated(note = "Use Data::from_borrowed_fd", since = "0.11.1")]
     pub fn from_fd(file: &'data (impl AsRawFd + ?Sized)) -> Result<Self> {
         crate::init();
         unsafe {
@@ -254,88 +255,68 @@ impl<'data> Data<'data> {
         }
     }
 
+    /// Returns a new [`DataBuilder`] wrapping the provided value.
     #[inline]
+    pub fn builder<T: Send>(inner: T) -> DataBuilder<T> {
+        DataBuilder::new(inner)
+    }
+
+    #[inline]
+    #[deprecated(note = "Use Data::builder instead.", since = "0.11.1")]
     pub fn from_reader<R>(r: R) -> Result<Self, WrappedError<R>>
     where
         R: Read + Send + 'data,
     {
-        let cbs = ffi::gpgme_data_cbs {
-            read: Some(read_callback::<R>),
-            write: None,
-            seek: None,
-            release: Some(release_callback::<R>),
-        };
-        unsafe { Data::from_callbacks(cbs, r) }
+        Self::builder(r).readable().try_build()
     }
 
     #[inline]
+    #[deprecated(note = "Use Data::builder instead.", since = "0.11.1")]
     pub fn from_seekable_reader<R>(r: R) -> Result<Self, WrappedError<R>>
     where
         R: Read + Seek + Send + 'data,
     {
-        let cbs = ffi::gpgme_data_cbs {
-            read: Some(read_callback::<R>),
-            write: None,
-            seek: Some(seek_callback::<R>),
-            release: Some(release_callback::<R>),
-        };
-        unsafe { Data::from_callbacks(cbs, r) }
+        Self::builder(r).readable().seekable().try_build()
     }
 
     #[inline]
+    #[deprecated(note = "Use Data::builder instead.", since = "0.11.1")]
     pub fn from_writer<W>(w: W) -> Result<Self, WrappedError<W>>
     where
         W: Write + Send + 'data,
     {
-        let cbs = ffi::gpgme_data_cbs {
-            read: None,
-            write: Some(write_callback::<W>),
-            seek: None,
-            release: Some(release_callback::<W>),
-        };
-        unsafe { Data::from_callbacks(cbs, w) }
+        Self::builder(w).writable().try_build()
     }
 
     #[inline]
+    #[deprecated(note = "Use Data::builder instead.", since = "0.11.1")]
     pub fn from_seekable_writer<W>(w: W) -> Result<Self, WrappedError<W>>
     where
         W: Write + Seek + Send + 'data,
     {
-        let cbs = ffi::gpgme_data_cbs {
-            read: None,
-            write: Some(write_callback::<W>),
-            seek: Some(seek_callback::<W>),
-            release: Some(release_callback::<W>),
-        };
-        unsafe { Data::from_callbacks(cbs, w) }
+        Self::builder(w).writable().seekable().try_build()
     }
 
     #[inline]
+    #[deprecated(note = "Use Data::builder instead.", since = "0.11.1")]
     pub fn from_stream<S: Send>(s: S) -> Result<Self, WrappedError<S>>
     where
         S: Read + Write + Send + 'data,
     {
-        let cbs = ffi::gpgme_data_cbs {
-            read: Some(read_callback::<S>),
-            write: Some(write_callback::<S>),
-            seek: None,
-            release: Some(release_callback::<S>),
-        };
-        unsafe { Data::from_callbacks(cbs, s) }
+        Self::builder(s).readable().writable().try_build()
     }
 
     #[inline]
+    #[deprecated(note = "Use Data::builder instead.", since = "0.11.1")]
     pub fn from_seekable_stream<S>(s: S) -> Result<Self, WrappedError<S>>
     where
         S: Read + Write + Seek + Send + 'data,
     {
-        let cbs = ffi::gpgme_data_cbs {
-            read: Some(read_callback::<S>),
-            write: Some(write_callback::<S>),
-            seek: Some(seek_callback::<S>),
-            release: Some(release_callback::<S>),
-        };
-        unsafe { Data::from_callbacks(cbs, s) }
+        Self::builder(s)
+            .readable()
+            .writable()
+            .seekable()
+            .try_build()
     }
 
     /// Upstream documentation:
@@ -590,7 +571,12 @@ impl<'a> TryFrom<&'a mut [u8]> for Data<'a> {
 
     #[inline]
     fn try_from(value: &'a mut [u8]) -> Result<Self> {
-        Self::from_seekable_stream(Cursor::new(value)).map_err(|e| e.error())
+        Self::builder(Cursor::new(value))
+            .readable()
+            .writable()
+            .seekable()
+            .try_build()
+            .map_err(|e| e.error())
     }
 }
 
@@ -617,7 +603,12 @@ impl<'a> TryFrom<&'a mut Vec<u8>> for Data<'a> {
 
     #[inline]
     fn try_from(value: &'a mut Vec<u8>) -> Result<Self> {
-        Self::from_seekable_stream(Cursor::new(value)).map_err(|e| e.error())
+        Self::builder(Cursor::new(value))
+            .readable()
+            .writable()
+            .seekable()
+            .try_build()
+            .map_err(|e| e.error())
     }
 }
 
@@ -626,7 +617,12 @@ impl<'a> TryFrom<Vec<u8>> for Data<'a> {
 
     #[inline]
     fn try_from(value: Vec<u8>) -> Result<Self> {
-        Self::from_seekable_stream(Cursor::new(value)).map_err(|e| e.error())
+        Self::builder(Cursor::new(value))
+            .readable()
+            .writable()
+            .seekable()
+            .try_build()
+            .map_err(|e| e.error())
     }
 }
 
@@ -644,7 +640,12 @@ impl<'a> TryFrom<&'a File> for Data<'a> {
 
     #[inline]
     fn try_from(value: &'a File) -> Result<Self> {
-        Self::from_seekable_stream(value).map_err(|e| e.error())
+        Self::builder(value)
+            .readable()
+            .writable()
+            .seekable()
+            .try_build()
+            .map_err(|e| e.error())
     }
 }
 
@@ -662,34 +663,48 @@ impl<'a> TryFrom<File> for Data<'a> {
 
     #[inline]
     fn try_from(value: File) -> Result<Self> {
-        Self::from_seekable_stream(value).map_err(|e| e.error())
+        Self::builder(value)
+            .readable()
+            .writable()
+            .seekable()
+            .try_build()
+            .map_err(|e| e.error())
     }
 }
 
-impl TryFrom<io::Stdout> for Data<'static> {
+impl<'a> TryFrom<io::Stdout> for Data<'a> {
     type Error = Error;
 
     #[inline]
     fn try_from(value: io::Stdout) -> Result<Self> {
-        Self::from_writer(value).map_err(|e| e.error())
+        Self::builder(value)
+            .writable()
+            .try_build()
+            .map_err(|e| e.error())
     }
 }
 
-impl TryFrom<io::Stderr> for Data<'static> {
+impl<'a> TryFrom<io::Stderr> for Data<'a> {
     type Error = Error;
 
     #[inline]
     fn try_from(value: io::Stderr) -> Result<Self> {
-        Self::from_writer(value).map_err(|e| e.error())
+        Self::builder(value)
+            .writable()
+            .try_build()
+            .map_err(|e| e.error())
     }
 }
 
-impl TryFrom<io::Stdin> for Data<'static> {
+impl<'a> TryFrom<io::Stdin> for Data<'a> {
     type Error = Error;
 
     #[inline]
     fn try_from(value: io::Stdin) -> Result<Self> {
-        Self::from_reader(value).map_err(|e| e.error())
+        Self::builder(value)
+            .readable()
+            .try_build()
+            .map_err(|e| e.error())
     }
 }
 
@@ -700,5 +715,84 @@ impl<'a> TryFrom<BorrowedFd<'a>> for Data<'a> {
     #[inline]
     fn try_from(value: BorrowedFd<'a>) -> Result<Self> {
         Data::from_borrowed_fd(value)
+    }
+}
+
+/// A struct that helps with creating a [`Data`] object from a wrapped object
+/// that implements [`Read`]/[`Write`]/[`Seek`].
+#[must_use]
+#[derive(Clone)]
+pub struct DataBuilder<T> {
+    inner: T,
+    cbs: ffi::gpgme_data_cbs,
+}
+
+impl<T: Send> DataBuilder<T> {
+    /// Returns a new builder wrapping the provided value.
+    #[inline]
+    pub fn new(inner: T) -> Self {
+        Self {
+            inner,
+            cbs: ffi::gpgme_data_cbs {
+                read: None,
+                write: None,
+                seek: None,
+                release: Some(release_callback::<T>),
+            },
+        }
+    }
+
+    /// Enables reading from the wrapped object.
+    #[inline]
+    pub fn readable(mut self) -> Self
+    where
+        T: Read,
+    {
+        self.cbs.read = Some(read_callback::<T>);
+        self
+    }
+
+    /// Enables writing to the wrapped object.
+    #[inline]
+    pub fn writable(mut self) -> Self
+    where
+        T: Write,
+    {
+        self.cbs.write = Some(write_callback::<T>);
+        self
+    }
+
+    /// Enables seeking within the wrapped object.
+    #[inline]
+    pub fn seekable(mut self) -> Self
+    where
+        T: Seek,
+    {
+        self.cbs.seek = Some(seek_callback::<T>);
+        self
+    }
+
+    /// Attempts to build a new [`Data`] object using the wrapped
+    /// value as a backing source/sink.
+    #[inline]
+    pub fn try_build<'a>(self) -> Result<Data<'a>, WrappedError<T>>
+    where
+        T: 'a,
+    {
+        unsafe { Data::from_callbacks(self.cbs, self.inner) }
+    }
+}
+
+impl<T> fmt::Debug for DataBuilder<T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DataBuilder")
+            .field("inner", &self.inner)
+            .field("readable", &self.cbs.read.is_some())
+            .field("writable", &self.cbs.write.is_some())
+            .field("seekable", &self.cbs.seek.is_some())
+            .finish()
     }
 }
