@@ -42,6 +42,7 @@ impl Drop for Context {
 impl Context {
     impl_wrapper!(ffi::gpgme_ctx_t);
 
+    #[inline]
     pub(crate) fn new() -> Result<Self> {
         crate::init();
         unsafe {

@@ -112,7 +112,11 @@ pub fn setup() {
     import_key(include_bytes!("./data/secdemo.asc"));
     import_ownertrust();
 
-    gpgme::init()
+    let token = gpgme::init();
+    token
+        .set_engine_home_dir(gpgme::Protocol::OpenPgp, &*dir.to_string_lossy())
+        .unwrap();
+    token
         .check_engine_version(gpgme::Protocol::OpenPgp)
         .unwrap();
 }
