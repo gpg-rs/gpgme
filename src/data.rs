@@ -18,7 +18,10 @@ use ffi::{self, gpgme_off_t};
 use libc;
 use static_assertions::{assert_impl_all, assert_not_impl_any};
 
-use crate::{utils::convert_err, utils::CStrArgument, Error, NonNull, Result};
+use crate::{
+    utils::{self, convert_err, CStrArgument},
+    Error, NonNull, Result,
+};
 
 assert_impl_all!(Data<'_>: Send);
 assert_not_impl_any!(Data<'_>: Sync);
@@ -331,11 +334,7 @@ impl<'data> Data<'data> {
     /// [`gpgme_data_get_file_name`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-gpgme_005fdata_005fget_005ffile_005fname)
     #[inline]
     pub fn filename_raw(&self) -> Option<&CStr> {
-        unsafe {
-            ffi::gpgme_data_get_file_name(self.as_raw())
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { utils::convert_raw_str(ffi::gpgme_data_get_file_name(self.as_raw())) }
     }
 
     /// Upstream documentation:
@@ -391,7 +390,7 @@ impl<'data> Data<'data> {
     /// [`gpgme_data_set_flag`](https://www.gnupg.org/documentation/manuals/gpgme/Data-Buffer-Meta_002dData.html#index-gpgme_005fdata_005fset_005fflag)
     #[inline]
     pub fn set_size_hint(&mut self, value: u64) -> Result<()> {
-        self.set_flag("size-hint\0", value.to_string())
+        self.set_flag(c"size-hint", value.to_string())
     }
 
     /// Upstream documentation:
@@ -407,11 +406,12 @@ impl<'data> Data<'data> {
     pub fn try_into_bytes(self) -> Option<Vec<u8>> {
         unsafe {
             let mut len = 0;
-            ffi::gpgme_data_release_and_get_mem(self.into_raw(), &mut len)
+            let mem = ffi::gpgme_data_release_and_get_mem(self.into_raw(), &mut len);
+            ptr::slice_from_raw_parts_mut(mem.cast::<u8>(), len)
                 .as_mut()
-                .map(|b| {
-                    let r = slice::from_raw_parts(ptr::addr_of!(*b).cast(), len).to_vec();
-                    ffi::gpgme_free(ptr::addr_of_mut!(*b).cast());
+                .map(|s| {
+                    let r = s.to_vec();
+                    ffi::gpgme_free(s.as_mut_ptr().cast());
                     r
                 })
         }

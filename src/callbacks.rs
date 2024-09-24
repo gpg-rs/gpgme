@@ -9,7 +9,11 @@ use std::{
 
 use static_assertions::assert_obj_safe;
 
-use crate::{edit, utils::FdWriter, Data, Error, Result};
+use crate::{
+    edit,
+    utils::{self, FdWriter},
+    Data, Error, Result,
+};
 
 assert_obj_safe!(PassphraseProvider);
 assert_obj_safe!(ProgressReporter);
@@ -206,10 +210,11 @@ impl<T: UnwindSafe> Hook<T> {
             }
         };
 
-        match panic::catch_unwind(move || {
+        let result = panic::catch_unwind(move || {
             let result = f(&mut provider);
             (provider, result)
-        }) {
+        });
+        match result {
             Ok((provider, result)) => {
                 self.0 = Some(Ok(provider));
                 result.err().map_or(0, |err| err.raw())
@@ -275,8 +280,8 @@ pub(crate) unsafe extern "C" fn passphrase_cb<P: PassphraseProvider>(
 ) -> ffi::gpgme_error_t {
     (*hook.cast::<Hook<P>>()).update(move |h| {
         let info = PassphraseRequest {
-            uid_hint: uid_hint.as_ref().map(|s| CStr::from_ptr(s)),
-            desc: info.as_ref().map(|s| CStr::from_ptr(s)),
+            uid_hint: utils::convert_raw_str(uid_hint),
+            desc: utils::convert_raw_str(info),
             prev_attempt_failed: was_bad != 0,
         };
         let mut writer = FdWriter::new(fd);
@@ -294,7 +299,7 @@ pub(crate) unsafe extern "C" fn progress_cb<H: ProgressReporter>(
 ) {
     (*hook.cast::<Hook<H>>()).update(move |h| {
         let info = ProgressInfo {
-            what: what.as_ref().map(|s| CStr::from_ptr(s)),
+            what: utils::convert_raw_str(what),
             typ: typ.into(),
             current: current.into(),
             total: total.into(),
@@ -310,8 +315,8 @@ pub(crate) unsafe extern "C" fn status_cb<H: StatusHandler>(
     args: *const libc::c_char,
 ) -> ffi::gpgme_error_t {
     (*hook.cast::<Hook<H>>()).update(move |h| {
-        let keyword = keyword.as_ref().map(|s| CStr::from_ptr(s));
-        let args = args.as_ref().map(|s| CStr::from_ptr(s));
+        let keyword = utils::convert_raw_str(keyword);
+        let args = utils::convert_raw_str(args);
         h.handle(args, keyword)
     })
 }
@@ -327,7 +332,7 @@ pub(crate) unsafe extern "C" fn edit_cb<E: EditInteractor>(
     hook.inner.update(move |h| {
         let status = EditInteractionStatus {
             code: edit::StatusCode::from_raw(status),
-            args: args.as_ref().map(|s| CStr::from_ptr(s)),
+            args: utils::convert_raw_str(args),
             response: &mut *response,
         };
         if fd < 0 {
@@ -348,8 +353,8 @@ pub(crate) unsafe extern "C" fn interact_cb<I: Interactor>(
     let response = hook.response;
     hook.inner.update(move |h| {
         let status = InteractionStatus {
-            keyword: keyword.as_ref().map(|s| CStr::from_ptr(s)),
-            args: args.as_ref().map(|s| CStr::from_ptr(s)),
+            keyword: utils::convert_raw_str(keyword),
+            args: utils::convert_raw_str(args),
             response: &mut *response,
         };
         if fd < 0 {

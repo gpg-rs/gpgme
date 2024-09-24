@@ -20,7 +20,7 @@ use crate::{
     engine::{EngineInfo, EngineInfos},
     notation::SignatureNotations,
     results,
-    utils::{convert_err, CStrArgument, SmallVec},
+    utils::{self, convert_err, CStrArgument, SmallVec},
     Data, EditInteractor, Error, ExportMode, Interactor, IntoData, Key, KeyListMode, NonNull,
     PassphraseProvider, ProgressReporter, Protocol, Result, SignMode, StatusHandler,
 };
@@ -136,9 +136,10 @@ impl Context {
     pub fn get_flag_raw(&self, name: impl CStrArgument) -> Option<&CStr> {
         let name = name.into_cstr();
         unsafe {
-            ffi::gpgme_get_ctx_flag(self.as_raw(), name.as_ref().as_ptr())
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
+            utils::convert_raw_str(ffi::gpgme_get_ctx_flag(
+                self.as_raw(),
+                name.as_ref().as_ptr(),
+            ))
         }
     }
 
@@ -632,7 +633,7 @@ impl Context {
     /// use gpgme::{Context, Data, Protocol};
     ///
     /// let mut ctx = Context::from_protocol(Protocol::OpenPgp)?;
-    /// let result = ctx.create_key("Example User <example@example.com>", "default", Default::default())?;
+    /// let result = ctx.create_key(c"Example User <example@example.com>", c"default", Default::default())?;
     /// println!("Key Fingerprint: {}", result.fingerprint().unwrap());
     /// # Ok::<(), gpgme::Error>(())
     /// ```
@@ -720,7 +721,7 @@ impl Context {
                 self.as_raw(),
                 key.as_raw(),
                 expires,
-                b"*\0".into_cstr().as_ref().as_ptr(),
+                c"*".as_ptr(),
                 0,
             ))
         }
@@ -802,7 +803,7 @@ impl Context {
 
     #[inline]
     pub fn set_primary_uid(&mut self, key: &Key, userid: impl CStrArgument) -> Result<()> {
-        self.set_uid_flag(key, userid, "primary\0", None::<String>)
+        self.set_uid_flag(key, userid, c"primary", None::<String>)
     }
 
     /// Signs the given key with the default signing key, or the keys specified via
@@ -1278,11 +1279,7 @@ impl Context {
     /// [`gpgme_get_sender`](https://www.gnupg.org/documentation/manuals/gpgme/Setting-the-Sender.html#index-gpgme_005fget_005fsender)
     #[inline]
     pub fn sender_raw(&self) -> Option<&CStr> {
-        unsafe {
-            ffi::gpgme_get_sender(self.as_raw())
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { utils::convert_raw_str(ffi::gpgme_get_sender(self.as_raw())) }
     }
 
     /// Upstream documentation:
@@ -1379,7 +1376,7 @@ impl Context {
             let mut notation = ffi::gpgme_sig_notation_get(self.as_raw());
             while !notation.is_null() {
                 if (*notation).name.is_null() {
-                    return (*notation).value.as_ref().map(|s| CStr::from_ptr(s));
+                    return utils::convert_raw_str((*notation).value);
                 }
                 notation = (*notation).next;
             }
@@ -1664,7 +1661,7 @@ impl Context {
     /// use gpgme::{Context, Protocol};
     ///
     /// let mut ctx = Context::from_protocol(Protocol::OpenPgp)?;
-    /// let key = ctx.get_key("[some key fingerprint]")?;
+    /// let key = ctx.get_key(c"[some key fingerprint]")?;
     /// let (plaintext, mut ciphertext) = ("Hello, World!", Vec::new());
     /// ctx.sign_and_encrypt(Some(&key), plaintext, &mut ciphertext)?;
     /// # Ok::<(), gpgme::Error>(())

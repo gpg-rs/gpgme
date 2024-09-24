@@ -2,7 +2,7 @@ use std::{ffi::CStr, fmt, marker::PhantomData, str::Utf8Error};
 
 use ffi;
 
-use crate::{NonNull, SignatureNotationFlags};
+use crate::{utils, NonNull, SignatureNotationFlags};
 
 /// Upstream documentation:
 /// [`gpgme_sig_notation_t`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fsig_005fnotation_005ft)
@@ -38,7 +38,7 @@ impl<'a> SignatureNotation<'a> {
 
     #[inline]
     pub fn name_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).name) }
     }
 
     #[inline]
@@ -49,7 +49,7 @@ impl<'a> SignatureNotation<'a> {
 
     #[inline]
     pub fn value_raw(&self) -> Option<&'a CStr> {
-        unsafe { (*self.as_raw()).value.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).value) }
     }
 }
 

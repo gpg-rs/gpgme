@@ -12,8 +12,10 @@ use ffi;
 use libc;
 
 use crate::{
-    notation::SignatureNotations, utils::convert_err, Context, Error, HashAlgorithm, ImportFlags,
-    KeyAlgorithm, NonNull, Result, SignMode, SignatureSummary, Validity,
+    notation::SignatureNotations,
+    utils::{self, convert_err},
+    Context, Error, HashAlgorithm, ImportFlags, KeyAlgorithm, NonNull, Result, SignMode,
+    SignatureSummary, Validity,
 };
 
 pub(crate) trait OpResult: Clone {
@@ -745,7 +747,7 @@ impl<'result> Signature<'result> {
             let mut notation = (*self.as_raw()).notations;
             while !notation.is_null() {
                 if (*notation).name.is_null() {
-                    return (*notation).value.as_ref().map(|s| CStr::from_ptr(s));
+                    return utils::convert_raw_str((*notation).value);
                 }
                 notation = (*notation).next;
             }

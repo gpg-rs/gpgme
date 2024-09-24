@@ -12,9 +12,6 @@ description = "GPGme bindings for Rust"
 [package.metadata.docs.rs]
 all-features = true
 
-[badges]
-maintenance = { status = "experimental" }
-
 [features]
 "v1_23" = ["v1_22"]
 "v1_22" = ["v1_21"]
@@ -39,7 +36,6 @@ conv = "0.3"
 cstr-argument = "0.1"
 gpg-error = "0.6.0"
 libc.workspace = true
-memoffset = "0.9.0"
 smallvec = "1"
 static_assertions = "1.1"
 
@@ -61,7 +57,7 @@ useless_conversion = "allow"
 [workspace.package]
 version = "0.11.0"
 edition = "2021"
-rust-version = "1.64"
+rust-version = "1.81"
 license = "LGPL-2.1"
 repository = "https://github.com/gpg-rs/gpgme"
 

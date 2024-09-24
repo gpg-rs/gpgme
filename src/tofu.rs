@@ -8,7 +8,7 @@ use std::{
 
 use ffi;
 
-use crate::NonNull;
+use crate::{utils, NonNull};
 
 ffi_enum_wrapper! {
     /// Upstream documentation:
@@ -88,12 +88,7 @@ impl<'a> TofuInfo<'a> {
 
     #[inline]
     pub fn description_raw(&self) -> Option<&'a CStr> {
-        unsafe {
-            (*self.as_raw())
-                .description
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { utils::convert_raw_str((*self.as_raw()).description) }
     }
 }
 

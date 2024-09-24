@@ -3,6 +3,8 @@ use std::{ffi::CStr, fmt, str::Utf8Error};
 
 use bitflags::bitflags;
 
+use crate::utils;
+
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_keylist_mode_t`](https://www.gnupg.org/documentation/manuals/gpgme/Key-Listing-Mode.html#Key-Listing-Mode)
@@ -239,11 +241,7 @@ impl KeyAlgorithm {
     /// [`gpgme_pubkey_algo_name`](https://www.gnupg.org/documentation/manuals/gpgme/Public-Key-Algorithms.html#index-gpgme_005fpubkey_005falgo_005fname)
     #[inline]
     pub fn name_raw(&self) -> Option<&'static CStr> {
-        unsafe {
-            ffi::gpgme_pubkey_algo_name(self.raw())
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { utils::convert_raw_str(ffi::gpgme_pubkey_algo_name(self.raw())) }
     }
 }
 
@@ -290,11 +288,7 @@ impl HashAlgorithm {
     /// [`gpgme_hash_algo_name`](https://www.gnupg.org/documentation/manuals/gpgme/Hash-Algorithms.html#index-gpgme_005fhash_005falgo_005fname)
     #[inline]
     pub fn name_raw(&self) -> Option<&'static CStr> {
-        unsafe {
-            ffi::gpgme_hash_algo_name(self.raw())
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { utils::convert_raw_str(ffi::gpgme_hash_algo_name(self.raw())) }
     }
 }
 

@@ -2,7 +2,7 @@ use std::{ffi::CStr, fmt, marker::PhantomData, str::Utf8Error};
 
 use ffi;
 
-use crate::{Context, NonNull, Protocol, Result};
+use crate::{utils, Context, NonNull, Protocol, Result};
 
 /// Upstream documentation:
 /// [`gpgme_engine_info_t`](https://www.gnupg.org/documentation/manuals/gpgme/Engine-Information.html#index-gpgme_005fengine_005finfo_005ft)
@@ -29,12 +29,7 @@ impl EngineInfo<'_> {
 
     #[inline]
     pub fn path_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw())
-                .file_name
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { utils::convert_raw_str((*self.as_raw()).file_name) }
     }
 
     #[inline]
@@ -45,12 +40,7 @@ impl EngineInfo<'_> {
 
     #[inline]
     pub fn home_dir_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw())
-                .home_dir
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { utils::convert_raw_str((*self.as_raw()).home_dir) }
     }
 
     #[inline]
@@ -72,7 +62,7 @@ impl EngineInfo<'_> {
 
     #[inline]
     pub fn version_raw(&self) -> Option<&CStr> {
-        unsafe { (*self.as_raw()).version.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).version) }
     }
 
     #[inline]
@@ -83,12 +73,7 @@ impl EngineInfo<'_> {
 
     #[inline]
     pub fn required_version_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw())
-                .req_version
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { utils::convert_raw_str((*self.as_raw()).req_version) }
     }
 }
 

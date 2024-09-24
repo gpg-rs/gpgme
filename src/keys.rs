@@ -10,8 +10,8 @@ use cstr_argument::CStrArgument;
 use ffi;
 
 use crate::{
-    notation::SignatureNotations, Context, Error, KeyAlgorithm, KeyListMode, NonNull, Protocol,
-    Result, Validity,
+    notation::SignatureNotations, utils, Context, Error, KeyAlgorithm, KeyListMode, NonNull,
+    Protocol, Result, Validity,
 };
 
 /// Upstream documentation:
@@ -154,12 +154,7 @@ impl Key {
 
     #[inline]
     pub fn issuer_serial_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw())
-                .issuer_serial
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { utils::convert_raw_str((*self.as_raw()).issuer_serial) }
     }
 
     #[inline]
@@ -170,12 +165,7 @@ impl Key {
 
     #[inline]
     pub fn issuer_name_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw())
-                .issuer_name
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { utils::convert_raw_str((*self.as_raw()).issuer_name) }
     }
 
     #[inline]
@@ -186,12 +176,7 @@ impl Key {
 
     #[inline]
     pub fn chain_id_raw(&self) -> Option<&CStr> {
-        unsafe {
-            (*self.as_raw())
-                .chain_id
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { utils::convert_raw_str((*self.as_raw()).chain_id) }
     }
 
     #[inline]
@@ -214,9 +199,9 @@ impl Key {
     pub fn short_id_raw(&self) -> Option<&CStr> {
         self.id_raw().map(|s| {
             let bytes = s.to_bytes_with_nul();
-            if bytes.len() >= 9 {
-                // One extra for the null terminator
-                unsafe { CStr::from_bytes_with_nul_unchecked(&bytes[(bytes.len() - 9)..]) }
+            // One extra for the null terminator
+            if let Some((_, short)) = bytes.split_last_chunk::<9>() {
+                unsafe { CStr::from_bytes_with_nul_unchecked(short) }
             } else {
                 s
             }
@@ -232,10 +217,7 @@ impl Key {
     #[inline]
     pub fn fingerprint_raw(&self) -> Option<&CStr> {
         unsafe {
-            (*self.as_raw())
-                .fpr
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
+            utils::convert_raw_str((*self.as_raw()).fpr)
                 .or_else(|| self.primary_key()?.fingerprint_raw())
         }
     }
@@ -335,7 +317,7 @@ impl<'key> Subkey<'key> {
 
     #[inline]
     pub fn id_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).keyid) }
     }
 
     #[inline]
@@ -346,7 +328,7 @@ impl<'key> Subkey<'key> {
 
     #[inline]
     pub fn fingerprint_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).fpr.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).fpr) }
     }
 
     #[inline]
@@ -466,16 +448,16 @@ impl<'key> Subkey<'key> {
     #[inline]
     pub fn algorithm_name(&self) -> Result<String> {
         unsafe {
-            match ffi::gpgme_pubkey_algo_string(self.as_raw()).as_mut() {
-                Some(raw) => {
-                    let result = CStr::from_ptr(raw)
-                        .to_str()
-                        .expect("algorithm name is not valid utf-8")
-                        .to_owned();
-                    ffi::gpgme_free(raw as *mut _ as *mut _);
-                    Ok(result)
-                }
-                None => Err(Error::last_os_error()),
+            let s = ffi::gpgme_pubkey_algo_string(self.as_raw());
+            if !s.is_null() {
+                let res = CStr::from_ptr(s)
+                    .to_str()
+                    .expect("algorithm name is not valid utf-8")
+                    .to_owned();
+                ffi::gpgme_free(s.cast());
+                Ok(res)
+            } else {
+                Err(Error::last_os_error())
             }
         }
     }
@@ -488,7 +470,7 @@ impl<'key> Subkey<'key> {
 
     #[inline]
     pub fn keygrip_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).keygrip.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).keygrip) }
     }
 
     #[inline]
@@ -504,12 +486,7 @@ impl<'key> Subkey<'key> {
 
     #[inline]
     pub fn card_serial_number_raw(&self) -> Option<&'key CStr> {
-        unsafe {
-            (*self.as_raw())
-                .card_number
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { utils::convert_raw_str((*self.as_raw()).card_number) }
     }
 
     #[inline]
@@ -520,7 +497,7 @@ impl<'key> Subkey<'key> {
 
     #[inline]
     pub fn curve_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).curve.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).curve) }
     }
 }
 
@@ -569,7 +546,7 @@ impl<'key> UserId<'key> {
 
     #[inline]
     pub fn id_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).uid.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).uid) }
     }
 
     #[inline]
@@ -580,7 +557,7 @@ impl<'key> UserId<'key> {
 
     #[inline]
     pub fn name_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).name) }
     }
 
     #[inline]
@@ -591,7 +568,7 @@ impl<'key> UserId<'key> {
 
     #[inline]
     pub fn email_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).email.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).email) }
     }
 
     #[inline]
@@ -602,7 +579,7 @@ impl<'key> UserId<'key> {
 
     #[inline]
     pub fn comment_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).comment.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).comment) }
     }
 
     #[inline]
@@ -615,7 +592,7 @@ impl<'key> UserId<'key> {
     #[inline]
     #[cfg(feature = "v1_14")]
     pub fn uidhash_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).uidhash.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).uidhash) }
     }
 
     #[inline]
@@ -626,7 +603,7 @@ impl<'key> UserId<'key> {
 
     #[inline]
     pub fn address_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).address.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).address) }
     }
 
     #[inline]
@@ -746,7 +723,7 @@ impl<'key> UserIdSignature<'key> {
 
     #[inline]
     pub fn signer_key_id_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).keyid.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).keyid) }
     }
 
     #[inline]
@@ -812,7 +789,7 @@ impl<'key> UserIdSignature<'key> {
 
     #[inline]
     pub fn signer_user_id_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).uid.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).uid) }
     }
 
     #[inline]
@@ -823,7 +800,7 @@ impl<'key> UserIdSignature<'key> {
 
     #[inline]
     pub fn signer_name_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).name.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).name) }
     }
 
     #[inline]
@@ -834,7 +811,7 @@ impl<'key> UserIdSignature<'key> {
 
     #[inline]
     pub fn signer_email_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).email.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).email) }
     }
 
     #[inline]
@@ -845,7 +822,7 @@ impl<'key> UserIdSignature<'key> {
 
     #[inline]
     pub fn signer_comment_raw(&self) -> Option<&'key CStr> {
-        unsafe { (*self.as_raw()).comment.as_ref().map(|s| CStr::from_ptr(s)) }
+        unsafe { utils::convert_raw_str((*self.as_raw()).comment) }
     }
 
     #[inline]
@@ -932,12 +909,7 @@ impl<'key> UserIdSignature<'key> {
     #[inline]
     #[cfg(feature = "v1_16")]
     pub fn trust_scope_raw(&self) -> Option<&'key CStr> {
-        unsafe {
-            (*self.as_raw())
-                .trust_scope
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { utils::convert_raw_str((*self.as_raw()).trust_scope) }
     }
 }
 

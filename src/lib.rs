@@ -1,6 +1,6 @@
 use std::{
     ffi::CStr,
-    fmt, ptr,
+    fmt, mem, ptr,
     str::Utf8Error,
     sync::{Mutex, OnceLock},
 };
@@ -82,11 +82,7 @@ impl Protocol {
     /// [`gpgme_get_protocol_name`](https://www.gnupg.org/documentation/manuals/gpgme/Protocols-and-Engines.html#index-gpgme_005fget_005fprotocol_005fname)
     #[inline]
     pub fn name_raw(&self) -> Option<&'static CStr> {
-        unsafe {
-            ffi::gpgme_get_protocol_name(self.raw())
-                .as_ref()
-                .map(|s| CStr::from_ptr(s))
-        }
+        unsafe { utils::convert_raw_str(ffi::gpgme_get_protocol_name(self.raw())) }
     }
 }
 
@@ -144,27 +140,27 @@ pub fn set_flag(name: impl CStrArgument, val: impl CStrArgument) -> Result<()> {
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "v1_23")] {
-        const MIN_VERSION: &[u8] = b"1.23.0\0";
+        const MIN_VERSION: &CStr = c"1.23.0";
     } else if #[cfg(feature = "v1_22")] {
-        const MIN_VERSION: &[u8] = b"1.22.0\0";
+        const MIN_VERSION: &CStr = c"1.22.0";
     } else if #[cfg(feature = "v1_21")] {
-        const MIN_VERSION: &[u8] = b"1.21.0\0";
+        const MIN_VERSION: &CStr = c"1.21.0";
     } else if #[cfg(feature = "v1_20")] {
-        const MIN_VERSION: &[u8] = b"1.20.0\0";
+        const MIN_VERSION: &CStr = c"1.20.0";
     } else if #[cfg(feature = "v1_19")] {
-        const MIN_VERSION: &[u8] = b"1.19.0\0";
+        const MIN_VERSION: &CStr = c"1.19.0";
     } else if #[cfg(feature = "v1_18")] {
-        const MIN_VERSION: &[u8] = b"1.18.0\0";
+        const MIN_VERSION: &CStr = c"1.18.0";
     } else if #[cfg(feature = "v1_17")] {
-        const MIN_VERSION: &[u8] = b"1.17.0\0";
+        const MIN_VERSION: &CStr = c"1.17.0";
     } else if #[cfg(feature = "v1_16")] {
-        const MIN_VERSION: &[u8] = b"1.16.0\0";
+        const MIN_VERSION: &CStr = c"1.16.0";
     } else if #[cfg(feature = "v1_15")] {
-        const MIN_VERSION: &[u8] = b"1.15.0\0";
+        const MIN_VERSION: &CStr = c"1.15.0";
     } else if #[cfg(feature = "v1_14")] {
-        const MIN_VERSION: &[u8] = b"1.14.0\0";
+        const MIN_VERSION: &CStr = c"1.14.0";
     } else {
-        const MIN_VERSION: &[u8] = b"1.13.0\0";
+        const MIN_VERSION: &CStr = c"1.13.0";
     }
 }
 
@@ -182,9 +178,8 @@ cfg_if::cfg_if! {
 pub fn init() -> Gpgme {
     static TOKEN: OnceLock<&str> = OnceLock::new();
     let token = TOKEN.get_or_init(|| unsafe {
-        let offset = memoffset::offset_of!(ffi::_gpgme_signature, validity);
-
-        let result = ffi::gpgme_check_version_internal(MIN_VERSION.as_ptr().cast(), offset);
+        let offset = mem::offset_of!(ffi::_gpgme_signature, validity);
+        let result = ffi::gpgme_check_version_internal(MIN_VERSION.as_ptr(), offset);
         assert!(
             !result.is_null(),
             "the library linked is not the correct version"
@@ -223,7 +218,7 @@ impl Gpgme {
     ///
     /// ```no_run
     /// let gpgme = gpgme::init();
-    /// assert!(gpgme.check_version("1.4.0"));
+    /// assert!(gpgme.check_version(c"1.4.0"));
     /// ```
     #[inline]
     pub fn check_version(&self, version: impl CStrArgument) -> bool {

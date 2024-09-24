@@ -1,4 +1,7 @@
-use std::io::{self, prelude::*};
+use std::{
+    ffi::CStr,
+    io::{self, prelude::*},
+};
 
 use crate::Error;
 
@@ -183,4 +186,13 @@ pub(crate) fn convert_err(err: ffi::gpgme_error_t) -> Result<(), Error> {
         0 => Ok(()),
         _ => Err(Error::new(err)),
     }
+}
+
+/// # Safety
+///
+/// The provided pointer must point to a valid (for reading) nul-terminated string, if it
+/// is non-null.
+#[inline(always)]
+pub(crate) unsafe fn convert_raw_str<'r>(s: *const libc::c_char) -> Option<&'r CStr> {
+    (!s.is_null()).then(|| CStr::from_ptr(s))
 }
