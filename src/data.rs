@@ -302,7 +302,7 @@ impl<'data> Data<'data> {
 
     #[inline]
     #[deprecated(note = "Use Data::builder instead.", since = "0.11.1")]
-    pub fn from_stream<S: Send>(s: S) -> Result<Self, WrappedError<S>>
+    pub fn from_stream<S>(s: S) -> Result<Self, WrappedError<S>>
     where
         S: Read + Write + Send + 'data,
     {

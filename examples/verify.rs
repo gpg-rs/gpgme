@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             .map_err(|e| format!("can't open '{}': {e:?}", filename.display()))?;
         ctx.verify_detached(signature, signed)
     } else {
-        ctx.verify_opaque(signature, &mut Vec::new())
+        ctx.verify_opaque(signature, Vec::new())
     };
     print_result(&result.map_err(|e| format!("verification failed: {e:?}"))?);
     Ok(())
