@@ -12,6 +12,14 @@ description = "GPGme bindings for Rust"
 [package.metadata.docs.rs]
 all-features = true
 
+[package.metadata.cargo-semver-checks.lints]
+function_must_use_added = "allow"
+inherent_method_must_use_added = "allow"
+struct_must_use_added = "allow"
+enum_must_use_added = "allow"
+trait_must_use_added = "allow"
+union_must_use_added = "allow"
+
 [features]
 "v1_23" = ["v1_22"]
 "v1_22" = ["v1_21"]

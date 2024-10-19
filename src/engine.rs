@@ -98,6 +98,8 @@ pub struct EngineInfoGuard {
     snapshot: Context,
 }
 
+unsafe impl Sync for EngineInfoGuard {}
+
 impl EngineInfoGuard {
     pub(crate) fn new() -> Result<Self> {
         Ok(Self {

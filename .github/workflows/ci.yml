@@ -20,7 +20,7 @@ jobs:
       GPGME_DEBUG: 9
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install dependencies (Linux)
         if: startsWith(matrix.os, 'ubuntu')
@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Build docker container
         run: docker build -f docker/Dockerfile.static -t test-build .
@@ -58,10 +58,20 @@ jobs:
     continue-on-error: true
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Build docker container
         run: docker build --build-arg WIN_VARIANT=ltsc2022 -f docker/Dockerfile.windows -t test-build .
 
       - name: Run tests in container
         run: docker run test-build
+
+  semver:
+    name: Check semver violations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check semver
+        uses: obi1kenobi/cargo-semver-checks-action@v2

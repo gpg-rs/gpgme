@@ -32,6 +32,8 @@ use crate::{
 #[must_use]
 pub struct Context(NonNull<ffi::gpgme_ctx_t>);
 
+unsafe impl Send for Context {}
+
 impl Drop for Context {
     #[inline]
     fn drop(&mut self) {
