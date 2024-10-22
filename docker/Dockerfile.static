@@ -16,7 +16,7 @@ ENV SYSTEM_DEPS_LINK static
 # RUN ./configure --host "$TARGET" --prefix="$PREFIX" --with-pic --enable-fast-install --disable-dependency-tracking --without-emacs --disable-java --disable-csharp --disable-c++
 # RUN make -j$(nproc) install
 
-ARG LIBGPG_ERROR_VER=1.47
+ARG LIBGPG_ERROR_VER=1.50
 WORKDIR /usr/src
 ADD https://www.gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-${LIBGPG_ERROR_VER}.tar.bz2 ./
 RUN tar -xjf libgpg-error-${LIBGPG_ERROR_VER}.tar.bz2

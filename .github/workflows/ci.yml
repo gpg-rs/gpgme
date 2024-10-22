@@ -73,5 +73,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: sudo apt-get install -y --no-install-recommends libgpgme11-dev
+
       - name: Check semver
         uses: obi1kenobi/cargo-semver-checks-action@v2
