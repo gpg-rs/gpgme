@@ -1,6 +1,10 @@
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
+    if build::cargo_cfg_windows() && build::cargo_feature("windows_raw_dylib") {
+        return Ok(()); // neccessary linker args set in lib.rs
+    }
+
     #[cfg(windows)]
     if try_registry() {
         return Ok(());
@@ -12,46 +16,37 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 #[cfg(windows)]
 fn try_registry() -> bool {
-    use std::{ffi::OsString, fs, path::PathBuf};
+    use std::{ffi::OsString, path::PathBuf};
 
     use winreg::{enums::*, RegKey};
 
+    fn try_key(path: &str) -> bool {
+        let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+        let Ok(key) = hklm
+            .open_subkey_with_flags(path, KEY_WOW64_32KEY | KEY_READ)
+            .inspect_err(|e| eprintln!("unable to retrieve install location: {e}"))
+        else {
+            return false;
+        };
+        let Ok(root) = key
+            .get_value::<OsString, _>("Install Directory")
+            .map(PathBuf::from)
+            .inspect_err(|e| eprintln!("unable to retrieve install location: {e}"))
+        else {
+            return false;
+        };
+
+        println!("detected install via registry: {}", root.display());
+        build::rustc_link_search(root.join("lib"));
+        build::rustc_link_lib("dylib:+verbatim=libgpgme.imp");
+        true
+    }
     if !build::cargo_cfg_windows() {
         eprintln!("cross compiling. disabling registry detection.");
         return false;
     }
 
-    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-    let key = match hklm.open_subkey_with_flags(r"SOFTWARE\GnuPG", KEY_WOW64_32KEY | KEY_READ) {
-        Ok(x) => x,
-        Err(e) => {
-            eprintln!("Unable to retrieve install location: {e}");
-            return false;
-        }
-    };
-    let root = match key
-        .get_value::<OsString, _>("Install Directory")
-        .map(PathBuf::from)
-    {
-        Ok(x) => x,
-        Err(e) => {
-            eprintln!("Unable to retrieve install location: {e}");
-            return false;
-        }
-    };
-    println!("detected install via registry: {}", root.display());
-
-    if root.join("lib/libgpgme.imp").exists() {
-        if let Err(e) = fs::copy(
-            root.join("lib/libgpgme.imp"),
-            build::out_dir().join("libgpgme.a"),
-        ) {
-            eprintln!("Unable to rename library: {e}");
-            return false;
-        }
-    }
-
-    build::rustc_link_search(build::out_dir());
-    build::rustc_link_lib("gpgme");
-    true
+    [r"SOFTWARE\Gpg4win", r"SOFTWARE\GnuPG"]
+        .iter()
+        .any(|s| try_key(s))
 }

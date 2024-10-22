@@ -43,4 +43,4 @@ RUN make -j$(nproc) install
 FROM builder
 WORKDIR /root/ws
 COPY ./ ./
-CMD ["cargo", "test", "--no-fail-fast", "--all-features"]
+CMD ["cargo", "test", "--no-fail-fast", "--features", "latest"]

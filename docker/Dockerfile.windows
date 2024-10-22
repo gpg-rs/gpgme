@@ -1,5 +1,5 @@
 # escape=`
-ARG WIN_VARIANT=1909
+ARG WIN_VARIANT=ltsc2022
 FROM mcr.microsoft.com/windows/servercore:${WIN_VARIANT}
 
 ENV RUSTUP_HOME=C:\rustup CARGO_HOME=C:\cargo
@@ -20,4 +20,4 @@ RUN C:\TEMP\gnupg-w32.exe /S
 WORKDIR C:\workspace
 COPY ./ ./
 ENV GPGME_DEBUG 9
-CMD ["cargo", "test", "--no-fail-fast", "--all-features"]
+CMD ["cargo", "test", "--no-fail-fast", "--features", "latest"]

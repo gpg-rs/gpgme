@@ -1122,6 +1122,10 @@ impl _gpgme_op_query_swdb_result {
 }
 pub type gpgme_query_swdb_result_t = *mut _gpgme_op_query_swdb_result;
 
+#[cfg_attr(
+    all(windows, feature = "windows_raw_dylib"),
+    link(name = "libgpgme-11.dll", kind = "raw-dylib", modifiers = "+verbatim")
+)]
 extern "C" {
     pub fn gpgme_set_global_flag(name: *const c_char, value: *const c_char) -> c_int;
 

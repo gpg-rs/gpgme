@@ -2,7 +2,6 @@
 name = "gpgme"
 version.workspace = true
 edition.workspace = true
-rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 categories = ["api-bindings"]
@@ -10,7 +9,7 @@ keywords = ["gpg", "gpgme", "crypto", "cryptography"]
 description = "GPGme bindings for Rust"
 
 [package.metadata.docs.rs]
-all-features = true
+features = "latest"
 
 [package.metadata.cargo-semver-checks.lints]
 function_must_use_added = "allow"
@@ -21,6 +20,8 @@ trait_must_use_added = "allow"
 union_must_use_added = "allow"
 
 [features]
+windows_raw_dylib = ["ffi/windows_raw_dylib"]
+latest = ["v1_23"]
 "v1_23" = ["v1_22"]
 "v1_22" = ["v1_21"]
 "v1_21" = ["v1_20"]
@@ -42,7 +43,7 @@ bitflags = "2"
 cfg-if = "1"
 conv = "0.3"
 cstr-argument = "0.1"
-gpg-error = "0.6.1"
+gpg-error = "0.6.2"
 libc.workspace = true
 smallvec = "1"
 static_assertions = "1.1"
@@ -65,7 +66,6 @@ useless_conversion = "allow"
 [workspace.package]
 version = "0.11.0"
 edition = "2021"
-rust-version = "1.81"
 license = "LGPL-2.1"
 repository = "https://github.com/gpg-rs/gpgme"
 

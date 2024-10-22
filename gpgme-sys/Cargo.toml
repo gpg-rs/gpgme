@@ -2,7 +2,6 @@
 name = "gpgme-sys"
 version.workspace = true
 edition.workspace = true
-rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 categories = ["external-ffi-bindings"]
@@ -13,18 +12,18 @@ links = "gpgme"
 [package.metadata.system-deps]
 gpgme = "1.13"
 
-[badges]
-maintenance = { status = "experimental" }
+[features]
+windows_raw_dylib = ["libgpg-error-sys/windows_raw_dylib"]
 
 [build-dependencies]
+build-rs = "0.1.2"
 system-deps = "6.2.2"
 
 [dependencies]
 libc.workspace = true
-libgpg-error-sys = "0.6.1"
+libgpg-error-sys = "0.6.2"
 
 [target.'cfg(windows)'.build-dependencies]
-build-rs = "0.1.2"
 winreg = "0.52.0"
 
 [lints.rust]
