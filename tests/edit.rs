@@ -78,15 +78,17 @@ impl Editor for TestEditor {
     }
 }
 
-#[sealed_test(before = common::setup(), after = common::teardown())]
+#[sealed_test]
 fn test_edit() {
-    common::create_context().with_passphrase_provider(passphrase_cb, |ctx| {
-        let key = ctx
-            .find_keys(Some("Alpha"))
-            .unwrap()
-            .next()
-            .unwrap()
-            .unwrap();
-        ctx.edit_key_with(&key, TestEditor, stdout()).unwrap();
-    });
+    common::with_test_harness(|| {
+        common::create_context().with_passphrase_provider(passphrase_cb, |ctx| {
+            let key = ctx
+                .find_keys(Some("Alpha"))
+                .unwrap()
+                .next()
+                .unwrap()
+                .unwrap();
+            ctx.edit_key_with(&key, TestEditor, stdout()).unwrap();
+        });
+    })
 }

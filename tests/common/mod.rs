@@ -1,8 +1,11 @@
 #![allow(dead_code)]
 use std::{
-    env, fs,
+    collections::HashMap,
+    env,
+    ffi::{OsStr, OsString},
+    fs,
     io::prelude::*,
-    path::Path,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
@@ -37,97 +40,121 @@ pub fn passphrase_cb(_req: PassphraseRequest<'_>, out: &mut dyn Write) -> gpgme:
     Ok(())
 }
 
-fn setup_agent(dir: &Path) {
-    env::set_var("GNUPGHOME", dir);
-    env::set_var("GPG_AGENT_INFO", "");
-    let pinentry = Path::new(env!("CARGO_BIN_EXE_pinentry"));
-    if !pinentry.exists() {
-        panic!("Unable to find pinentry program");
+struct TestHarness {
+    wd: PathBuf,
+    env: HashMap<&'static str, OsString>,
+    gpg: OsString,
+}
+
+impl Drop for TestHarness {
+    fn drop(&mut self) {
+        let _ = self.cmd("gpgconf").args(["--kill", "all"]).status();
+    }
+}
+
+impl TestHarness {
+    fn new() -> Self {
+        let wd = env::current_dir().unwrap();
+        let env = HashMap::from_iter([
+            ("GNUPGHOME", wd.as_os_str().to_owned()),
+            ("GPG_AGENT_INFO", OsString::new()),
+        ]);
+        let gpg = env::var_os("GPG").unwrap_or("gpg".into());
+        Self { wd, env, gpg }
     }
 
-    let conf = dir.join("gpg.conf");
-    fs::write(conf, include_str!("./data/gpg.conf")).unwrap();
+    fn cmd(&self, program: impl AsRef<OsStr>) -> Command {
+        let mut cmd = Command::new(program);
+        cmd.envs(&self.env)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        cmd
+    }
 
-    let agent_conf = dir.join("gpg-agent.conf");
-    fs::write(
-        agent_conf,
-        format!(
-            concat!(
-                include_str!("./data/gpg-agent.conf"),
-                "pinentry-program {}\n"
+    fn setup_agent(&self) {
+        let pinentry = Path::new(env!("CARGO_BIN_EXE_pinentry"));
+        if !pinentry.exists() {
+            panic!("Unable to find pinentry program");
+        }
+
+        let conf = self.wd.join("gpg.conf");
+        fs::write(conf, include_str!("./data/gpg.conf")).unwrap();
+
+        let agent_conf = self.wd.join("gpg-agent.conf");
+        fs::write(
+            agent_conf,
+            format!(
+                concat!(
+                    include_str!("./data/gpg-agent.conf"),
+                    "pinentry-program {}\n"
+                ),
+                pinentry.to_str().unwrap()
             ),
-            pinentry.to_str().unwrap()
-        ),
-    )
-    .unwrap();
+        )
+        .unwrap();
+    }
+
+    fn import_key(&self, key: &[u8]) {
+        let mut child = self
+            .cmd(&self.gpg)
+            .args([
+                "--batch",
+                "--no-permission-warning",
+                "--passphrase",
+                "abc",
+                "--import",
+            ])
+            .spawn()
+            .unwrap();
+        child.stdin.as_mut().unwrap().write_all(key).unwrap();
+        assert!(child.wait().unwrap().success());
+    }
+
+    fn import_ownertrust(&self) {
+        let mut child = self
+            .cmd(&self.gpg)
+            .args([
+                "--batch",
+                "--no-permission-warning",
+                "--passphrase",
+                "abc",
+                "--import",
+            ])
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(include_bytes!("./data/ownertrust.txt"))
+            .unwrap();
+        let _ = child.wait();
+    }
+
+    fn setup(&self) {
+        self.setup_agent();
+        self.import_key(include_bytes!("./data/pubdemo.asc"));
+        self.import_key(include_bytes!("./data/secdemo.asc"));
+        self.import_ownertrust();
+
+        let token = gpgme::init();
+        token
+            .set_engine_home_dir(
+                gpgme::Protocol::OpenPgp,
+                self.wd.as_os_str().as_encoded_bytes(),
+            )
+            .unwrap();
+        token
+            .check_engine_version(gpgme::Protocol::OpenPgp)
+            .unwrap();
+    }
 }
 
-fn import_key(key: &[u8]) {
-    let gpg = env::var_os("GPG").unwrap_or("gpg".into());
-    let mut child = Command::new(gpg)
-        .args([
-            "--batch",
-            "--no-permission-warning",
-            "--passphrase",
-            "abc",
-            "--import",
-        ])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
-    child.stdin.as_mut().unwrap().write_all(key).unwrap();
-    assert!(child.wait().unwrap().success());
-}
-
-fn import_ownertrust() {
-    let gpg = env::var_os("GPG").unwrap_or("gpg".into());
-    let mut child = Command::new(gpg)
-        .args([
-            "--batch",
-            "--no-permission-warning",
-            "--passphrase",
-            "abc",
-            "--import",
-        ])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
-    child
-        .stdin
-        .as_mut()
-        .unwrap()
-        .write_all(include_bytes!("./data/ownertrust.txt"))
-        .unwrap();
-    let _ = child.wait();
-}
-
-pub fn setup() {
-    let dir = env::current_dir().unwrap();
-    setup_agent(&dir);
-    import_key(include_bytes!("./data/pubdemo.asc"));
-    import_key(include_bytes!("./data/secdemo.asc"));
-    import_ownertrust();
-
-    let token = gpgme::init();
-    token
-        .set_engine_home_dir(gpgme::Protocol::OpenPgp, &*dir.to_string_lossy())
-        .unwrap();
-    token
-        .check_engine_version(gpgme::Protocol::OpenPgp)
-        .unwrap();
-}
-
-pub fn teardown() {
-    let _ = Command::new("gpgconf")
-        .args(["--kill", "all"])
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
+pub fn with_test_harness(f: impl FnOnce()) {
+    let harness = TestHarness::new();
+    harness.setup();
+    f()
 }
 
 pub fn create_context() -> Context {

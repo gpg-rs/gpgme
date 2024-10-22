@@ -17,11 +17,11 @@ gpgme = "1.13"
 maintenance = { status = "experimental" }
 
 [build-dependencies]
-system-deps = "6.2.0"
+system-deps = "6.2.2"
 
 [dependencies]
 libc.workspace = true
-libgpg-error-sys = "0.6.0"
+libgpg-error-sys = "0.6.1"
 
 [target.'cfg(windows)'.build-dependencies]
 build-rs = "0.1.2"

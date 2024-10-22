@@ -34,15 +34,15 @@ union_must_use_added = "allow"
 "v1_13" = []
 
 [dev-dependencies]
-clap = { version = "4.4.11", features = ["derive"] }
-sealed_test = "1.0.0"
+clap = { version = "4.5.20", features = ["derive"] }
+sealed_test = "1.1.0"
 
 [dependencies]
 bitflags = "2"
 cfg-if = "1"
 conv = "0.3"
 cstr-argument = "0.1"
-gpg-error = "0.6.0"
+gpg-error = "0.6.1"
 libc.workspace = true
 smallvec = "1"
 static_assertions = "1.1"

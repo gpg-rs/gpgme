@@ -11,20 +11,21 @@ const TEST_MSG1: &[u8] = b"-----BEGIN PGP MESSAGE-----\n\
                            =Crq6\n\
                            -----END PGP MESSAGE-----\n";
 
-#[sealed_test(before = common::setup())]
+#[sealed_test]
 fn test_signature_key() {
-    let mut ctx = common::create_context();
-    let mut output = Vec::new();
-    let result = ctx.verify_opaque(TEST_MSG1, &mut output).unwrap();
-    assert_eq!(result.signatures().count(), 1);
+    common::with_test_harness(|| {
+        let mut ctx = common::create_context();
+        let mut output = Vec::new();
+        let result = ctx.verify_opaque(TEST_MSG1, &mut output).unwrap();
+        assert_eq!(result.signatures().count(), 1);
 
-    let sig = result.signatures().next().unwrap();
-    let key = ctx.get_key(sig.fingerprint_raw().unwrap()).unwrap();
-    for subkey in key.subkeys() {
-        if subkey.fingerprint_raw() == sig.fingerprint_raw() {
-            return;
+        let sig = result.signatures().next().unwrap();
+        let key = ctx.get_key(sig.fingerprint_raw().unwrap()).unwrap();
+        for subkey in key.subkeys() {
+            if subkey.fingerprint_raw() == sig.fingerprint_raw() {
+                return;
+            }
         }
-    }
-    common::teardown();
-    panic!();
+        panic!("verification key not found");
+    })
 }

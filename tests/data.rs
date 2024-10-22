@@ -63,29 +63,31 @@ fn write_test(rnd: Round, data: &mut Data) {
 
 const MISSING_FILE_NAME: &str = "this-file-surely-does-not-exist";
 
-#[sealed_test(before = common::setup(), after = common::teardown())]
+#[sealed_test]
 fn test_data() {
-    let mut rnd = TEST_INITIALIZER;
+    common::with_test_harness(|| {
+        let mut rnd = TEST_INITIALIZER;
 
-    loop {
-        rnd += 1;
-        let mut data = match rnd {
-            TEST_INOUT_NONE => Data::new().unwrap(),
-            TEST_INOUT_MEM_NO_COPY => Data::from_buffer(TEXT.as_bytes()).unwrap(),
-            TEST_INOUT_MEM_COPY => Data::from_bytes(TEXT.as_bytes()).unwrap(),
-            TEST_INOUT_MEM_FROM_FILE_COPY => continue,
-            TEST_INOUT_MEM_FROM_INEXISTANT_FILE => {
-                let res = Data::load(MISSING_FILE_NAME);
-                assert_matches!(res, Err(_), "round {rnd}");
-                continue;
-            }
-            TEST_INOUT_VEC_NONE => Data::try_from(Vec::new()).unwrap(),
-            TEST_INOUT_VEC => Data::try_from(TEXT.as_bytes().to_vec()).unwrap(),
-            TEST_END => break,
-            _ => panic!("unexpected round {rnd}"),
-        };
+        loop {
+            rnd += 1;
+            let mut data = match rnd {
+                TEST_INOUT_NONE => Data::new().unwrap(),
+                TEST_INOUT_MEM_NO_COPY => Data::from_buffer(TEXT.as_bytes()).unwrap(),
+                TEST_INOUT_MEM_COPY => Data::from_bytes(TEXT.as_bytes()).unwrap(),
+                TEST_INOUT_MEM_FROM_FILE_COPY => continue,
+                TEST_INOUT_MEM_FROM_INEXISTANT_FILE => {
+                    let res = Data::load(MISSING_FILE_NAME);
+                    assert_matches!(res, Err(_), "round {rnd}");
+                    continue;
+                }
+                TEST_INOUT_VEC_NONE => Data::try_from(Vec::new()).unwrap(),
+                TEST_INOUT_VEC => Data::try_from(TEXT.as_bytes().to_vec()).unwrap(),
+                TEST_END => break,
+                _ => panic!("unexpected round {rnd}"),
+            };
 
-        read_test(rnd, &mut data);
-        write_test(rnd, &mut data);
-    }
+            read_test(rnd, &mut data);
+            write_test(rnd, &mut data);
+        }
+    })
 }
