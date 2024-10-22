@@ -125,6 +125,17 @@ fn get_flag_lock() -> &'static Mutex<()> {
 
 /// Upstream documentation:
 /// [`gpgme_set_global_flag`](https://www.gnupg.org/documentation/manuals/gpgme/Library-Version-Check.html#index-gpgme_005fset_005fglobal_005fflag)
+///
+/// # Safety
+///
+/// This function is not thread safe and should only be called when it can be
+/// guaranteed that no other threads are executing *any* GPGme, libgcrypt or
+/// libgpg-error functions. This function has similar safety issues to
+/// [`std::env::set_var()`].
+#[deprecated(
+    note = "This function is not thread safe and will eventually be marked unsafe",
+    since = "0.11.1"
+)]
 pub fn set_flag(name: impl CStrArgument, val: impl CStrArgument) -> Result<()> {
     let name = name.into_cstr();
     let val = val.into_cstr();
@@ -165,6 +176,9 @@ cfg_if::cfg_if! {
 }
 
 /// Initializes the gpgme library.
+///
+/// A token is returned through which various global options of the library can
+/// be queried and modified.
 ///
 /// Upstream documentation:
 /// [`gpgme_check_version`](https://www.gnupg.org/documentation/manuals/gpgme/Library-Version-Check.html#index-gpgme_005fcheck_005fversion)

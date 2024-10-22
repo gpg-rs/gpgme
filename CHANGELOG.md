@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Added `TryFrom` implementations for `Data` from common IO types
-- New bindings for GPGMe 1.23
+- Added new bindings for GPGMe 1.23
 
 ### Fixed
 - Fixed soundness bug in `ContextWithCallbacks`
@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   type (`BorrowedFd`)
 - Deprecated `Data::from_{read,write,stream}` in favor of `Data::builder` and `DataBuilder` which
   reduces the number of functions needed to support all combinations of IO traits
+- Deprecated the safety of `gpgme::set_flag`. This function is not thread safe and has
+  similar safety issues to  [`std::env::set_var`](https://doc.rust-lang.org/stable/std/env/fn.set_var.html)
 
 ### Other
 - Added install instructions for required dependencies on Windows via `winget`
