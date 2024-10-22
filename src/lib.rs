@@ -282,40 +282,16 @@ impl Gpgme {
 
     #[inline]
     pub fn set_engine_path(&self, proto: Protocol, path: impl CStrArgument) -> Result<()> {
-        let path = path.into_cstr();
-        unsafe {
-            let home_dir = self
-                .engine_info()?
-                .get(proto)
-                .as_ref()
-                .and_then(|x| x.home_dir_raw())
-                .map_or(ptr::null(), |x| x.as_ptr());
-            convert_err(ffi::gpgme_set_engine_info(
-                proto.raw(),
-                path.as_ref().as_ptr(),
-                home_dir,
-            ))?;
-        }
-        Ok(())
+        let info = self.engine_info()?;
+        let home_dir = info.get(proto).as_ref().and_then(|x| x.home_dir_raw());
+        self.set_engine_info(proto, Some(path), home_dir)
     }
 
     #[inline]
     pub fn set_engine_home_dir(&self, proto: Protocol, home_dir: impl CStrArgument) -> Result<()> {
-        let home_dir = home_dir.into_cstr();
-        unsafe {
-            let path = self
-                .engine_info()?
-                .get(proto)
-                .as_ref()
-                .and_then(|x| x.path_raw())
-                .map_or(ptr::null(), |x| x.as_ptr());
-            convert_err(ffi::gpgme_set_engine_info(
-                proto.raw(),
-                path,
-                home_dir.as_ref().as_ptr(),
-            ))?;
-        }
-        Ok(())
+        let info = self.engine_info()?;
+        let path = info.get(proto).as_ref().and_then(|x| x.path_raw());
+        self.set_engine_info(proto, path, Some(home_dir))
     }
 
     /// Upstream documentation:

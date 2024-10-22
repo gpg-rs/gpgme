@@ -12,7 +12,7 @@ pub struct EngineInfo<'a>(NonNull<ffi::gpgme_engine_info_t>, PhantomData<&'a ()>
 unsafe impl Send for EngineInfo<'_> {}
 unsafe impl Sync for EngineInfo<'_> {}
 
-impl EngineInfo<'_> {
+impl<'e> EngineInfo<'e> {
     impl_wrapper!(ffi::gpgme_engine_info_t, PhantomData);
 
     /// Returns the `Protocol` implemented by the engine.
@@ -22,13 +22,13 @@ impl EngineInfo<'_> {
     }
 
     #[inline]
-    pub fn path(&self) -> Result<&str, Option<Utf8Error>> {
+    pub fn path(&self) -> Result<&'e str, Option<Utf8Error>> {
         self.path_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn path_raw(&self) -> Option<&CStr> {
+    pub fn path_raw(&self) -> Option<&'e CStr> {
         unsafe { utils::convert_raw_str((*self.as_raw()).file_name) }
     }
 
@@ -39,7 +39,7 @@ impl EngineInfo<'_> {
     }
 
     #[inline]
-    pub fn home_dir_raw(&self) -> Option<&CStr> {
+    pub fn home_dir_raw(&self) -> Option<&'e CStr> {
         unsafe { utils::convert_raw_str((*self.as_raw()).home_dir) }
     }
 
@@ -55,24 +55,24 @@ impl EngineInfo<'_> {
     }
 
     #[inline]
-    pub fn version(&self) -> Result<&str, Option<Utf8Error>> {
+    pub fn version(&self) -> Result<&'e str, Option<Utf8Error>> {
         self.version_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn version_raw(&self) -> Option<&CStr> {
+    pub fn version_raw(&self) -> Option<&'e CStr> {
         unsafe { utils::convert_raw_str((*self.as_raw()).version) }
     }
 
     #[inline]
-    pub fn required_version(&self) -> Result<&str, Option<Utf8Error>> {
+    pub fn required_version(&self) -> Result<&'e str, Option<Utf8Error>> {
         self.required_version_raw()
             .map_or(Err(None), |s| s.to_str().map_err(Some))
     }
 
     #[inline]
-    pub fn required_version_raw(&self) -> Option<&CStr> {
+    pub fn required_version_raw(&self) -> Option<&'e CStr> {
         unsafe { utils::convert_raw_str((*self.as_raw()).req_version) }
     }
 }
