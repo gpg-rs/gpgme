@@ -180,9 +180,13 @@ impl<'data> Data<'data> {
         crate::init();
         let bytes = bytes.as_ref();
         unsafe {
-            let (buf, len) = (bytes.as_ptr(), bytes.len());
             let mut data = ptr::null_mut();
-            convert_err(ffi::gpgme_data_new_from_mem(&mut data, buf.cast(), len, 1))?;
+            convert_err(ffi::gpgme_data_new_from_mem(
+                &mut data,
+                bytes.as_ptr().cast(),
+                bytes.len(),
+                1,
+            ))?;
             Ok(Data::from_raw(data))
         }
     }
@@ -196,9 +200,13 @@ impl<'data> Data<'data> {
         crate::init();
         let buf = buf.as_ref();
         unsafe {
-            let (buf, len) = (buf.as_ptr(), buf.len());
             let mut data = ptr::null_mut();
-            convert_err(ffi::gpgme_data_new_from_mem(&mut data, buf.cast(), len, 0))?;
+            convert_err(ffi::gpgme_data_new_from_mem(
+                &mut data,
+                buf.as_ptr().cast(),
+                buf.len(),
+                0,
+            ))?;
             Ok(Data::from_raw(data))
         }
     }
@@ -432,10 +440,8 @@ impl Read for Data<'_> {
 impl Write for Data<'_> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let result = unsafe {
-            let (buf, len) = (buf.as_ptr(), buf.len());
-            ffi::gpgme_data_write(self.as_raw(), buf.cast(), len)
-        };
+        let result =
+            unsafe { ffi::gpgme_data_write(self.as_raw(), buf.as_ptr().cast(), buf.len()) };
         Ok(usize::try_from(result).map_err(|_| Error::last_os_error())?)
     }
 

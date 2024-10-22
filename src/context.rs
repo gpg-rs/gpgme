@@ -177,32 +177,26 @@ impl Context {
     #[inline]
     pub fn set_engine_path(&mut self, path: impl CStrArgument) -> Result<()> {
         let path = path.into_cstr();
-        let home_dir = self
-            .engine_info()
-            .home_dir_raw()
-            .map_or(ptr::null(), CStr::as_ptr);
+        let home_dir = self.engine_info().home_dir_raw();
         unsafe {
             convert_err(ffi::gpgme_ctx_set_engine_info(
                 self.as_raw(),
                 self.protocol().raw(),
                 path.as_ref().as_ptr(),
-                home_dir,
+                home_dir.map_or(ptr::null(), CStr::as_ptr),
             ))
         }
     }
 
     #[inline]
     pub fn set_engine_home_dir(&mut self, home_dir: impl CStrArgument) -> Result<()> {
-        let path = self
-            .engine_info()
-            .path_raw()
-            .map_or(ptr::null(), CStr::as_ptr);
+        let path = self.engine_info().path_raw();
         let home_dir = home_dir.into_cstr();
         unsafe {
             convert_err(ffi::gpgme_ctx_set_engine_info(
                 self.as_raw(),
                 self.protocol().raw(),
-                path,
+                path.map_or(ptr::null(), CStr::as_ptr),
                 home_dir.as_ref().as_ptr(),
             ))
         }
@@ -219,15 +213,13 @@ impl Context {
         let path = path.map(CStrArgument::into_cstr);
         let home_dir = home_dir.map(CStrArgument::into_cstr);
         unsafe {
-            let path = path.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
-            let home_dir = home_dir
-                .as_ref()
-                .map_or(ptr::null(), |s| s.as_ref().as_ptr());
+            let path = path.as_ref();
+            let home_dir = home_dir.as_ref();
             convert_err(ffi::gpgme_ctx_set_engine_info(
                 self.as_raw(),
                 self.protocol().raw(),
-                path,
-                home_dir,
+                path.map_or(ptr::null(), |s| s.as_ref().as_ptr()),
+                home_dir.map_or(ptr::null(), |s| s.as_ref().as_ptr()),
             ))
         }
     }
@@ -1849,11 +1841,14 @@ impl Context {
         let name = name.map(|s| s.into_cstr());
         let iversion = installed_ver.map(|s| s.into_cstr());
         unsafe {
-            let name = name.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
-            let iversion = iversion
-                .as_ref()
-                .map_or(ptr::null(), |s| s.as_ref().as_ptr());
-            convert_err(ffi::gpgme_op_query_swdb(self.as_raw(), name, iversion, 0))?;
+            convert_err(ffi::gpgme_op_query_swdb(
+                self.as_raw(),
+                name.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr()),
+                iversion
+                    .as_ref()
+                    .map_or(ptr::null(), |s| s.as_ref().as_ptr()),
+                0,
+            ))?;
         }
         Ok(self.get_result().unwrap())
     }

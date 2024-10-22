@@ -305,12 +305,14 @@ impl Gpgme {
     ) -> Result<()> {
         let path = path.map(CStrArgument::into_cstr);
         let home_dir = home_dir.map(CStrArgument::into_cstr);
-        let path = path.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr());
-        let home_dir = home_dir
-            .as_ref()
-            .map_or(ptr::null(), |s| s.as_ref().as_ptr());
         unsafe {
-            convert_err(ffi::gpgme_set_engine_info(proto.raw(), path, home_dir))?;
+            convert_err(ffi::gpgme_set_engine_info(
+                proto.raw(),
+                path.as_ref().map_or(ptr::null(), |s| s.as_ref().as_ptr()),
+                home_dir
+                    .as_ref()
+                    .map_or(ptr::null(), |s| s.as_ref().as_ptr()),
+            ))?;
         }
         Ok(())
     }
