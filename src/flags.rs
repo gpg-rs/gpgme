@@ -27,10 +27,24 @@ bitflags! {
     }
 }
 
+impl KeyListMode {
+    #[deprecated = "use the safe `from_bits_retain` method instead"]
+    pub const unsafe fn from_bits_unchecked(bits: ffi::gpgme_keylist_mode_t) -> Self {
+        Self::from_bits_retain(bits)
+    }
+}
+
 bitflags! {
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct InteractFlags: libc::c_uint {
         const CARD = ffi::GPGME_INTERACT_CARD;
+    }
+}
+
+impl InteractFlags {
+    #[deprecated = "use the safe `from_bits_retain` method instead"]
+    pub const unsafe fn from_bits_unchecked(bits: libc::c_uint) -> Self {
+        Self::from_bits_retain(bits)
     }
 }
 
@@ -53,6 +67,13 @@ bitflags! {
     }
 }
 
+impl CreateKeyFlags {
+    #[deprecated = "use the safe `from_bits_retain` method instead"]
+    pub const unsafe fn from_bits_unchecked(bits: libc::c_uint) -> Self {
+        Self::from_bits_retain(bits)
+    }
+}
+
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_op_delete_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Deleting-Keys.html#index-gpgme_005fop_005fdelete_005fext)
@@ -60,6 +81,13 @@ bitflags! {
     pub struct DeleteKeyFlags: libc::c_uint {
         const ALLOW_SECRET = ffi::GPGME_DELETE_ALLOW_SECRET;
         const FORCE = ffi::GPGME_DELETE_FORCE;
+    }
+}
+
+impl DeleteKeyFlags {
+    #[deprecated = "use the safe `from_bits_retain` method instead"]
+    pub const unsafe fn from_bits_unchecked(bits: libc::c_uint) -> Self {
+        Self::from_bits_retain(bits)
     }
 }
 
@@ -72,6 +100,13 @@ bitflags! {
         const LFSEP = ffi::GPGME_KEYSIGN_LFSEP;
         const NOEXPIRE = ffi::GPGME_KEYSIGN_NOEXPIRE;
         const FORCE = ffi::GPGME_KEYSIGN_FORCE;
+    }
+}
+
+impl KeySigningFlags {
+    #[deprecated = "use the safe `from_bits_retain` method instead"]
+    pub const unsafe fn from_bits_unchecked(bits: libc::c_uint) -> Self {
+        Self::from_bits_retain(bits)
     }
 }
 
@@ -88,6 +123,13 @@ bitflags! {
     }
 }
 
+impl ImportFlags {
+    #[deprecated = "use the safe `from_bits_retain` method instead"]
+    pub const unsafe fn from_bits_unchecked(bits: libc::c_uint) -> Self {
+        Self::from_bits_retain(bits)
+    }
+}
+
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_export_mode_t`](https://www.gnupg.org/documentation/manuals/gpgme/Exporting-Keys.html)
@@ -100,6 +142,13 @@ bitflags! {
         const PKCS12 = ffi::GPGME_EXPORT_MODE_PKCS12;
         const SSH = ffi::GPGME_EXPORT_MODE_SSH;
         const SECRET_SUBKEY = ffi::GPGME_EXPORT_MODE_SECRET_SUBKEY;
+    }
+}
+
+impl ExportMode {
+    #[deprecated = "use the safe `from_bits_retain` method instead"]
+    pub const unsafe fn from_bits_unchecked(bits: ffi::gpgme_export_mode_t) -> Self {
+        Self::from_bits_retain(bits)
     }
 }
 
@@ -121,6 +170,13 @@ bitflags! {
     }
 }
 
+impl EncryptFlags {
+    #[deprecated = "use the safe `from_bits_retain` method instead"]
+    pub const unsafe fn from_bits_unchecked(bits: ffi::gpgme_encrypt_flags_t) -> Self {
+        Self::from_bits_retain(bits)
+    }
+}
+
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_op_decrypt_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Decrypt.html#index-gpgme_005fop_005fdecrypt_005fext)
@@ -132,12 +188,26 @@ bitflags! {
     }
 }
 
+impl DecryptFlags {
+    #[deprecated = "use the safe `from_bits_retain` method instead"]
+    pub const unsafe fn from_bits_unchecked(bits: ffi::gpgme_decrypt_flags_t) -> Self {
+        Self::from_bits_retain(bits)
+    }
+}
+
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_op_verify_ext`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fop_005fverify_005fext)
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct VerifyFlags: ffi::gpgme_verify_flags_t {
         const ARCHIVE = ffi::GPGME_VERIFY_ARCHIVE;
+    }
+}
+
+impl VerifyFlags {
+    #[deprecated = "use the safe `from_bits_retain` method instead"]
+    pub const unsafe fn from_bits_unchecked(bits: ffi::gpgme_verify_flags_t) -> Self {
+        Self::from_bits_retain(bits)
     }
 }
 
@@ -161,6 +231,13 @@ bitflags! {
     }
 }
 
+impl SignatureSummary {
+    #[deprecated = "use the safe `from_bits_retain` method instead"]
+    pub const unsafe fn from_bits_unchecked(bits: ffi::gpgme_sigsum_t) -> Self {
+        Self::from_bits_retain(bits)
+    }
+}
+
 bitflags! {
     /// Upstream documentation:
     /// [`gpgme_sig_notation_flags_t`](https://www.gnupg.org/documentation/manuals/gpgme/Verify.html#index-gpgme_005fsig_005fnotation_005ft)
@@ -168,6 +245,13 @@ bitflags! {
     pub struct SignatureNotationFlags: ffi::gpgme_sig_notation_flags_t {
         const HUMAN_READABLE = ffi::GPGME_SIG_NOTATION_HUMAN_READABLE;
         const CRITICAL = ffi::GPGME_SIG_NOTATION_CRITICAL;
+    }
+}
+
+impl SignatureNotationFlags {
+    #[deprecated = "use the safe `from_bits_retain` method instead"]
+    pub const unsafe fn from_bits_unchecked(bits: ffi::gpgme_sig_notation_flags_t) -> Self {
+        Self::from_bits_retain(bits)
     }
 }
 
@@ -180,6 +264,13 @@ bitflags! {
         const HTML = ffi::GPGME_AUDITLOG_HTML;
         const DIAG = ffi::GPGME_AUDITLOG_DIAG;
         const WITH_HELP = ffi::GPGME_AUDITLOG_WITH_HELP;
+    }
+}
+
+impl AuditLogFlags {
+    #[deprecated = "use the safe `from_bits_retain` method instead"]
+    pub const unsafe fn from_bits_unchecked(bits: libc::c_uint) -> Self {
+        Self::from_bits_retain(bits)
     }
 }
 
