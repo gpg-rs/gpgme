@@ -20,10 +20,15 @@ fn try_registry() -> bool {
 
     use winreg::{enums::*, RegKey};
 
-    fn try_key(path: &str) -> bool {
+    fn try_key(path: &str, wide: bool) -> bool {
+        let flags = if wide {
+            KEY_WOW64_64KEY
+        } else {
+            KEY_WOW64_32KEY
+        };
         let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
         let Ok(key) = hklm
-            .open_subkey_with_flags(path, KEY_WOW64_32KEY | KEY_READ)
+            .open_subkey_with_flags(path, flags | KEY_READ)
             .inspect_err(|e| eprintln!("unable to retrieve install location: {e}"))
         else {
             return false;
@@ -46,7 +51,11 @@ fn try_registry() -> bool {
         return false;
     }
 
-    [r"SOFTWARE\Gpg4win", r"SOFTWARE\GnuPG"]
-        .iter()
-        .any(|s| try_key(s))
+    [r"SOFTWARE\Gpg4win", r"SOFTWARE\GnuPG"].iter().any(|s| {
+        if build::cargo_cfg_pointer_width() == 64 {
+            try_key(s, true)
+        } else {
+            try_key(s, false)
+        }
+    })
 }
