@@ -1,9 +1,9 @@
-name: Continuous Integration
+name: CI
 on: [push, pull_request]
 env:
   CARGO_TERM_COLOR: always
 jobs:
-  test:
+  basic-tests:
     name: Test Suite (${{ matrix.os }}, rust-${{ matrix.rust }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -31,7 +31,9 @@ jobs:
         run: brew install gpgme
 
       - name: Install rust
-        run: rustup default ${{ matrix.rust }}
+        run: rustup toolchain install --no-self-update --profile minimal ${{ matrix.rust }}
+
+      - run: rustup default ${{ matrix.rust }}
 
       - name: Build
         run: cargo build --verbose
@@ -39,7 +41,7 @@ jobs:
       - name: Run tests
         run: cargo test --verbose --no-fail-fast
 
-  docker-static:
+  docker-static-test:
     name: Test Suite (linux, docker, musl)
     runs-on: ubuntu-latest
     steps:
@@ -52,7 +54,7 @@ jobs:
       - name: Run tests in container
         run: docker run test-build
 
-  docker-windows:
+  docker-windows-test:
     name: Test Suite (windows, docker)
     runs-on: windows-2022
     continue-on-error: true
